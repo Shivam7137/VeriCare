@@ -319,7 +319,7 @@ export class EmergencyLookup {
       );
       await db.query(
         `INSERT INTO voice_sms(id,call_id,tool_call_id,template,mode,recipient_number,body,content_fingerprint,status,expires_at,created_at,updated_at,confirmed_at)
-        VALUES ($1,$2,$3,'emergency_verification','twilio',$4,'Health Coordinator demo: one-time verification code [redacted].',$5,'dispatching',$6,$7,$7,$7)`,
+        VALUES ($1,$2,$3,'emergency_verification','twilio',$4,'careBridge demo: one-time verification code [redacted].',$5,'dispatching',$6,$7,$7,$7)`,
         [
           smsId,
           callId,
@@ -356,7 +356,7 @@ export class EmergencyLookup {
           smsId,
           callId,
           to: patient.contact_number,
-          body: `Health Coordinator demo: your verification code is ${code}. It expires in 5 minutes. Read the digits aloud or enter them on the keypad during your current call. Reply STOP to opt out.`,
+          body: `careBridge demo: your verification code is ${code}. It expires in 5 minutes. Read the digits aloud or enter them on the keypad during your current call. Reply STOP to opt out.`,
         },
       };
     });

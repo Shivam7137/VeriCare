@@ -1,4 +1,4 @@
-# Health Coordinator prototype demo
+# careBridge prototype demo
 
 This is a fictional clinic demonstration. Web sessions enter automatically. Appointment changes use a local mock scheduler, and ordinary workflow callbacks/reminders use local simulated delivery. Optional real phone access and forwarding are separate. Real telephone audio and handset transfer have not been validated.
 

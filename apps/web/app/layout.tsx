@@ -4,7 +4,7 @@ import "./portals.css";
 import "./workspace.css";
 
 export const metadata: Metadata = {
-  title: "Health Coordinator",
+  title: "careBridge",
   description:
     "Appointments, care-team requests, and phone assistance for a fictional outpatient clinic.",
   robots: { index: false, follow: false },

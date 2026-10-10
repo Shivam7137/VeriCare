@@ -292,7 +292,7 @@ export function registerVoiceRoutes(
             .send(
               terminalCalls.has(current.status)
                 ? hangupTwiml(
-                    "Verification was not completed. Please obtain a new code in your Health Coordinator workspace.",
+                    "Verification was not completed. Please obtain a new code in your careBridge workspace.",
                   )
                 : retryTwiml(config),
             );

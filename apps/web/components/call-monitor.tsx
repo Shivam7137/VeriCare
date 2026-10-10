@@ -166,7 +166,7 @@ export default function CallMonitor() {
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `health-coordinator-call-${call.id}.json`;
+    anchor.download = `careBridge-call-${call.id}.json`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

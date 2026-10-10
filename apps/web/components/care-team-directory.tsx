@@ -241,7 +241,7 @@ export default function CareTeamDirectory() {
         )
       )}
       <footer>
-        <span>Health Coordinator</span>
+        <span>careBridge</span>
         <span>Fictional demo · Forwarding does not change appointments</span>
       </footer>
     </main>

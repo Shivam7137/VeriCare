@@ -97,10 +97,7 @@ export default function DesktopOverview() {
           <span className="brand-mark" aria-hidden="true">
             +
           </span>
-          <span>
-            Health <br />
-            Coordinator
-          </span>
+          <span>careBridge</span>
         </Link>
         <p className="desk-nav-label">WORKSPACE</p>
         <nav aria-label="Desktop navigation">
@@ -435,7 +432,7 @@ export default function DesktopOverview() {
           </>
         )}
         <footer className="desk-footer">
-          <span>Health Coordinator · Department overview</span>
+          <span>careBridge · Department overview</span>
           <span>Fictional records · Backend-verified outcomes</span>
         </footer>
       </main>

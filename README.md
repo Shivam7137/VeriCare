@@ -1,4 +1,4 @@
-# Health Coordinator
+# careBridge
 
 A disposable, private workspace for experimenting with one department's appointment-rescheduling prototype. Push directly to main or use a branch and pull request when helpful. There is no CI, required review, branch protection, CODEOWNERS, or automated dependency-update workflow.
 

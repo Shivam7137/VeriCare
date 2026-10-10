@@ -51,7 +51,7 @@ export default function Home() {
         The phone simulator is clearly separated from the real phone line.
       </p>
       <footer>
-        <span>Health Coordinator</span>
+        <span>careBridge</span>
         <span>Patient · Care team · Department</span>
       </footer>
     </main>
