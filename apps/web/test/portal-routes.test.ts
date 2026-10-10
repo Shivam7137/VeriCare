@@ -13,6 +13,8 @@ const roles = ["patient", "staff", "operator"] as const;
 const originalDirectory = process.cwd();
 const originalFetch = globalThis.fetch;
 const originalDemoSetting = process.env.ENABLE_SYNTHETIC_DEMO;
+const originalPublicOrigin = process.env.PUBLIC_DEMO_ORIGIN;
+const originalCredentials = process.env.DEMO_SESSIONS_JSON;
 const requests: { url: string; token: string }[] = [];
 let temporaryDirectory: string;
 
@@ -47,6 +49,9 @@ before(async () => {
 
 beforeEach(() => {
   requests.length = 0;
+  process.env.ENABLE_SYNTHETIC_DEMO = "true";
+  delete process.env.PUBLIC_DEMO_ORIGIN;
+  delete process.env.DEMO_SESSIONS_JSON;
 });
 
 after(async () => {
@@ -54,6 +59,10 @@ after(async () => {
   globalThis.fetch = originalFetch;
   if (originalDemoSetting === undefined) delete process.env.ENABLE_SYNTHETIC_DEMO;
   else process.env.ENABLE_SYNTHETIC_DEMO = originalDemoSetting;
+  if (originalPublicOrigin === undefined) delete process.env.PUBLIC_DEMO_ORIGIN;
+  else process.env.PUBLIC_DEMO_ORIGIN = originalPublicOrigin;
+  if (originalCredentials === undefined) delete process.env.DEMO_SESSIONS_JSON;
+  else process.env.DEMO_SESSIONS_JSON = originalCredentials;
   await rm(temporaryDirectory, { recursive: true, force: true });
 });
 
@@ -154,19 +163,22 @@ test("restoration and proxy reject a wrong-role token even in a correctly named 
   assert.ok(requests.every(({ url }) => url.endsWith("/me")));
 });
 
-test("portal scope is required and never falls back to another or legacy cookie", async () => {
+test("portal scope is required and another or legacy cookie cannot select the auto identity", async () => {
   for (const portal of [undefined, "staff", "invalid"]) {
     const response = await sessions.GET(request("/api/session", { portal, cookie: bothCookies }));
     assert.equal(response.status, 400);
   }
+  assert.equal(requests.length, 0);
   for (const cookie of [
     "prc_professional_session=fixture-staff",
     "prc_demo_session=fixture-patient",
   ]) {
     const response = await sessions.GET(request("/api/session", { portal: "patient", cookie }));
-    assert.equal(response.status, 401);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).role, "patient");
+    assert.ok(response.cookies.get("prc_patient_session"));
   }
-  assert.equal(requests.length, 0);
+  assert.ok(requests.every(({ token }) => token === "Bearer fixture-patient"));
 });
 
 test("sign-out clears only the selected portal cookie", async () => {
@@ -273,4 +285,229 @@ test("the client sends explicit portal scope or infers it from the current porta
     globalThis.fetch = backendFetch;
     delete (globalThis as { window?: unknown }).window;
   }
+});
+
+test("GET and proxy automatically verify the patient/staff identities and keep tokens HttpOnly", async () => {
+  for (const [portal, role] of [
+    ["patient", "patient"],
+    ["professional", "staff"],
+  ] as const) {
+    const session = await sessions.GET(request("/api/session", { portal }));
+    assert.equal(session.status, 200);
+    assert.deepEqual(await session.json(), { id: `synthetic-${role}-001`, role });
+    assert.match(session.headers.get("set-cookie")!, /HttpOnly/i);
+    assert.equal(session.cookies.getAll().length, 1);
+    const result = await proxy.GET(request("/api/backend/operator/queue", { portal }), {
+      params: Promise.resolve({ path: ["operator", "queue"] }),
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.cookies.getAll().length, 1);
+    assert.equal(requests.at(-1)?.token, `Bearer fixture-${role}`);
+  }
+});
+
+test("a rejected cookie refreshes exactly once from the provisioned identity", async () => {
+  const result = await proxy.GET(
+    request("/api/backend/tasks", {
+      portal: "patient",
+      cookie: "prc_patient_session=expired-fixture",
+    }),
+    { params: Promise.resolve({ path: ["tasks"] }) },
+  );
+  assert.equal(result.status, 200);
+  assert.equal(result.cookies.getAll().length, 1);
+  assert.deepEqual(
+    requests.map(({ token }) => token),
+    ["Bearer expired-fixture", "Bearer fixture-patient", "Bearer fixture-patient"],
+  );
+});
+
+test("the explicitly configured HTTPS origin supports forwarded TLS and exact same-origin mutations", async () => {
+  process.env.PUBLIC_DEMO_ORIGIN = "https://demo.example.com";
+  const publicHeaders = {
+    host: "demo.example.com",
+    origin: "https://demo.example.com",
+    "x-forwarded-proto": "https",
+  };
+  const accepted = await sessions.GET(
+    request("/api/session", { portal: "professional", headers: publicHeaders }),
+  );
+  assert.equal(accepted.status, 200);
+  assert.match(accepted.headers.get("set-cookie")!, /Secure/);
+  const mutation = await proxy.POST(
+    request("/api/backend/tasks", {
+      method: "POST",
+      portal: "patient",
+      headers: publicHeaders,
+      body: {},
+    }),
+    { params: Promise.resolve({ path: ["tasks"] }) },
+  );
+  assert.equal(mutation.status, 200);
+  for (const headers of [
+    { ...publicHeaders, origin: "https://demo.example.com.evil.test" },
+    { ...publicHeaders, origin: "http://demo.example.com" },
+    { ...publicHeaders, origin: "" },
+  ]) {
+    assert.equal(
+      (
+        await sessions.POST(
+          request("/api/session", {
+            method: "POST",
+            portal: "patient",
+            headers,
+            body: { persona: "patient" },
+          }),
+        )
+      ).status,
+      403,
+    );
+  }
+  for (const headers of [
+    { ...publicHeaders, host: "evil.example.com", "x-forwarded-host": "demo.example.com" },
+    { ...publicHeaders, "x-forwarded-proto": "http" },
+    { ...publicHeaders, "x-forwarded-proto": "https,http" },
+  ]) {
+    assert.equal(
+      (await sessions.GET(request("/api/session", { portal: "patient", headers }))).status,
+      404,
+    );
+  }
+  process.env.PUBLIC_DEMO_ORIGIN = "https://demo.example.com/path";
+  assert.equal(
+    (await sessions.GET(request("/api/session", { portal: "patient", headers: publicHeaders })))
+      .status,
+    404,
+  );
+});
+
+test("disabled demo never issues or refreshes credentials", async () => {
+  process.env.ENABLE_SYNTHETIC_DEMO = "false";
+  for (const cookie of [undefined, bothCookies]) {
+    assert.equal(
+      (await sessions.GET(request("/api/session", { portal: "patient", cookie }))).status,
+      404,
+    );
+    assert.equal(
+      (
+        await proxy.GET(request("/api/backend/tasks", { portal: "professional", cookie }), {
+          params: Promise.resolve({ path: ["tasks"] }),
+        })
+      ).status,
+      404,
+    );
+  }
+  assert.equal(requests.length, 0);
+});
+
+test("hosted credentials fail closed for malformed, absent, expired and invalid identities", async () => {
+  for (const saved of [
+    "not-json",
+    "{}",
+    JSON.stringify({ "synthetic-patient-001": { token: "fixture-patient", expiresAt: "invalid" } }),
+    JSON.stringify({
+      "synthetic-patient-001": { token: "fixture-patient", expiresAt: "2000-01-01T00:00:00Z" },
+    }),
+  ]) {
+    process.env.DEMO_SESSIONS_JSON = saved;
+    const result = await sessions.GET(request("/api/session", { portal: "patient" }));
+    assert.equal(result.status, 503);
+    assert.equal(result.cookies.getAll().length, 0);
+    assert.ok((await result.json()).message);
+  }
+  assert.equal(requests.length, 0);
+  process.env.DEMO_SESSIONS_JSON = JSON.stringify({
+    "synthetic-patient-001": {
+      token: "revoked-fixture",
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    },
+  });
+  const revoked = await sessions.GET(
+    request("/api/session", { portal: "patient", cookie: "prc_patient_session=expired-fixture" }),
+  );
+  assert.equal(revoked.status, 503);
+  assert.equal(requests.length, 2);
+  assert.equal(revoked.cookies.getAll().length, 0);
+  process.env.DEMO_SESSIONS_JSON = JSON.stringify({
+    "synthetic-patient-001": {
+      token: "fixture-staff",
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    },
+  });
+  assert.equal((await sessions.GET(request("/api/session", { portal: "patient" }))).status, 403);
+  process.env.DEMO_SESSIONS_JSON = JSON.stringify({
+    "synthetic-patient-001": {
+      token: "fixture-patient",
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    },
+  });
+  const valid = await sessions.GET(request("/api/session", { portal: "patient" }));
+  assert.equal(valid.status, 200);
+  assert.equal(JSON.stringify(await valid.json()).includes("fixture-patient"), false);
+});
+
+test("invalid persona shapes cannot coerce to a provisioned role", async () => {
+  for (const persona of [["patient"], {}, null, "constructor", "administrator"]) {
+    assert.equal(
+      (
+        await sessions.POST(
+          request("/api/session", { method: "POST", portal: "patient", body: { persona } }),
+        )
+      ).status,
+      400,
+    );
+  }
+  assert.equal(requests.length, 0);
+});
+
+test("backend failures stop resolution without refreshing a valid-cookie request", async () => {
+  const fixtureFetch = globalThis.fetch;
+  try {
+    let count = 0;
+    globalThis.fetch = async () => {
+      count += 1;
+      return Response.json({ error: "storage_unavailable" }, { status: 503 });
+    };
+    const unavailable = await sessions.GET(
+      request("/api/session", { portal: "patient", cookie: bothCookies }),
+    );
+    assert.equal(unavailable.status, 503);
+    assert.equal(count, 1);
+    assert.equal(unavailable.cookies.getAll().length, 0);
+    globalThis.fetch = async () => {
+      throw new Error("fictional-network-failure");
+    };
+    assert.equal(
+      (await sessions.GET(request("/api/session", { portal: "patient", cookie: bothCookies })))
+        .status,
+      503,
+    );
+    assert.equal((await sessions.GET(request("/api/session", { portal: "patient" }))).status, 503);
+  } finally {
+    globalThis.fetch = fixtureFetch;
+  }
+});
+
+test("an allowed role with a different identity cannot impersonate the provisioned demo account", async () => {
+  const fixtureFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () =>
+      Response.json({ id: "another-synthetic-patient", role: "patient" });
+    const response = await sessions.GET(request("/api/session", { portal: "patient" }));
+    assert.equal(response.status, 403);
+    assert.equal(response.cookies.getAll().length, 0);
+  } finally {
+    globalThis.fetch = fixtureFetch;
+  }
+});
+
+test("forwarded HTTPS cannot change a loopback cookie's transport", async () => {
+  const result = await sessions.GET(
+    request("/api/session", {
+      portal: "patient",
+      headers: { "x-forwarded-proto": "https", "x-forwarded-host": "demo.example.com" },
+    }),
+  );
+  assert.equal(result.status, 200);
+  assert.doesNotMatch(result.headers.get("set-cookie")!, /Secure/);
 });

@@ -105,7 +105,7 @@ test("webhook origin must be public HTTPS without credentials, path, query or fr
   );
 });
 
-test("safe readiness omits keys, account identifiers, URL and allowlisted numbers", () => {
+test("safe readiness exposes only the public phone number, not keys, identifiers or allowlisted numbers", () => {
   const config = readVoiceConfig({
     ...liveEnv,
     VOICE_ALLOWED_NUMBERS: " +15555550102, +15555550102 ",
@@ -117,13 +117,18 @@ test("safe readiness omits keys, account identifiers, URL and allowlisted number
   for (const key of [
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
-    "TWILIO_PHONE_NUMBER",
     "OPENAI_API_KEY",
     "VOICE_PUBLIC_BASE_URL",
   ]) {
     assert.equal(serialized.includes(liveEnv[key as keyof typeof liveEnv]), false, key);
   }
   assert.equal(serialized.includes("+15555550102"), false);
+  assert.equal(readiness.phoneNumber, liveEnv.TWILIO_PHONE_NUMBER);
+  assert.equal(voiceReadiness(readVoiceConfig({})).phoneNumber, null);
+  assert.equal(
+    voiceReadiness(readVoiceConfig({ TWILIO_PHONE_NUMBER: "invalid-secret" })).phoneNumber,
+    null,
+  );
 });
 
 test("an explicit wildcard permits all phone numbers without making an empty list open", () => {

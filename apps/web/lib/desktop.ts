@@ -19,6 +19,8 @@ export type VoiceReadiness = {
   liveReady: boolean;
   missing: string[];
   invalid: string[];
+  phoneNumber?: string | null;
+  allNumbersAllowed?: boolean;
   agents: { id: string; name: string; description: string }[];
 };
 export type DesktopBooking = {
@@ -106,30 +108,20 @@ export async function loadDesktopSnapshot(): Promise<DesktopSnapshot> {
     api<{ calls: DesktopCall[] }>("/api/backend/voice/calls", undefined, undefined, "professional"),
     api<VoiceReadiness>("/api/backend/voice/config", undefined, undefined, "professional"),
   ]);
-  const appointmentIds = [
-    ...new Set(queue.tasks.flatMap(({ workflow }) => (workflow ? [workflow.appointmentId] : []))),
+  const bookings = [
+    ...new Map(
+      queue.tasks.flatMap(({ booking }) => (booking ? [[booking.id, booking] as const] : [])),
+    ).values(),
   ];
   const patientId = queue.tasks[0]?.task.patientId;
-  const [bookings, availability] = await Promise.all([
-    Promise.all(
-      appointmentIds.map((id) =>
-        api<DesktopBooking>(
-          `/api/backend/bookings/${encodeURIComponent(id)}`,
-          undefined,
-          undefined,
-          "professional",
-        ),
-      ),
-    ),
-    patientId
-      ? api<{ slots: Slot[] }>(
-          `/api/backend/slots?patientId=${encodeURIComponent(patientId)}`,
-          undefined,
-          undefined,
-          "professional",
-        )
-      : Promise.resolve({ slots: [] }),
-  ]);
+  const availability = patientId
+    ? await api<{ slots: Slot[] }>(
+        `/api/backend/slots?patientId=${encodeURIComponent(patientId)}`,
+        undefined,
+        undefined,
+        "professional",
+      )
+    : { slots: [] };
   return {
     tasks: queue.tasks,
     calls: history.calls.map((call) => ({

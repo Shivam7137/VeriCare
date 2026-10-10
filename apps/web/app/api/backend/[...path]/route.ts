@@ -5,6 +5,7 @@ import {
   json,
   portalSession,
   requestPortal,
+  sessionCookie,
 } from "../../../../lib/demo-server";
 
 const uuid = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -29,7 +30,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     const body = request.method === "POST" ? await request.text() : undefined;
     if (body && body.length > 16_384) return json({ error: "invalid_input" }, 400);
     const response = await backend(`/${path}${request.nextUrl.search}`, session.token, body);
-    return json(await response.json(), response.status);
+    return sessionCookie(json(await response.json(), response.status), request, portal, session);
   } catch {
     return json({ error: "service_unavailable" }, 503);
   }

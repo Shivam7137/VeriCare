@@ -139,6 +139,7 @@ export function voiceReadiness(config: VoiceConfig): {
   invalid: string[];
   allowlistedNumberCount: number;
   allNumbersAllowed: boolean;
+  phoneNumber: string | null;
 } {
   const requirements: [string, boolean][] = [
     ["VOICE_MODE", config.mode === "twilio"],
@@ -161,5 +162,7 @@ export function voiceReadiness(config: VoiceConfig): {
     invalid: [...config.invalid],
     allowlistedNumberCount: config.allowedNumbers.filter((number) => number !== "*").length,
     allNumbersAllowed: config.allowedNumbers.includes("*"),
+    phoneNumber:
+      config.phoneNumber && E164_NUMBER.test(config.phoneNumber) ? config.phoneNumber : null,
   };
 }
