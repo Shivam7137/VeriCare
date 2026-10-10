@@ -3,8 +3,10 @@ import DesktopOverview from "../../components/desktop-overview";
 import "./desktop.css";
 import "./panels.css";
 import "./responsive.css";
+import "./polish.css";
+import "../phone.css";
 
-export const metadata: Metadata = { title: "Desktop overview · Care coordination" };
+export const metadata: Metadata = { title: "Desktop overview · Health Coordinator" };
 
 export default function DesktopPage() {
   return <DesktopOverview />;

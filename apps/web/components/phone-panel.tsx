@@ -6,6 +6,7 @@ import {
   api,
   date,
   inputDate,
+  inputTimeZone,
   labels,
   windowInput,
   type Actor,
@@ -13,6 +14,9 @@ import {
   type Booking,
 } from "../lib/ui";
 import RequestForm from "./request-form";
+import Link from "next/link";
+import PhoneAccess from "./phone-access";
+import TransferHistory from "./transfer-history";
 import "../app/phone.css";
 
 type Pending = { id: string; kind: string; description: string; expiresAt: string };
@@ -35,6 +39,8 @@ type Configuration = {
   liveReady: boolean;
   missing: string[];
   invalid: string[];
+  phoneNumber?: string | null;
+  allNumbersAllowed?: boolean;
   agents: { id: string; name: string; description: string }[];
 };
 type Props = {
@@ -52,7 +58,8 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [number, setNumber] = useState("+15555550123");
+  const [retry, setRetry] = useState(0);
+  const [number, setNumber] = useState("");
   const [dueAt, setDueAt] = useState(() => inputDate(Date.now() + 120_000));
   const [start, setStart] = useState(() => inputDate());
   const [end, setEnd] = useState(() => inputDate(Date.now() + 3_600_000));
@@ -93,7 +100,7 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
       disposed = true;
       clearTimeout(timer);
     };
-  }, [actor.id, portal, busy]);
+  }, [actor.id, portal, busy, retry]);
   async function action(work: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -136,7 +143,11 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
           </h2>
         </div>
         <span className="status">
-          {config?.mode === "twilio" ? "Twilio mode" : "Simulation mode"}
+          {config
+            ? config.liveReady
+              ? "Real line enabled"
+              : "Simulation available"
+            : "Loading phone service…"}
         </span>
       </div>
       <p className="muted">
@@ -144,18 +155,27 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
           ? "Follow verified calls, callback requests and handovers to the care team."
           : "Get appointment help by phone. An access code connects the call to your portal identity; your number alone never grants access."}
       </p>
-      {!config?.liveReady && (
+      {config && !config.liveReady && (
         <div className="phone-note">
           {config?.mode === "twilio"
             ? "Live calls are unavailable until provider configuration is complete."
             : professional
-              ? "Simulation is available now. Configure the phone and AI providers to enable real test calls."
+              ? "The separate simulator is available. Ask the demo host about enabling the real line."
               : "Try a simulated call now. Real phone calls have not been enabled yet."}
         </div>
       )}
       {error && (
         <p role="alert" className="phone-error">
-          {error}
+          {error}{" "}
+          <button
+            className="quiet"
+            onClick={() => {
+              setError("");
+              setRetry((value) => value + 1);
+            }}
+          >
+            Retry phone service
+          </button>
         </p>
       )}
       {message && (
@@ -163,53 +183,55 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
           {message}
         </p>
       )}
+      <PhoneAccess
+        config={config}
+        code={code}
+        busy={busy}
+        staff={professional}
+        taskId={taskId}
+        generate={() =>
+          action(async () =>
+            setCode(await request("access-codes", professional ? {} : taskId ? { taskId } : {})),
+          )
+        }
+      />
+      {professional && (
+        <p className="phone-note">
+          <Link href="/professional/team">
+            Open the care-team directory and transfer simulator →
+          </Link>
+        </p>
+      )}
       {!professional && (
         <>
-          <div className="phone-buttons">
+          <div className="simulation-start">
+            <p>
+              <strong>Simulated call</strong>
+              <br />
+              Try the appointment assistant here. This does not dial a phone number.
+            </p>
             <button
               className="secondary"
-              disabled={busy}
+              disabled={busy || !config || !code || Date.parse(code.expiresAt) <= Date.now()}
               onClick={() =>
-                action(async () => setCode(await request("access-codes", taskId ? { taskId } : {})))
+                action(async () => {
+                  const saved = await request<Call>("simulate", { code: code!.code });
+                  setSelected(saved.id);
+                  setCode(null);
+                  setMessage("Simulated call started. No phone number was dialled.");
+                })
               }
             >
-              Get phone access code
+              Start simulated call
             </button>
-            {config?.mode === "simulated" && (
-              <button
-                className="primary"
-                disabled={busy || !code || Date.parse(code.expiresAt) <= Date.now()}
-                onClick={() =>
-                  action(async () => {
-                    const saved = await request<Call>("simulate", { code: code!.code });
-                    setSelected(saved.id);
-                    setCode(null);
-                    setMessage("Simulated call connected. No phone number was dialled.");
-                  })
-                }
-              >
-                Start simulated call
-              </button>
-            )}
           </div>
-          {code && (
-            <div className="access-code" role="status">
-              <span>One-time access code</span>
-              <strong>{code.code}</strong>
-              <small>
-                Expires {date(code.expiresAt)}. Enter it when the phone assistant asks. Never share
-                it with someone else.
-              </small>
-            </div>
-          )}
-          <p className="hint">
-            {taskId
-              ? "This code is limited to the selected appointment request."
-              : "With no selected request, the assistant can help prepare a new request."}
-          </p>
-          {taskId && (
+          {taskId && config && (
             <details className="phone-schedule">
-              <summary>Schedule a callback</summary>
+              <summary>
+                {config?.mode === "twilio"
+                  ? "Schedule a real phone callback"
+                  : "Schedule a simulated callback"}
+              </summary>
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -217,11 +239,13 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
                     const saved = await request<Call>("callbacks", {
                       taskId,
                       to: number,
-                      dueAt: new Date(dueAt + ":00Z").toISOString(),
+                      dueAt: new Date(dueAt).toISOString(),
                     });
                     setSelected(saved.id);
                     setMessage(
-                      "Callback queued within the agreed window. Have a fresh access code ready when it rings.",
+                      config?.mode === "twilio"
+                        ? "Real callback queued. Have a fresh access code ready when the phone rings."
+                        : "Simulated callback queued. No phone will be dialled.",
                     );
                   });
                 }}
@@ -233,15 +257,16 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
                       aria-label="Callback number"
                       type="tel"
                       required
+                      placeholder="+ followed by country code and number"
                       value={number}
                       onChange={(event) => setNumber(event.target.value)}
                       pattern="\+[1-9][0-9]{7,14}"
                     />
                   </label>
                   <label>
-                    Call at (UTC)
+                    Call at ({inputTimeZone()})
                     <input
-                      aria-label="Call at (UTC)"
+                      aria-label="Call at"
                       type="datetime-local"
                       required
                       value={dueAt}
@@ -250,11 +275,14 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
                   </label>
                 </div>
                 <p className="hint">
-                  Choose a time inside this request's agreed callback window. In simulation the
-                  number is never dialled. Live tests require an allowlisted number.
+                  {config?.mode === "twilio"
+                    ? "This queues a real phone call to the number you enter. Choose a time inside the agreed callback window."
+                    : "Choose a time inside the agreed callback window. This simulated callback never dials the number."}
                 </p>
                 <button className="secondary" disabled={busy}>
-                  Queue callback
+                  {config?.mode === "twilio"
+                    ? "Queue real phone callback"
+                    : "Queue simulated callback"}
                 </button>
               </form>
             </details>
@@ -276,7 +304,8 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
           >
             {visibleCalls.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.direction} · {item.status.replaceAll("_", " ")} · {date(item.createdAt)}
+                {item.mode === "simulated" ? "Simulated" : "Real phone"} · {item.direction} ·{" "}
+                {item.status.replaceAll("_", " ")} · {date(item.createdAt)}
               </option>
             ))}
           </select>
@@ -285,7 +314,10 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
       {call ? (
         <div className="call-card">
           <div className="call-facts">
-            <span className="status">{call.status.replaceAll("_", " ")}</span>
+            <span className="status">
+              {call.mode === "simulated" ? "Simulated" : "Real phone"} ·{" "}
+              {call.status.replaceAll("_", " ")}
+            </span>
             <span>
               {call.direction === "outbound" ? "Scheduled callback" : "Incoming call"}
               {call.maskedNumber ? ` · ${call.maskedNumber}` : ""}
@@ -386,9 +418,9 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
                   >
                     <div className="field-pair">
                       <label>
-                        Assistant callback starts (UTC)
+                        Assistant callback starts ({inputTimeZone()})
                         <input
-                          aria-label="Assistant callback starts (UTC)"
+                          aria-label="Assistant callback starts"
                           type="datetime-local"
                           required
                           value={start}
@@ -396,9 +428,9 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
                         />
                       </label>
                       <label>
-                        Assistant callback ends (UTC)
+                        Assistant callback ends ({inputTimeZone()})
                         <input
-                          aria-label="Assistant callback ends (UTC)"
+                          aria-label="Assistant callback ends"
                           type="datetime-local"
                           required
                           value={end}
@@ -429,13 +461,13 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
           )}
           {call.pendingAction && (
             <div className="pending-voice-action">
-              <p className="eyebrow">PATIENT CONFIRMATION REQUIRED</p>
+              <p className="eyebrow">EXPLICIT CONFIRMATION REQUIRED</p>
               <p>{call.pendingAction.description}</p>
               <p className="hint">
                 Expires {date(call.pendingAction.expiresAt)}. During a call press 1 to approve or 2
                 to cancel.
               </p>
-              {!professional && (
+              {!professional && call.mode === "simulated" && (
                 <div className="phone-buttons">
                   <button
                     className="primary"
@@ -469,8 +501,17 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
               )}
             </div>
           )}
+          {call.mode === "twilio" && call.pendingAction && (
+            <p className="phone-note">
+              Use your phone keypad after the readback: 1 approves, 2 cancels. Live actions cannot
+              be approved here.
+            </p>
+          )}
+          <TransferHistory callId={call.id} portal={portal} />
           {!professional &&
-            !["completed", "cancelled", "failed", "handoff"].includes(call.status) && (
+            !["completed", "cancelled", "failed", "handoff", "transferring"].includes(
+              call.status,
+            ) && (
               <button
                 className="quiet danger"
                 disabled={busy}
@@ -491,36 +532,12 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
         </div>
       ) : (
         <p className="muted">
-          {professional ? "No calls in this department yet." : "No calls for this request yet."}
+          {!config
+            ? "Loading call history…"
+            : professional
+              ? "No calls in this department yet."
+              : "No calls for this request yet."}
         </p>
-      )}
-      {professional && config && (
-        <details className="provider-setup">
-          <summary>Provider setup & agent responsibilities</summary>
-          <div className="agent-cards">
-            {config.agents.map((agent) => (
-              <div key={agent.id}>
-                <h3>{agent.name}</h3>
-                <p>{agent.description}</p>
-              </div>
-            ))}
-          </div>
-          <p>
-            {config.liveReady
-              ? "Provider configuration is present. Live test calls are explicitly enabled."
-              : "Live configuration is incomplete or disabled."}
-          </p>
-          {!!config.missing.length && (
-            <p className="hint">Required configuration: {config.missing.join(", ")}</p>
-          )}
-          {!!config.invalid.length && (
-            <p className="phone-error">Check: {config.invalid.join(", ")}</p>
-          )}
-          <p className="hint">
-            Add credentials privately to the server environment using docs/phone-setup.md. No keys
-            belong in this page or chat. Audio and verbatim transcripts are not stored.
-          </p>
-        </details>
       )}
     </section>
   );

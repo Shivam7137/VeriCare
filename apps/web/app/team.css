@@ -1,0 +1,120 @@
+.team-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  align-items: start;
+  gap: 24px;
+}
+.team-grid > * {
+  min-width: 0;
+}
+.team-member {
+  border-top: 1px solid var(--hc-line);
+  padding-block: 22px;
+}
+.team-member:last-child {
+  padding-bottom: 0;
+}
+.team-members {
+  margin-top: 24px;
+}
+.team-member-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+.member-initials {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  background: #edf2ef;
+  border-radius: 10px;
+  color: var(--hc-teal);
+  font-size: 13px;
+  font-weight: 650;
+}
+.team-member h3 {
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.team-member-heading p {
+  font-size: 12px;
+  color: var(--hc-muted);
+  text-transform: capitalize;
+  margin-bottom: 0;
+}
+.member-destination {
+  margin: 16px 0 5px 53px;
+}
+.member-destination p {
+  font-size: 13px;
+  color: var(--hc-muted);
+  margin: 8px 0 0;
+}
+.team-member > .quiet {
+  margin-left: 43px;
+}
+.team-member form {
+  margin-top: 18px;
+}
+.simulator-heading {
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--hc-line);
+}
+.simulator-heading h2 {
+  margin: 12px 0;
+}
+.simulator-heading p {
+  font-size: 14px;
+  color: var(--hc-muted);
+}
+.transfer-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  list-style: none;
+  gap: 8px;
+  padding: 0;
+  margin: 18px 0;
+}
+.transfer-steps li {
+  font-size: 12px;
+  padding: 10px;
+  background: #f2f5f3;
+  border-radius: 5px;
+  color: var(--hc-muted);
+}
+.transfer-steps .current {
+  color: var(--hc-teal);
+  background: #e1eee7;
+  font-weight: 600;
+}
+.transfer-destination {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+.transfer-destination > button {
+  justify-self: start;
+}
+.transfer-destination:disabled {
+  opacity: 0.6;
+}
+.transfer-destination label {
+  margin: 0;
+}
+.simulated-result {
+  padding: 18px;
+  background: #edf4f0;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+.simulated-result p {
+  font-size: 13px;
+}
+@media (max-width: 1050px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import DesktopIcon from "./desktop-icon";
-import { date, labels } from "../lib/ui";
+import { nextStep } from "../lib/workspace";
+import { date, displayTimeZone, labels } from "../lib/ui";
 import { readable, taskLink, type DesktopProgress, type DesktopSnapshot } from "../lib/desktop";
 
 export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
@@ -23,18 +24,19 @@ export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
     <aside className="desk-card desk-inspector" aria-label="Selected request details">
       <div className="desk-section-heading">
         <p className="eyebrow">SELECTED REQUEST</p>
-        <span className="desk-mini">Revision {task.revision}</span>
+        <span className="desk-mini">{progress.patient?.displayName ?? "Fictional patient"}</span>
       </div>
       <h2>{task.summary}</h2>
-      <p className="desk-reference">{task.id}</p>
+
       <div className="desk-next">
         <strong>Next step</strong>
-        <p>{task.nextAction}</p>
+        <p>{nextStep(progress)}</p>
       </div>
       {task.state === "completed" && operation?.result?.confirmationRef && (
         <div className="desk-evidence">
-          <strong>Booking confirmed</strong>
-          <p>{operation.result.confirmationRef}</p>
+          <strong>Appointment change saved</strong>
+          {progress.booking && <p>{date(progress.booking.startsAt)}</p>}
+          <p>Demo scheduler receipt: {operation.result.confirmationRef}</p>
         </div>
       )}
       <dl className="desk-details">
@@ -109,7 +111,10 @@ export function AppointmentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
         (expanded ? bookings : bookings.slice(0, 5)).map((booking) => (
           <div className="desk-booking" key={booking.id}>
             <span className="desk-calendar" aria-hidden="true">
-              {new Date(booking.startsAt).getUTCDate()}
+              {new Intl.DateTimeFormat("en-CA", {
+                day: "numeric",
+                timeZone: displayTimeZone,
+              }).format(new Date(booking.startsAt))}
             </span>
             <div>
               <strong>{date(booking.startsAt)}</strong>
@@ -117,7 +122,6 @@ export function AppointmentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
                 {snapshot.tasks.find(({ task }) => task.patientId === booking.patientId)?.patient
                   ?.displayName ?? booking.patientId}
               </p>
-              <small>{booking.id}</small>
             </div>
             <span className="desk-pill desk-pill-green">Booked</span>
           </div>
@@ -171,8 +175,8 @@ export function AgentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
         {voice.mode === "simulated"
           ? "Phone simulation is selected. No real numbers are dialled."
           : voice.liveReady
-            ? "Provider configuration is present. Only allowlisted test numbers can be called."
-            : "Twilio is selected, but configuration is incomplete."}
+            ? "The real phone line is configured. Callers need a one-time portal access code."
+            : "The real phone line is not ready. The separate simulator remains available."}
       </p>
       <div className="desk-agent-list">
         {voice.agents.map((agent, index) => (
@@ -185,23 +189,17 @@ export function AgentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
           </div>
         ))}
       </div>
-      <details className="desk-slots">
-        <summary>Connection requirements</summary>
-        {voice.missing.length > 0 && (
-          <p className="desk-reference">Missing or disabled: {voice.missing.join(", ")}</p>
-        )}
-        {voice.invalid.length > 0 && (
-          <p className="desk-warning">Check: {voice.invalid.join(", ")}</p>
-        )}
-        {voice.liveReady && (
-          <p className="desk-muted">
-            Configuration is present. Connectivity and spoken quality require a live test.
-          </p>
-        )}
-        <p className="desk-muted">
-          Add credentials privately on the server using <code>docs/phone-setup.md</code>.
+      {voice.phoneNumber && (
+        <p className="desk-phone-number">
+          <a href={`tel:${voice.phoneNumber}`}>{voice.phoneNumber}</a>
         </p>
-      </details>
+      )}
+      <Link className="desk-text-link" href="/professional/team">
+        Care-team directory & staff phone access →
+      </Link>
+      <p className="desk-muted">
+        Appointment follow-up jobs are simulated. Real phone activity is labelled separately.
+      </p>
       <div className="desk-health" aria-label="Delivery and booking monitoring">
         <div>
           <strong>{queue.counts.overduePendingActions + queue.counts.overdueJobs}</strong>

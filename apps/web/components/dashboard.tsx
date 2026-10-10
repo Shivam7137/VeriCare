@@ -1,8 +1,9 @@
 "use client";
-
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Task } from "@prc/contracts";
-import { api, date, labels, type Actor, type Progress, type Queue, type Slot } from "../lib/ui";
+import { api, date, labels, type Actor, type Progress, type Slot } from "../lib/ui";
+import { closedStates, enterWorkspace, orderRequests } from "../lib/workspace";
 import RequestDetail from "./request-detail";
 import RequestForm from "./request-form";
 import PhonePanel from "./phone-panel";
@@ -14,20 +15,20 @@ export default function Dashboard({ portal }: { portal: Portal }) {
   const [actor, setActor] = useState<Actor | null>(null);
   const [tasks, setTasks] = useState<Progress[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [queue, setQueue] = useState<Queue | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const generation = useRef(0);
+  const [query, setQuery] = useState("");
+  const [stage, setStage] = useState("all");
+  const [retry, setRetry] = useState(0);
   const refreshId = useRef(0);
   const refresh = useCallback(async () => {
     if (!actor) return;
-    const version = ++refreshId.current,
-      identity = generation.current;
-    const [requests, availability, operatorQueue] = await Promise.all([
+    const version = ++refreshId.current;
+    const [requests, availability] = await Promise.all([
       api<{ tasks: Progress[] }>("/api/backend/tasks", undefined, undefined, portal),
       api<{ slots: Slot[] }>(
         "/api/backend/slots?patientId=synthetic-patient-001",
@@ -35,38 +36,37 @@ export default function Dashboard({ portal }: { portal: Portal }) {
         undefined,
         portal,
       ),
-      actor.role === "operator"
-        ? api<Queue>("/api/backend/operator/queue", undefined, undefined, portal)
-        : Promise.resolve(null),
     ]);
-    if (identity !== generation.current || version !== refreshId.current) return;
-    setTasks(requests.tasks);
+    if (version !== refreshId.current) return;
+    const ordered = orderRequests(requests.tasks);
+    setTasks(ordered);
     setSlots(availability.slots);
-    setQueue(operatorQueue);
+    setLoading(false);
     setSelectedId((id) =>
-      requests.tasks.some((item) => item.task.id === id) ? id : (requests.tasks[0]?.task.id ?? ""),
+      ordered.some((item) => item.task.id === id) ? id : (ordered[0]?.task.id ?? ""),
     );
   }, [actor, portal]);
   useEffect(() => {
     let active = true;
     const requested = new URLSearchParams(window.location.search).get("request");
     if (requested && /^[A-Za-z0-9-]+$/.test(requested)) setSelectedId(requested);
-    fetch("/api/session", { cache: "no-store", headers: { "x-prc-portal": portal } })
-      .then(async (response) => {
-        if (response.ok && active) setActor(await response.json());
-        else if (response.status !== 401 && active)
-          setError("Your portal session could not be restored. Sign in to try again.");
+    setLoading(true);
+    setError("");
+    enterWorkspace(portal, !patientPortal)
+      .then((person) => {
+        if (active) setActor(person);
       })
-      .catch(() => {
-        if (active) setError("The local server is unavailable. Refresh to try again.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+      .catch((cause) => {
+        if (active) {
+          setError(cause.message);
+          setLoading(false);
+        }
       });
     return () => {
       active = false;
+      refreshId.current++;
     };
-  }, [portal]);
+  }, [portal, patientPortal, retry]);
   useEffect(() => {
     if (!actor || busy) return;
     let active = true;
@@ -75,67 +75,38 @@ export default function Dashboard({ portal }: { portal: Portal }) {
       try {
         await refresh();
       } catch (cause) {
-        if (active) setError((cause as Error).message);
+        if (active) {
+          setError((cause as Error).message);
+          setLoading(false);
+        }
       }
-      // Slow responses must finish before scheduling the next poll.
       if (active) timer = setTimeout(sync, 3000);
     }
     void sync();
     return () => {
       active = false;
+      refreshId.current++;
       clearTimeout(timer);
     };
   }, [actor, refresh, busy]);
   const selected = tasks.find((item) => item.task.id === selectedId);
-  const booking = selected?.booking;
   const bookings = [
     ...new Map(
       tasks.flatMap((item) => (item.booking ? [[item.booking.id, item.booking] as const] : [])),
     ).values(),
   ];
-  const accountChoices: Actor["role"][] = patientPortal
-    ? actor
-      ? []
-      : ["patient"]
-    : ["staff", "operator"];
-  async function switchAccount(persona: Actor["role"]) {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    generation.current++;
-    refreshId.current++;
-    setActor(null);
-    setTasks([]);
-    setSlots([]);
-    setQueue(null);
-    setCreating(false);
-    try {
-      setActor(await api<Actor>("/api/session", { persona }, "POST", portal));
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function signOut() {
-    setBusy(true);
-    try {
-      await api("/api/session", undefined, "DELETE", portal);
-      generation.current++;
-      refreshId.current++;
-      setActor(null);
-      setTasks([]);
-      setSlots([]);
-      setQueue(null);
-      setCreating(false);
-      setError("");
-      setNotice("");
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const upcoming = [...bookings]
+    .filter((booking) => Date.parse(booking.startsAt) > Date.now())
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
+  const patientName = tasks.find((item) => item.patient?.displayName)?.patient?.displayName;
+  const filtered = tasks.filter(
+    (item) =>
+      (stage === "all" ||
+        (stage === "open" ? !closedStates.has(item.task.state) : item.task.state === stage)) &&
+      [item.task.summary, item.patient?.displayName ?? "", labels[item.task.state]].some((value) =>
+        value.toLowerCase().includes(query.toLowerCase().trim()),
+      ),
+  );
   async function mutate(path: string, input: unknown, created = false) {
     setBusy(true);
     setError("");
@@ -144,11 +115,15 @@ export default function Dashboard({ portal }: { portal: Portal }) {
     try {
       const result = await api<Task>(`/api/backend/${path}`, input, "POST", portal);
       setSelectedId(result.id);
-      if (created) setCreating(false);
+      if (created) {
+        setCreating(false);
+        setStage("all");
+        setQuery("");
+      }
       setNotice(
         created
-          ? "Request saved. Verify it to send it to the staff queue."
-          : "Your action was saved.",
+          ? "Request saved. Check the details, then verify it for your care team."
+          : "Your action is saved. The latest next step is below.",
       );
       await refresh();
     } catch (cause) {
@@ -160,75 +135,63 @@ export default function Dashboard({ portal }: { portal: Portal }) {
   }
   return (
     <main className={`portal-workspace ${portal}-portal`}>
-      <PortalHeader portal={portal} />
-      <section className="intro">
+      <PortalHeader
+        portal={portal}
+        requestId={selected?.task.id}
+        patientId={selected?.task.patientId}
+      />
+      <section className="workspace-heading" id="workspace-main">
         <div>
           <p className="eyebrow">
-            {patientPortal ? "PATIENT PORTAL" : "HEALTHCARE PROFESSIONAL PORTAL"}
+            {patientPortal ? "Your appointment workspace" : "Fictional outpatient clinic"}
           </p>
           <h1>
-            {patientPortal ? "Your care. Your next step." : "Keep care moving."}
-            <br />
-            <span>{patientPortal ? "We’ll help you get there." : "One request at a time."}</span>
-          </h1>
-          <p className="lede">
             {patientPortal
-              ? "Request a new time, review your proposal, and follow your appointment through to confirmation."
-              : "Review department requests, approve appointment proposals, and coordinate patient follow-up."}
-          </p>
-        </div>
-        <div className="demo-note">
-          <span className="dot" />
-          Local demonstration
+              ? patientName
+                ? `Hello, ${patientName.split(" ")[0]}.`
+                : "Your appointments"
+              : "Care team workspace"}
+          </h1>
           <p>
-            Fictional appointments and phone assistance. Simulation is available without provider
-            credentials.
+            {patientPortal
+              ? "Your appointment, your next step. Follow each change here."
+              : "Review requests, agree a time, and keep every next step clear."}
           </p>
-        </div>
-      </section>
-      <section className="account-bar" aria-label="Demo account">
-        <div>
-          <p className="eyebrow">DEMO ACCOUNT</p>
-          <span>
-            {actor
-              ? actor.role === "patient"
-                ? "Your patient workspace"
-                : actor.role === "staff"
-                  ? "Staff review · Proposals and approvals"
-                  : "Operator monitoring · Read only"
-              : patientPortal
-                ? "Sign in to manage your appointments"
-                : "Choose your professional workspace"}
-          </span>
-        </div>
-        <div className="account-options">
-          {accountChoices.map((role) => (
-            <button
-              key={role}
-              aria-pressed={actor?.role === role}
-              disabled={busy || loading}
-              className={actor?.role === role ? "selected" : ""}
-              onClick={() => switchAccount(role)}
-            >
-              {role === "patient"
-                ? "Sign in as demo patient"
-                : role === "staff"
-                  ? "Staff review"
-                  : "Operator monitoring"}
-            </button>
-          ))}
         </div>
         {actor && (
-          <button className="quiet" disabled={busy} onClick={signOut}>
-            Sign out
-          </button>
+          <div className="workspace-heading-actions">
+            {patientPortal ? (
+              <button
+                className="primary"
+                onClick={() => {
+                  setCreating(true);
+                  setNotice("");
+                }}
+                disabled={busy}
+              >
+                New appointment request
+              </button>
+            ) : (
+              <Link className="button-link" href="/professional/team">
+                Care-team directory →
+              </Link>
+            )}
+          </div>
         )}
       </section>
       {error && (
         <div role="alert" className="alert">
-          {error}
-          <button className="quiet" onClick={() => setError("")}>
-            Dismiss
+          <span>{error}</span>
+          <button
+            className="quiet"
+            onClick={() => {
+              setError("");
+              actor
+                ? void refresh().catch((cause) => setError(cause.message))
+                : setRetry((value) => value + 1);
+            }}
+          >
+            Retry connection
           </button>
         </div>
       )}
@@ -238,125 +201,144 @@ export default function Dashboard({ portal }: { portal: Portal }) {
         </p>
       )}
       {loading ? (
-        <section className="panel empty">Connecting to your workspace…</section>
+        <section className="panel workspace-loading" role="status">
+          <span className="loading-bar" />
+          Opening your workspace…
+        </section>
       ) : !actor ? (
-        <section className="panel welcome" id="requests">
-          <p className="eyebrow">
-            {patientPortal ? "YOUR APPOINTMENT WORKSPACE" : "YOUR DEPARTMENT WORKSPACE"}
-          </p>
-          <h2>
-            {patientPortal
-              ? "A new time starts with a request."
-              : "Turn patient requests into clear next steps."}
-          </h2>
-          <p>
-            {patientPortal
-              ? "Sign in with the fictional patient account to share your availability, review a proposed time, and confirm after your agreed callback."
-              : "Use Staff review to propose and approve appointment times. Operator monitoring provides a read-only overview of callbacks, outstanding actions, and booking outcomes."}
-          </p>
-          <p className="muted" id="phone">
-            {patientPortal
-              ? "Phone assistance is available after sign-in to help you follow progress or request a callback."
-              : "Phone activity and handovers appear after sign-in. Patients make their own confirmations in the separate patient portal."}
-          </p>
-          <details>
-            <summary>Local setup help</summary>
-            <p>
-              From the repository root, run <code>npm run demo:credentials</code>, then{" "}
-              <code>npm run dev</code>. If credentials expired, follow the renewal steps in{" "}
-              <code>docs/setup.md</code>.
-            </p>
-          </details>
+        <section className="panel empty">
+          <h2>Workspace unavailable</h2>
+          <p>Please retry above. If access has expired, ask the demo host to refresh it.</p>
         </section>
       ) : (
         <>
-          <section className="stats" id="requests" aria-label="Overview">
-            <div>
-              <span>Requests</span>
-              <strong>{tasks.length}</strong>
-            </div>
-            <div>
-              <span>Confirmed</span>
-              <strong>{tasks.filter((item) => item.task.state === "completed").length}</strong>
-            </div>
-            {queue ? (
+          <section
+            className="workspace-summary"
+            aria-label={patientPortal ? "Your next appointment" : "Department summary"}
+          >
+            {patientPortal ? (
               <>
                 <div>
-                  <span>Overdue actions / jobs</span>
+                  <span>Next scheduled appointment</span>
                   <strong>
-                    {queue.counts.overduePendingActions} / {queue.counts.overdueJobs}
+                    {upcoming
+                      ? date(upcoming.startsAt)
+                      : "No upcoming appointment in your requests"}
+                  </strong>
+                </div>
+                <a href="#phone">Phone assistance ↗</a>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span>Open requests</span>
+                  <strong>
+                    {tasks.filter((item) => !closedStates.has(item.task.state)).length}
                   </strong>
                 </div>
                 <div>
-                  <span>Failed / reconciling</span>
+                  <span>Need a proposal</span>
                   <strong>
-                    {queue.counts.failedDeliveries} / {queue.counts.reconciliation}
+                    {tasks.filter((item) => item.task.state === "awaiting_proposal").length}
+                  </strong>
+                </div>
+                <div>
+                  <span>Staff approval</span>
+                  <strong>
+                    {tasks.filter((item) => item.task.state === "awaiting_staff_approval").length}
+                  </strong>
+                </div>
+                <div>
+                  <span>Waiting on patient</span>
+                  <strong>
+                    {
+                      tasks.filter((item) => item.task.state === "awaiting_patient_confirmation")
+                        .length
+                    }
                   </strong>
                 </div>
               </>
-            ) : (
-              <div className="current-booking">
-                <span>Appointment for selected request</span>
-                <strong>{booking ? date(booking.startsAt) : "Select a request"}</strong>
-              </div>
             )}
           </section>
-          <div className="workspace">
-            <aside className="request-list">
+          <div className="workspace" id="requests">
+            <aside className="request-list" aria-label="Request list">
               <div className="list-heading">
-                <h2>{actor.role === "patient" ? "Your requests" : "Department queue"}</h2>
-                <button
-                  className="quiet"
-                  disabled={busy}
-                  onClick={() => {
-                    setError("");
-                    void refresh().catch((cause) => setError(cause.message));
-                  }}
-                >
-                  Refresh
-                </button>
+                <h2>{patientPortal ? "Your requests" : "Department queue"}</h2>
+                <span className="count-label">{tasks.length}</span>
               </div>
-              {actor.role === "patient" && (
-                <button
-                  className="primary new-request"
-                  disabled={busy}
-                  onClick={() => {
-                    setCreating(true);
-                    setNotice("");
-                  }}
-                >
-                  + New request
-                </button>
-              )}
-              {!tasks.length && <p className="muted">No saved requests yet.</p>}
-              {tasks.map((item) => (
-                <button
-                  key={item.task.id}
-                  className={`request-item ${selectedId === item.task.id && !creating ? "active" : ""}`}
-                  aria-pressed={selectedId === item.task.id && !creating}
-                  disabled={busy}
-                  onClick={() => {
-                    setSelectedId(item.task.id);
-                    setCreating(false);
-                    setNotice("");
-                  }}
-                >
-                  <span className={`status ${item.task.state === "completed" ? "success" : ""}`}>
-                    {labels[item.task.state]}
-                  </span>
-                  <strong>{item.task.summary}</strong>
-                  {!patientPortal && item.patient?.displayName && (
-                    <small>{item.patient.displayName}</small>
-                  )}
-                  <small>
-                    {item.task.id === "T001" ? "Starter request · T001" : date(item.task.createdAt)}
-                  </small>
-                </button>
-              ))}
-              <p className="hint">Updates automatically every 3 seconds.</p>
+              <label className="queue-search">
+                <span className="visually-hidden">Search requests</span>
+                <input
+                  type="search"
+                  placeholder={patientPortal ? "Search your requests" : "Search patient or request"}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </label>
+              <label className="queue-filter">
+                <span className="visually-hidden">Filter request stage</span>
+                <select value={stage} onChange={(event) => setStage(event.target.value)}>
+                  <option value="all">All stages · {tasks.length}</option>
+                  <option value="open">Open requests</option>
+                  {Object.entries(labels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label} · {tasks.filter((item) => item.task.state === value).length}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="request-scroll">
+                {!filtered.length && (
+                  <div className="queue-empty">
+                    <p>
+                      {tasks.length
+                        ? "No requests match this search."
+                        : "Your new requests will appear here."}
+                    </p>
+                    {tasks.length > 0 && (
+                      <button
+                        className="quiet"
+                        onClick={() => {
+                          setQuery("");
+                          setStage("all");
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                )}
+                {filtered.map((item) => (
+                  <button
+                    key={item.task.id}
+                    className={`request-item ${selectedId === item.task.id && !creating ? "active" : ""}`}
+                    aria-pressed={selectedId === item.task.id && !creating}
+                    disabled={busy}
+                    onClick={() => {
+                      setSelectedId(item.task.id);
+                      setCreating(false);
+                      setNotice("");
+                    }}
+                  >
+                    <span className={`status ${item.task.state === "completed" ? "success" : ""}`}>
+                      {labels[item.task.state]}
+                    </span>
+                    {!patientPortal && (
+                      <span className="request-patient">
+                        {item.patient?.displayName ?? "Fictional patient"}
+                      </span>
+                    )}
+                    <strong>{item.task.summary}</strong>
+                    <small>
+                      {item.task.id === "T001" ? "Starter template" : date(item.task.updatedAt)}
+                    </small>
+                  </button>
+                ))}
+              </div>
+              <p className="hint">Saved changes update automatically.</p>
             </aside>
             <div className="content">
-              {creating && actor.role === "patient" ? (
+              {creating && patientPortal ? (
                 <RequestForm
                   slots={slots}
                   bookings={bookings}
@@ -380,8 +362,12 @@ export default function Dashboard({ portal }: { portal: Portal }) {
                 />
               ) : (
                 <section className="panel empty">
-                  <h2>Select a request</h2>
-                  <p>Your saved request and its next step will appear here.</p>
+                  <h2>{tasks.length ? "Select a request" : "Start with an appointment request"}</h2>
+                  <p>
+                    {patientPortal
+                      ? "Choose New appointment request above to share a preferred time."
+                      : "Patient requests appear here when saved."}
+                  </p>
                 </section>
               )}
               <div id="phone">
@@ -398,8 +384,8 @@ export default function Dashboard({ portal }: { portal: Portal }) {
         </>
       )}
       <footer>
-        <span>Patient Request Coordination</span>
-        <span>Synthetic records only · All times UTC</span>
+        <span>Health Coordinator</span>
+        <span>Fictional demo · Appointment times in Halifax time</span>
       </footer>
     </main>
   );

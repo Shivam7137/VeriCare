@@ -1,25 +1,54 @@
 import Link from "next/link";
 import type { Portal } from "../lib/portal";
-
-export default function PortalHeader({ portal }: { portal?: Portal }) {
+export default function PortalHeader({
+  portal,
+  requestId,
+  patientId,
+  team = false,
+}: {
+  portal?: Portal;
+  requestId?: string;
+  patientId?: string;
+  team?: boolean;
+}) {
+  const query = requestId ? `?request=${encodeURIComponent(requestId)}` : "";
   return (
     <header className="portal-header">
+      <a className="skip-link" href="#workspace-main">
+        Skip to workspace
+      </a>
       <Link href="/" className="brand">
         <span className="brand-mark" aria-hidden="true">
           +
         </span>
-        Care coordination
+        Health Coordinator
       </Link>
-      {portal ? (
-        <nav className="portal-nav" aria-label="Portal navigation">
-          <a href="#requests">{portal === "patient" ? "My requests" : "Department queue"}</a>
-          <a href="#phone">Phone assistance</a>
-          <Link href="/desktop">Desktop overview</Link>
-          <Link href="/">All portals</Link>
-        </nav>
-      ) : (
-        <span className="badge">Synthetic demo · One department</span>
-      )}
+      <nav className="portal-nav" aria-label="Workspace navigation">
+        {portal === "patient" ? (
+          <>
+            <a href="#requests" aria-current="page">
+              My requests
+            </a>
+            <a href="#phone">Phone assistance</a>
+            <Link href={`/professional${query}`}>View with care team →</Link>
+          </>
+        ) : portal ? (
+          <>
+            <Link href={`/professional${query}`} aria-current={!team ? "page" : undefined}>
+              Requests
+            </Link>
+            <Link href="/professional/team" aria-current={team ? "page" : undefined}>
+              Care team & phone
+            </Link>
+            {patientId === "synthetic-patient-001" && (
+              <Link href={`/patient${query}`}>Patient view →</Link>
+            )}
+          </>
+        ) : (
+          <Link href="/patient">Patient workspace</Link>
+        )}
+        <Link href="/desktop">Overview</Link>
+      </nav>
     </header>
   );
 }

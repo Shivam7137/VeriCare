@@ -4,17 +4,17 @@
 }
 .desk-next {
   padding: 14px;
-  background: #eff3e9;
-  border-left: 3px solid #8da376;
+  background: #edf4f0;
+  border-left: 3px solid #77aaa1;
   margin: 18px 0;
 }
 .desk-next strong,
 .desk-evidence strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .desk-next p {
   margin: 6px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .desk-evidence {
@@ -25,7 +25,7 @@
   border-radius: 5px;
 }
 .desk-evidence p {
-  font-size: 10px;
+  font-size: 12px;
   overflow-wrap: anywhere;
   margin: 5px 0 0;
 }
@@ -35,13 +35,13 @@
   margin: 18px 0;
 }
 .desk-details dt {
-  font-size: 9px;
+  font-size: 12px;
   color: #75806c;
   margin-bottom: 5px;
 }
 .desk-details dd {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
@@ -52,13 +52,13 @@
 }
 .desk-history summary,
 .desk-slots summary {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 .desk-history summary span,
 .desk-slots summary span {
   color: #768268;
-  font-size: 10px;
+  font-size: 12px;
   margin-left: 6px;
 }
 .desk-history ol {
@@ -72,7 +72,7 @@
   display: block;
   margin-top: 4px;
   color: #65715f;
-  font-size: 10px;
+  font-size: 12px;
 }
 .desk-history li {
   position: relative;
@@ -91,14 +91,14 @@
 }
 .desk-history li strong {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   text-transform: capitalize;
   font-weight: 500;
 }
 .desk-history li time {
   display: block;
   margin-top: 4px;
-  font-size: 9px;
+  font-size: 12px;
   color: #75826a;
 }
 .desk-call-list {
@@ -115,18 +115,18 @@
   border-top: 1px solid #edf0e8;
 }
 .desk-call-list strong {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 .desk-call-list p {
   color: #76806c;
-  font-size: 10px;
+  font-size: 12px;
   margin: 3px 0 0;
 }
 .desk-call-list time {
   display: block;
   color: #7a846f;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 4px;
 }
 .desk-call-icon {
@@ -148,7 +148,7 @@
   padding: 15px;
   border-radius: 7px;
   background: #f3f5ed;
-  font-size: 11px;
+  font-size: 12px;
 }
 .desk-call-detail p {
   margin: 8px 0;
@@ -169,15 +169,15 @@
   flex: 1;
 }
 .desk-booking strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .desk-booking p {
-  font-size: 10px;
+  font-size: 12px;
   color: #75816c;
   margin: 4px 0 0;
 }
 .desk-booking small {
-  font-size: 9px;
+  font-size: 12px;
   color: #75816c;
   overflow-wrap: anywhere;
 }
@@ -211,7 +211,7 @@
   gap: 12px;
   padding: 9px 0;
   border-top: 1px solid #e8ece3;
-  font-size: 10px;
+  font-size: 12px;
 }
 .desk-agent-list {
   display: grid;
@@ -229,17 +229,17 @@
   width: 26px;
   flex-shrink: 0;
   border-radius: 6px;
-  font-size: 9px;
+  font-size: 12px;
   background: #ebefdf;
   color: #6b7c50;
 }
 .desk-agent-list h3 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   margin: 0 0 5px;
 }
 .desk-agent-list p {
-  font-size: 10px;
+  font-size: 12px;
   color: #748067;
   margin: 0;
 }
@@ -254,7 +254,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 10px;
+  font-size: 12px;
   color: #6f7b64;
 }
 .desk-health strong {
@@ -262,7 +262,7 @@
   place-items: center;
   min-width: 22px;
   height: 22px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   background: #f1f3eb;
   border-radius: 4px;

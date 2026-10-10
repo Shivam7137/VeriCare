@@ -1,8 +1,9 @@
 :root {
   color-scheme: light;
-  color: #233e35;
-  background: #f5f5ef;
-  font-family: Arial, Helvetica, sans-serif;
+  color: #203b3a;
+  background: #f5f7f5;
+  font-family: "Aptos", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-synthesis: none;
 }
 * {
@@ -69,7 +70,7 @@ header {
 .brand-mark {
   display: grid;
   place-items: center;
-  background: #244d3c;
+  background: #17665e;
   color: white;
   width: 33px;
   height: 33px;
@@ -78,7 +79,7 @@ header {
   font-weight: 400;
 }
 .badge {
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px 12px;
   border: 1px solid #cdd5c5;
   border-radius: 20px;
@@ -92,18 +93,18 @@ header {
   padding: 42px 0 30px;
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.15em;
   margin: 0 0 12px;
-  color: #526c54;
+  color: #426962;
 }
 h1 {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: inherit;
   font-size: clamp(34px, 4.5vw, 52px);
   line-height: 1.06;
-  font-weight: 400;
-  letter-spacing: -1.8px;
+  font-weight: 600;
+  letter-spacing: -1.5px;
   margin: 0 0 18px;
 }
 h1 span {
@@ -141,7 +142,7 @@ p {
 .demo-note p {
   color: #71806a;
   margin: 8px 0 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 .dot {
   display: inline-block;
@@ -160,7 +161,7 @@ p {
 }
 .account-bar .eyebrow {
   margin-bottom: 5px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .account-bar span {
   font-size: 13px;
@@ -181,8 +182,8 @@ p {
 .account-options button.selected {
   background: #fff;
   border-color: #d5dccb;
-  color: #233e35;
-  box-shadow: 0 2px 5px #233e3510;
+  color: #203b3a;
+  box-shadow: 0 2px 5px #203b3a10;
 }
 button:hover:not(:disabled) {
   filter: brightness(0.96);
@@ -205,7 +206,7 @@ button:hover:not(:disabled) {
 }
 .stats span {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: #66715e;
   margin-bottom: 8px;
 }
@@ -249,8 +250,8 @@ button:hover:not(:disabled) {
 }
 .request-item.active {
   background: #fff;
-  border-color: #849a75;
-  box-shadow: inset 3px 0 #587750;
+  border-color: #77aaa1;
+  box-shadow: inset 3px 0 #17665e;
 }
 .request-item strong {
   font-size: 13px;
@@ -259,7 +260,7 @@ button:hover:not(:disabled) {
 }
 .request-item small {
   color: #6b7868;
-  font-size: 10px;
+  font-size: 12px;
 }
 .request-list .new-request {
   width: 100%;
@@ -267,7 +268,7 @@ button:hover:not(:disabled) {
 }
 .panel {
   background: #fff;
-  border: 1px solid #dce1d5;
+  border: 1px solid #dce5df;
   border-radius: 12px;
   padding: 28px;
   box-shadow: 0 5px 22px #31452a04;
@@ -284,7 +285,7 @@ button:hover:not(:disabled) {
   padding: 5px 8px;
   background: #f4efdf;
   color: #726033;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.4;
   border-radius: 4px;
   white-space: nowrap;
@@ -302,26 +303,26 @@ button:hover:not(:disabled) {
 }
 .steps li {
   flex: 1;
-  font-size: 10px;
+  font-size: 12px;
   color: #626d5c;
   position: relative;
   border-top: 2px solid #e6e9e0;
   padding-top: 12px;
 }
 .steps li.current {
-  border-color: #3e6a49;
-  color: #2f5339;
+  border-color: #17665e;
+  color: #17665e;
   font-weight: bold;
 }
 .steps li.done {
-  border-color: #99af80;
+  border-color: #8bb7aa;
   color: #526e45;
 }
 .steps span {
   margin-right: 5px;
 }
 .next-action {
-  background: #f5f6ee;
+  background: #f0f5f2;
   border: 1px solid #e6e9dd;
   padding: 18px;
   border-radius: 7px;
@@ -332,10 +333,10 @@ button:hover:not(:disabled) {
 }
 .next-action .eyebrow {
   margin-bottom: 8px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .next-action.complete {
-  background: #edf5e9;
+  background: #edf6f2;
   border-color: #bfd4b2;
 }
 .facts {
@@ -345,8 +346,8 @@ button:hover:not(:disabled) {
   margin: 24px 0;
 }
 dt {
-  color: #6b7767;
-  font-size: 11px;
+  color: #586c68;
+  font-size: 12px;
   margin-bottom: 8px;
 }
 dd {
@@ -355,7 +356,7 @@ dd {
   line-height: 1.8;
 }
 .muted {
-  color: #66735f;
+  color: #586c68;
   font-size: 13px;
 }
 .proposal {
@@ -368,18 +369,18 @@ dd {
   gap: 14px;
 }
 .proposal .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
 }
 .proposal p:last-child {
   margin-bottom: 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 .decision-list {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .actions {
   display: flex;
@@ -397,11 +398,11 @@ button.secondary {
 }
 button.primary {
   color: #fff;
-  background: #315840;
-  border: 1px solid #315840;
+  background: #17665e;
+  border: 1px solid #17665e;
 }
 button.secondary {
-  color: #315840;
+  color: #17665e;
   background: #fff;
   border: 1px solid #becbb5;
 }
@@ -409,7 +410,7 @@ button.quiet {
   background: transparent;
   border: 0;
   color: #5d7154;
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px 0;
 }
 button.danger {
@@ -452,7 +453,7 @@ fieldset {
   gap: 14px;
 }
 .hint {
-  font-size: 11px;
+  font-size: 12px;
   color: #6b7765;
   line-height: 1.6;
   margin: 12px 0;
@@ -516,7 +517,7 @@ summary {
 .history time {
   display: block;
   color: #75806b;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 6px;
 }
 .timeline-dot {
@@ -528,7 +529,7 @@ summary {
   flex-shrink: 0;
 }
 .reference {
-  font-size: 10px;
+  font-size: 12px;
   color: #6a7863;
   overflow-wrap: anywhere;
   margin: 22px 0 0;
@@ -536,7 +537,7 @@ summary {
 .job-list {
   list-style: none;
   padding: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: #617257;
   line-height: 2;
 }
@@ -591,7 +592,7 @@ footer {
   padding: 22px 0 4px;
   border-top: 1px solid #d8ded1;
   color: #707c65;
-  font-size: 10px;
+  font-size: 12px;
 }
 @media (max-width: 900px) {
   main {
@@ -670,7 +671,7 @@ footer {
     gap: 5px;
   }
   .steps li {
-    font-size: 9px;
+    font-size: 12px;
   }
   .welcome {
     padding: 24px;

@@ -46,7 +46,7 @@
   font-variant-numeric: tabular-nums;
 }
 .access-code small {
-  font-size: 11px;
+  font-size: 12px;
   color: #627459;
   line-height: 1.6;
 }
@@ -121,5 +121,101 @@
   }
   .call-card {
     padding: 14px;
+  }
+}
+
+.phone-access {
+  background: #f4f8f5;
+  padding: 20px;
+  border-radius: 9px;
+  margin-block: 20px;
+}
+.phone-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.phone-line h3 {
+  font-size: 21px;
+  margin-bottom: 14px;
+}
+.phone-line h3 a {
+  text-decoration: none;
+}
+.phone-access p {
+  font-size: 13px;
+}
+.phone-access .hint {
+  margin: 14px 0 0;
+  font-size: 12px;
+}
+.phone-access .access-code {
+  background: #fff;
+  padding: 16px;
+  border: 1px solid #d2dfd8;
+}
+.access-code strong {
+  user-select: all;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+.access-code > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.code-expired strong {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.simulation-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 18px 0;
+  border-block: 1px dashed #cedbd3;
+}
+.simulation-start p {
+  font-size: 13px;
+  margin: 0;
+}
+.simulation-start button {
+  flex-shrink: 0;
+}
+.transfer-history {
+  margin-top: 20px;
+  border-top: 1px solid #dce5df;
+  padding-top: 16px;
+}
+.transfer-history h3 {
+  font-size: 15px;
+}
+.transfer-history > div {
+  display: grid;
+  gap: 5px;
+  padding-block: 10px;
+  font-size: 13px;
+}
+.transfer-history span,
+.transfer-history time {
+  font-size: 12px;
+  color: #586c68;
+}
+.transfer-history p {
+  font-size: 12px;
+  margin: 3px 0;
+}
+@media (max-width: 650px) {
+  .simulation-start,
+  .phone-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .phone-access {
+    padding: 16px;
   }
 }

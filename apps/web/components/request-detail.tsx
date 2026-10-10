@@ -4,12 +4,16 @@ import { useState, type FormEvent } from "react";
 import {
   date,
   inputDate,
+  inputTimeZone,
   labels,
   windowInput,
   type Actor,
   type Progress,
   type Slot,
 } from "../lib/ui";
+
+import Link from "next/link";
+import { nextStep } from "../lib/workspace";
 
 type Props = {
   progress: Progress;
@@ -83,6 +87,11 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
           {labels[task.state]}
         </span>
       </div>
+      {progress.booking && task.state !== "completed" && (
+        <p className="muted">
+          Current appointment: <strong>{date(progress.booking.startsAt)}</strong>
+        </p>
+      )}
       <ol className="steps" aria-label="Request progress">
         {["Verify", "Propose", "Staff review", "Confirm", "Book"].map((label, index) => (
           <li
@@ -97,9 +106,14 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
       </ol>
       <div className={`next-action ${task.state === "completed" ? "complete" : ""}`} role="status">
         <p className="eyebrow">{task.state === "completed" ? "CONFIRMED OUTCOME" : "NEXT STEP"}</p>
-        <p>{task.nextAction}</p>
+        <p>{nextStep(progress, requester)}</p>
         {progress.operation?.result?.confirmationRef && (
-          <p className="reference">Confirmation: {progress.operation.result.confirmationRef}</p>
+          <div className="booking-receipt">
+            <strong>
+              {progress.booking ? date(progress.booking.startsAt) : "Appointment change saved"}
+            </strong>
+            <span>Demo scheduler receipt: {progress.operation.result.confirmationRef}</span>
+          </div>
         )}
       </div>
       {workflow && (
@@ -125,8 +139,9 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
       {proposal && (
         <div className="proposal">
           <div>
-            <p className="eyebrow">PROPOSED APPOINTMENT · VERSION {proposal.version}</p>
+            <p className="eyebrow">Exact appointment for approval · Offer {proposal.version}</p>
             <h3>{date(proposal.startsAt)}</h3>
+            <p className="muted">Ends {date(proposal.endsAt)}</p>
             <p className="muted">Decision due {date(proposal.expiresAt)}</p>
           </div>
           <div className="decision-list">
@@ -199,8 +214,8 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
           <div className="confirmation">
             <p>
               {hasCallback
-                ? "Your agreed callback has been delivered. Review the proposed appointment before confirming."
-                : "Waiting for your agreed callback. This page updates automatically."}
+                ? "Your simulated follow-up update is ready. Review the proposed appointment before confirming."
+                : "Waiting for the demo follow-up update in your agreed window. This page updates automatically."}
             </p>
             <button
               className="primary"
@@ -236,9 +251,9 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
               >
                 <div className="field-pair">
                   <label>
-                    New callback starts (UTC)
+                    New callback starts ({inputTimeZone()})
                     <input
-                      aria-label="New callback starts (UTC)"
+                      aria-label="New callback starts"
                       type="datetime-local"
                       required
                       value={callbackStart}
@@ -246,9 +261,9 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
                     />
                   </label>
                   <label>
-                    New callback ends (UTC)
+                    New callback ends ({inputTimeZone()})
                     <input
-                      aria-label="New callback ends (UTC)"
+                      aria-label="New callback ends"
                       type="datetime-local"
                       required
                       min={callbackStart}
@@ -277,8 +292,22 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
           </button>
         )}
       </div>
-      <div className="history">
-        <h3>Activity</h3>
+      <div className="request-context-link">
+        {requester ? (
+          <Link href={`/professional?request=${encodeURIComponent(task.id)}`}>
+            Demo: review this request with the care team →
+          </Link>
+        ) : task.patientId === "synthetic-patient-001" ? (
+          <Link href={`/patient?request=${encodeURIComponent(task.id)}`}>
+            Demo: open this request in Maya’s patient view →
+          </Link>
+        ) : (
+          <span>Only Maya’s patient portal is available in this demo.</span>
+        )}
+      </div>
+      <details className="history">
+        <summary>Request activity ({progress.events.length})</summary>
+
         <ol>
           {[...progress.events].reverse().map((event) => (
             <li key={event.id}>
@@ -291,10 +320,10 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
             </li>
           ))}
         </ol>
-      </div>
+      </details>
       {!!progress.jobs.length && (
         <details>
-          <summary>Callbacks & reminders ({progress.jobs.length})</summary>
+          <summary>Simulated follow-up & reminders ({progress.jobs.length})</summary>
           <ul className="job-list">
             {progress.jobs.map((job) => (
               <li key={job.id}>
@@ -305,9 +334,12 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
           </ul>
         </details>
       )}
-      <p className="reference">
-        {task.id} · Revision {task.revision}
-      </p>
+      <details className="technical-reference">
+        <summary>Request reference</summary>
+        <p className="reference">
+          {task.id} · Revision {task.revision}
+        </p>
+      </details>
     </section>
   );
 }

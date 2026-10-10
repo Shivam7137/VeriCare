@@ -1,0 +1,72 @@
+.desktop-screen .desk-heading h1 {
+  font-family: inherit;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -1px;
+}
+.desktop-screen .desk-heading {
+  padding-block: 26px;
+}
+.desktop-screen .desk-heading > div > p:last-child {
+  font-size: 14px;
+}
+.desktop-screen .desk-nav-label {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+}
+.desktop-screen .desk-sidebar nav a {
+  font-size: 13px;
+}
+.desktop-screen .desk-sidebar .brand {
+  font-size: 19px;
+}
+.desktop-screen .desk-stat strong {
+  font-size: 33px;
+  font-family: inherit;
+  font-weight: 600;
+}
+.desktop-screen .desk-stat > span {
+  font-size: 13px;
+}
+.desktop-screen .desk-stat small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.desktop-screen .desk-inspector h2 {
+  font-size: 18px;
+}
+.desktop-screen .desk-next p,
+.desktop-screen .desk-details dd {
+  font-size: 13px;
+}
+.desktop-screen .desk-card table td {
+  font-size: 13px;
+}
+.desktop-screen .desk-card table td strong {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.desktop-screen .desk-card {
+  border-color: #dce5df;
+  box-shadow: none;
+}
+.desktop-screen .desk-link-button {
+  min-height: 36px;
+}
+.desktop-screen .desk-phone-number {
+  font-size: 21px;
+  margin-top: 16px;
+}
+.desktop-screen .desk-phone-number a {
+  color: #17665e;
+  text-decoration: none;
+}
+.desktop-screen .desk-inspector .desk-mini {
+  max-width: 150px;
+  text-align: right;
+}
+@media (max-width: 520px) {
+  .desktop-screen .desk-heading h1 {
+    font-size: 29px;
+  }
+}

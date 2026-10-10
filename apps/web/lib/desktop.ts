@@ -1,3 +1,4 @@
+import { orderRequests } from "./workspace";
 import { api, type Progress, type Queue, type Slot } from "./ui";
 
 export type DesktopCall = {
@@ -49,6 +50,7 @@ export const activeCallStates = new Set([
   "dialing",
   "ringing",
   "in_progress",
+  "transferring",
 ]);
 
 export function needsReview(progress: Progress, calls: DesktopCall[]) {
@@ -68,8 +70,8 @@ export function filterRequests(
   filter: RequestFilter,
 ) {
   const search = query.trim().toLocaleLowerCase();
-  return tasks
-    .filter((progress) => {
+  return orderRequests(
+    tasks.filter((progress) => {
       const task = progress.task;
       const matchesSearch = [
         task.id,
@@ -85,8 +87,8 @@ export function filterRequests(
         (filter === "completed" && task.state === "completed") ||
         (filter === "stopped" && ["withdrawn", "staff_takeover"].includes(task.state));
       return matchesSearch && matchesState;
-    })
-    .sort((a, b) => Date.parse(b.task.updatedAt) - Date.parse(a.task.updatedAt));
+    }),
+  );
 }
 
 export function readable(value: string) {

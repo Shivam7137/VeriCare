@@ -1,84 +1,58 @@
 import Link from "next/link";
 import PortalHeader from "../components/portal-header";
-import DesktopIcon from "../components/desktop-icon";
-
 export default function Home() {
   return (
     <main className="portal-home">
       <PortalHeader />
-      <section className="portal-welcome">
-        <p className="eyebrow">PATIENT REQUEST COORDINATION</p>
+      <section className="home-intro" id="workspace-main">
+        <p className="eyebrow">Appointments & care-team coordination</p>
         <h1>
-          The right place
-          <br />
-          <span>for your next step.</span>
+          Care starts with
+          <br />a clear next step.
         </h1>
-        <p className="lede">
-          Manage your appointment or coordinate care for your department. Choose your portal to get
-          started.
+        <p>
+          Request a new appointment time, review it with your care team, and follow the confirmed
+          outcome.
         </p>
       </section>
-      <Link href="/desktop" className="desktop-entry">
-        <span className="portal-symbol" aria-hidden="true">
-          ◫
-        </span>
-        <div>
-          <p className="eyebrow">THE COMPLETE VIEW</p>
-          <h2>Open your desktop overview</h2>
-          <p>Requests, appointments, phone calls and AI agents, together in one workspace.</p>
+      <section className="home-workspaces" aria-label="Choose a workspace">
+        <Link href="/patient" className="home-patient">
+          <span className="home-entry-label">
+            Patient workspace <span aria-hidden="true">↗</span>
+          </span>
+          <h2>
+            Your appointment.
+            <br />A time that works.
+          </h2>
+          <p>Share your availability, review a proposed time, and confirm your choice.</p>
+          <span className="home-entry-action">Open patient workspace →</span>
+        </Link>
+        <div className="home-team-entries">
+          <Link href="/professional">
+            <span className="home-entry-label">
+              Care team <span aria-hidden="true">↗</span>
+            </span>
+            <h2>Coordinate the next step.</h2>
+            <p>Review requests, approve exact appointments, and reach a teammate.</p>
+            <span className="home-entry-action">Open care-team workspace →</span>
+          </Link>
+          <Link href="/desktop">
+            <span className="home-entry-label">
+              Department overview <span aria-hidden="true">↗</span>
+            </span>
+            <h2>The work in view.</h2>
+            <p>See requests, saved booking outcomes, phone activity, and handovers together.</p>
+            <span className="home-entry-action">Open overview →</span>
+          </Link>
         </div>
-        <DesktopIcon name="external" />
-      </Link>
-      <section className="portal-choices" aria-label="Choose your portal">
-        <Link href="/patient" className="portal-card patient-card">
-          <span className="portal-symbol" aria-hidden="true">
-            01
-          </span>
-          <p className="eyebrow">FOR PATIENTS</p>
-          <h2>
-            Your appointment,
-            <br />
-            at a time that works.
-          </h2>
-          <p>
-            Request a new time, review your appointment proposal, and get phone assistance with your
-            next step.
-          </p>
-          <span className="portal-card-link">
-            Enter patient portal <span aria-hidden="true">→</span>
-          </span>
-        </Link>
-        <Link href="/professional" className="portal-card professional-card">
-          <span className="portal-symbol" aria-hidden="true">
-            02
-          </span>
-          <p className="eyebrow">FOR HEALTHCARE PROFESSIONALS</p>
-          <h2>
-            A shared view.
-            <br />A coordinated response.
-          </h2>
-          <p>
-            Review your department’s requests, propose and approve appointment times, and follow
-            phone handovers.
-          </p>
-          <span className="portal-card-link">
-            Enter professional portal <span aria-hidden="true">→</span>
-          </span>
-        </Link>
       </section>
-      <aside className="portal-demo-note">
-        <span className="dot" aria-hidden="true" />
-        <div>
-          <strong>Explore with fictional records</strong>
-          <p>
-            These local demo portals have separate sign-ins, so you can keep both open while trying
-            the appointment journey. Phone simulation needs no provider credentials.
-          </p>
-        </div>
-      </aside>
+      <p className="home-demo-note">
+        Fictional clinic demonstration. Appointment changes and follow-up updates use demo records.
+        The phone simulator is clearly separated from the real phone line.
+      </p>
       <footer>
-        <span>Patient Request Coordination</span>
-        <span>Synthetic records only · All times UTC</span>
+        <span>Health Coordinator</span>
+        <span>Patient · Care team · Department</span>
       </footer>
     </main>
   );

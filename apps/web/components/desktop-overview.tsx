@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api, date, labels, type Actor } from "../lib/ui";
+import { date, labels, type Actor } from "../lib/ui";
 import {
   filterRequests,
   loadDesktopSnapshot,
@@ -14,15 +14,14 @@ import {
 import { AgentPanel, AppointmentPanel, RequestInspector } from "./desktop-panels";
 import DesktopCalls from "./desktop-calls";
 import DesktopIcon from "./desktop-icon";
+import { enterWorkspace, orderRequests } from "../lib/workspace";
 
 export default function DesktopOverview() {
   const [actor, setActor] = useState<Actor | null>(null);
   const [snapshot, setSnapshot] = useState<DesktopSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [commandBusy, setCommandBusy] = useState(false);
   const [error, setError] = useState("");
-  const [sessionError, setSessionError] = useState("");
   const [version, setVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RequestFilter>("all");
@@ -39,37 +38,23 @@ export default function DesktopOverview() {
     async function refresh() {
       setSyncing(true);
       try {
-        const session = await fetch("/api/session", {
-          cache: "no-store",
-          headers: { "x-prc-portal": "professional" },
-        });
+        const person = await enterWorkspace("professional");
         if (!valid()) return;
-        if (session.status === 401 || session.status === 403) {
-          identity.current = null;
-          setActor(null);
+        if (identity.current !== person.id) {
+          identity.current = person.id;
           setSnapshot(null);
-          setError(session.status === 403 ? "This overview requires a professional account." : "");
-        } else {
-          if (!session.ok)
-            throw new Error(
-              "The professional session is unavailable. Open the professional portal to check your sign-in.",
-            );
-          const person = (await session.json()) as Actor;
-          if (!valid()) return;
-          if (identity.current !== person.id) {
-            identity.current = person.id;
-            setSnapshot(null);
-            setSelected("");
-          }
-          setActor(person);
-          const data = await loadDesktopSnapshot();
-          if (!valid()) return;
-          setSnapshot(data);
-          setError("");
-          setSelected((id) =>
-            data.tasks.some((item) => item.task.id === id) ? id : (data.tasks[0]?.task.id ?? ""),
-          );
+          setSelected("");
         }
+        setActor(person);
+        const data = await loadDesktopSnapshot();
+        if (!valid()) return;
+        setSnapshot(data);
+        setError("");
+        setSelected((id) =>
+          data.tasks.some((item) => item.task.id === id)
+            ? id
+            : (orderRequests(data.tasks)[0]?.task.id ?? ""),
+        );
       } catch (cause) {
         if (valid()) setError((cause as Error).message);
       } finally {
@@ -92,29 +77,6 @@ export default function DesktopOverview() {
     generation.current++;
     setVersion((value) => value + 1);
   }
-  async function sessionAction(signOut: boolean) {
-    generation.current++;
-    setCommandBusy(true);
-    setSessionError("");
-    setError("");
-    try {
-      await api(
-        "/api/session",
-        signOut ? undefined : { persona: "operator" },
-        signOut ? "DELETE" : "POST",
-        "professional",
-      );
-      identity.current = null;
-      setActor(null);
-      setSnapshot(null);
-      setSelected("");
-    } catch (cause) {
-      setSessionError((cause as Error).message);
-    } finally {
-      setCommandBusy(false);
-      refreshNow();
-    }
-  }
   const filtered = snapshot ? filterRequests(snapshot.tasks, snapshot.calls, query, filter) : [];
   const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / 6) - 1));
   const visible = filtered.slice(currentPage * 6, currentPage * 6 + 6);
@@ -136,8 +98,9 @@ export default function DesktopOverview() {
             +
           </span>
           <span>
-            Care <br />
-            coordination
+            Health
+            <br />
+            Coordinator
           </span>
         </Link>
         <p className="desk-nav-label">WORKSPACE</p>
@@ -176,6 +139,9 @@ export default function DesktopOverview() {
           <Link href="/patient">
             <span aria-hidden="true">○</span>Patient portal <DesktopIcon name="external" />
           </Link>
+          <Link href="/professional/team">
+            <span aria-hidden="true">✚</span>Care team & phone <DesktopIcon name="external" />
+          </Link>
           <Link href="/professional">
             <span aria-hidden="true">✚</span>Professional portal <DesktopIcon name="external" />
           </Link>
@@ -187,7 +153,7 @@ export default function DesktopOverview() {
             <br />
             Every next step in view.
           </p>
-          <small>All times shown in UTC.</small>
+          <small>Appointment times in Halifax time.</small>
         </div>
       </aside>
       <main className="desk-main" id="desktop-main">
@@ -203,37 +169,25 @@ export default function DesktopOverview() {
                   : "Professional view"
                 : "Professional workspace"}
             </span>
-            {actor && (
-              <button
-                className="desk-link-button"
-                disabled={commandBusy}
-                onClick={() => sessionAction(true)}
-              >
-                Sign out
-              </button>
-            )}
           </div>
         </header>
         <section className="desk-heading" id="overview">
           <div>
-            <p className="eyebrow">YOUR DEPARTMENT, CONNECTED</p>
-            <h1>Everything in one place.</h1>
-            <p>Requests, conversations, and the next step in care.</p>
+            <p className="eyebrow">Fictional outpatient clinic</p>
+            <h1>Department overview</h1>
+            <p>Requests, saved appointment outcomes, and phone activity.</p>
           </div>
           {actor && (
-            <button className="desk-refresh" disabled={syncing || commandBusy} onClick={refreshNow}>
+            <button className="desk-refresh" disabled={syncing} onClick={refreshNow}>
               <span aria-hidden="true">↻</span> {syncing ? "Refreshing…" : "Refresh overview"}
             </button>
           )}
         </section>
-        {(error || sessionError) && (
+        {error && (
           <div className="desk-error" role="alert">
-            <strong>
-              {sessionError ? "Session could not update." : "Overview could not refresh."}
-            </strong>
+            <strong>{"Overview could not refresh."}</strong>
             <p>
-              {sessionError || error}{" "}
-              {error && snapshot ? "Showing the last successful update below." : ""}
+              {error} {error && snapshot ? "Showing the last successful update below." : ""}
             </p>
           </div>
         )}
@@ -243,21 +197,11 @@ export default function DesktopOverview() {
           </div>
         ) : !actor ? (
           <section className="desk-card desk-welcome">
-            <span className="desk-welcome-symbol" aria-hidden="true">
-              ◫
-            </span>
-            <p className="eyebrow">DESKTOP OVERVIEW</p>
-            <h2>The whole workflow, at a glance.</h2>
-            <p>
-              Open a read-only overview of your department’s requests, appointment changes, calls
-              and professional handovers. Your patient session stays separate.
-            </p>
-            <button className="primary" disabled={commandBusy} onClick={() => sessionAction(false)}>
-              {commandBusy ? "Opening…" : "Open desktop demo"}
+            <h2>Overview unavailable</h2>
+            <p>Please retry. If demo access has expired, ask the demo host to refresh it.</p>
+            <button className="secondary" onClick={refreshNow}>
+              Retry connection
             </button>
-            <Link href="/professional">
-              Or open the professional portal <DesktopIcon name="external" />
-            </Link>
           </section>
         ) : !snapshot ? (
           <div className="desk-card desk-welcome" role="status">
@@ -274,7 +218,12 @@ export default function DesktopOverview() {
               </span>
               <span>
                 Updated{" "}
-                {new Date(snapshot.updatedAt).toLocaleTimeString("en-GB", { timeZone: "UTC" })} UTC
+                {new Date(snapshot.updatedAt).toLocaleTimeString("en-CA", {
+                  timeZone: "America/Halifax",
+                  timeZoneName: "short",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
                 · Refreshes every 5s
               </span>
             </div>
@@ -391,7 +340,7 @@ export default function DesktopOverview() {
                           <tr>
                             <th scope="col">Request / patient</th>
                             <th scope="col">Stage</th>
-                            <th scope="col">Updated (UTC)</th>
+                            <th scope="col">Updated · Halifax time</th>
                             <th scope="col">
                               <span className="desk-visually-hidden">View details</span>
                             </th>
@@ -415,9 +364,7 @@ export default function DesktopOverview() {
                                 </span>
                               </td>
                               <td>
-                                <time dateTime={task.updatedAt}>
-                                  {date(task.updatedAt).replace(" UTC", "")}
-                                </time>
+                                <time dateTime={task.updatedAt}>{date(task.updatedAt)}</time>
                               </td>
                               <td>
                                 <button
@@ -489,7 +436,7 @@ export default function DesktopOverview() {
           </>
         )}
         <footer className="desk-footer">
-          <span>Care coordination · Desktop workspace</span>
+          <span>Health Coordinator · Department overview</span>
           <span>Fictional records · Backend-verified outcomes</span>
         </footer>
       </main>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { date } from "../lib/ui";
 import DesktopIcon from "./desktop-icon";
+import TransferHistory from "./transfer-history";
 import { activeCallStates, readable, taskLink, type DesktopCall } from "../lib/desktop";
 
 export default function DesktopCalls({ calls }: { calls: DesktopCall[] }) {
@@ -66,7 +67,7 @@ export default function DesktopCalls({ calls }: { calls: DesktopCall[] }) {
                 </strong>
                 <p>
                   {item.maskedNumber ?? "Portal-verified session"} ·{" "}
-                  {item.mode === "simulated" ? "Simulation" : "Twilio"}
+                  {item.mode === "simulated" ? "Simulated" : "Real phone"}
                 </p>
                 <time dateTime={item.dueAt ?? item.createdAt}>
                   {date(item.dueAt ?? item.createdAt)}
@@ -113,17 +114,19 @@ export default function DesktopCalls({ calls }: { calls: DesktopCall[] }) {
           )}
           {call.pendingAction && (
             <p>
-              <strong>Awaiting patient approval:</strong> {call.pendingAction.description}
+              <strong>Awaiting caller approval:</strong> {call.pendingAction.description}
             </p>
           )}
           {call.lastError && <p className="desk-warning">{readable(call.lastError)}</p>}
-          <p className="desk-reference">{call.id}</p>
+          <TransferHistory callId={call.id} />
           {call.taskId ? (
             <Link className="desk-text-link" href={taskLink(call.taskId)}>
               Open linked request <DesktopIcon name="external" />
             </Link>
           ) : (
-            <p className="desk-muted">New-request intake; no request attached yet.</p>
+            <p className="desk-muted">
+              No appointment request attached. This may be intake or a staff care-team call.
+            </p>
           )}
         </div>
       )}

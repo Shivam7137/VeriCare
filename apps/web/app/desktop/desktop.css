@@ -1,17 +1,17 @@
 .desktop-screen {
   display: grid;
   grid-template-columns: 208px minmax(0, 1fr);
-  min-height: 100vh;
-  background: #f4f5f1;
-  color: #253f36;
+  min-height: 100dvh;
+  background: #f5f7f5;
+  color: #203b3a;
 }
 .desk-sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   padding: 30px 18px 22px;
   border-right: 1px solid #dce2d8;
-  background: #edf0e9;
+  background: #edf2ef;
   display: flex;
   flex-direction: column;
 }
@@ -26,7 +26,7 @@
 .desk-nav-label {
   margin: 10px 10px 12px;
   color: #687568;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.14em;
 }
@@ -45,7 +45,7 @@
   text-decoration: none;
 }
 .desk-sidebar nav a:hover {
-  background: #e0e7da;
+  background: #deebe4;
 }
 .desk-sidebar nav a > span:first-child {
   font-size: 18px;
@@ -57,14 +57,14 @@
 }
 .desk-sidebar nav b {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 12px;
   background: #e1e7d8;
   padding: 2px 6px;
   border-radius: 4px;
 }
 .desk-sidebar .desk-nav-current {
   background: #dce5d6;
-  color: #234835;
+  color: #17665e;
   font-weight: 700;
 }
 .desk-sidebar-note {
@@ -78,7 +78,7 @@
 }
 .desk-sidebar-note small {
   color: #697766;
-  font-size: 10px;
+  font-size: 12px;
 }
 .desk-main {
   min-width: 0;
@@ -90,7 +90,7 @@
 .desk-topbar {
   min-height: 76px;
   padding: 16px 0;
-  font-size: 11px;
+  font-size: 12px;
   color: #687568;
   border-bottom: 1px solid #dce2d8;
 }
@@ -111,7 +111,7 @@
   padding: 30px 0 18px;
 }
 .desk-heading .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   margin-bottom: 10px;
 }
 .desk-heading h1 {
@@ -133,7 +133,7 @@
   border: 1px solid #cfd8c8;
   border-radius: 7px;
   padding: 11px 13px;
-  font-size: 11px;
+  font-size: 12px;
   color: #34553f;
 }
 .desk-refresh span {
@@ -146,7 +146,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10px;
+  font-size: 12px;
   color: #63765d;
   margin: 0 0 18px;
 }
@@ -155,7 +155,7 @@
   width: 6px;
   height: 6px;
   margin-right: 6px;
-  background: #6d8c60;
+  background: #17665e;
   border-radius: 50%;
 }
 .desk-stats {
@@ -170,19 +170,19 @@
   background: #fafbf7;
   border: 1px solid #dce2d6;
   border-radius: 9px;
-  color: #284537;
+  color: #203b3a;
 }
 .desk-stat:hover,
 .desk-stat-selected {
   border-color: #6e8b60;
-  background: #edf2e7;
+  background: #edf5f0;
 }
 .desk-stat > span {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 .desk-stat i {
@@ -199,14 +199,14 @@
 .desk-stat > strong {
   display: block;
   margin: 9px 0 4px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: inherit;
   font-size: 35px;
   font-weight: 400;
   line-height: 1;
 }
 .desk-stat small {
   color: #66785f;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .desk-work-grid {
@@ -234,7 +234,7 @@
 }
 .desk-card .eyebrow {
   margin-bottom: 7px;
-  font-size: 8px;
+  font-size: 12px;
 }
 .desk-section-heading {
   display: flex;
@@ -265,7 +265,7 @@
 .desk-text-link,
 .desk-link-button {
   color: #49673e;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   text-underline-offset: 4px;
   white-space: nowrap;
@@ -281,17 +281,17 @@
   color: #1b4128;
 }
 .desk-muted {
-  font-size: 11px;
+  font-size: 12px;
   color: #697566;
   line-height: 1.65;
 }
 .desk-mini {
-  font-size: 9px;
+  font-size: 12px;
   color: #6c7865;
   white-space: nowrap;
 }
 .desk-reference {
-  font-size: 9px;
+  font-size: 12px;
   color: #707b69;
   overflow-wrap: anywhere;
   line-height: 1.65;
@@ -301,7 +301,7 @@
   padding: 6px 8px;
   border: 1px solid #d8dfd0;
   border-radius: 5px;
-  font-size: 9px;
+  font-size: 12px;
   color: #607057;
   white-space: nowrap;
 }
@@ -311,7 +311,7 @@
   border-radius: 4px;
   background: #eef0ea;
   color: #56614d;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.3;
 }
 .desk-pill-green {
@@ -351,7 +351,7 @@
   border: 0;
   background: transparent;
   padding: 10px 0;
-  font-size: 11px;
+  font-size: 12px;
   color: #2b4738;
   margin: 0;
 }
@@ -362,7 +362,7 @@
   border-radius: 6px;
   padding: 9px 10px;
   background: #fff;
-  font-size: 10px;
+  font-size: 12px;
   color: #425d36;
   margin: 0;
 }
@@ -392,7 +392,7 @@
 .desktop-screen th {
   padding: 11px 10px;
   background: #f6f7f2;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   color: #67755d;
   white-space: nowrap;
@@ -406,14 +406,14 @@
 .desktop-screen td {
   border-bottom: 1px solid #ebeee7;
   padding: 14px 10px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .desktop-screen td:first-child {
   min-width: 155px;
 }
 .desktop-screen td:first-child strong {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -421,14 +421,14 @@
 .desktop-screen td small {
   display: block;
   color: #7a8372;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 3px;
   overflow-wrap: anywhere;
 }
 .desktop-screen td time {
   color: #727d66;
   white-space: nowrap;
-  font-size: 9px;
+  font-size: 12px;
 }
 .desk-row-selected {
   background: #f1f5ec;
@@ -440,7 +440,7 @@
   gap: 10px;
   margin-top: 16px;
   color: #6d7a62;
-  font-size: 10px;
+  font-size: 12px;
 }
 .desk-pagination > div {
   display: flex;
@@ -452,7 +452,7 @@
   padding: 6px 8px;
   background: #fff;
   color: #49683c;
-  font-size: 10px;
+  font-size: 12px;
 }
 .desk-empty {
   padding: 28px 10px;
@@ -502,7 +502,7 @@
 .desk-welcome > a {
   display: block;
   margin-top: 20px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .desk-welcome-symbol {
   display: grid;
@@ -518,7 +518,7 @@
   margin: 26px 0 0;
   padding: 18px 0 0;
   border-top: 1px solid #dce3d3;
-  font-size: 9px;
+  font-size: 12px;
   color: #7e886f;
 }
 .desk-visually-hidden,

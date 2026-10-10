@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
-import { date, inputDate, windowInput, type Slot, type Booking } from "../lib/ui";
+import { date, inputDate, inputTimeZone, windowInput, type Slot, type Booking } from "../lib/ui";
 
 export default function RequestForm({
   slots,
@@ -49,8 +49,8 @@ export default function RequestForm({
         </button>
       </div>
       <p className="muted">
-        Choose a preferred appointment and agree when we can contact you. All times on this demo are
-        in UTC.
+        Choose your current appointment, then a preferred new time. Appointment times are shown in
+        Halifax time; callback inputs use your device time zone.
       </p>
       <form onSubmit={submit}>
         <fieldset disabled={busy}>
@@ -65,7 +65,7 @@ export default function RequestForm({
               >
                 {bookings.map((booking) => (
                   <option key={booking.id} value={booking.id}>
-                    {date(booking.startsAt)} · {booking.id}
+                    {date(booking.startsAt)}
                   </option>
                 ))}
               </select>
@@ -86,16 +86,16 @@ export default function RequestForm({
               {!available.length && <option value="">No available appointments</option>}
               {available.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {date(item.startsAt)} – {date(item.endsAt).split(", ").at(-1)}
+                  {date(item.startsAt)}
                 </option>
               ))}
             </select>
           </label>
           <div className="field-pair">
             <label>
-              Callback starts (UTC)
+              Callback starts ({inputTimeZone()})
               <input
-                aria-label="Callback starts (UTC)"
+                aria-label="Callback starts"
                 type="datetime-local"
                 required
                 value={start}
@@ -103,9 +103,9 @@ export default function RequestForm({
               />
             </label>
             <label>
-              Callback ends (UTC)
+              Callback ends ({inputTimeZone()})
               <input
-                aria-label="Callback ends (UTC)"
+                aria-label="Callback ends"
                 type="datetime-local"
                 required
                 min={start}
@@ -126,7 +126,7 @@ export default function RequestForm({
               required
               maxLength={500}
               rows={3}
-              defaultValue="Please move my appointment to the selected time."
+              defaultValue="Fictional demo: please move my appointment to the selected time."
             />
           </label>
           <button className="primary" disabled={!slot}>
