@@ -1,0 +1,16 @@
+name: Bug
+description: Report a reproducible issue using synthetic records.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include fixture IDs and expected versus actual behavior. Do not include patient records or secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Environment and sanitized evidence
