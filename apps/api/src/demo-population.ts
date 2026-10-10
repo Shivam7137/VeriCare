@@ -127,7 +127,7 @@ async function populateScenario(
       startsAt: new Date(anchor.getTime() + 20 * minute).toISOString(),
     };
     await agent.run(call.id, `${id}-callback`, "prepare_callback", { callbackWindow: changed });
-    await agent.digit(call.id, "1");
+    await agent.confirm(call.id, (await agent.store.getInternal(call.id)).pendingAction!.id);
     task = (await workflow.progress(patient, task.id)).task;
     tick();
   }
@@ -189,7 +189,7 @@ async function populateScenario(
   if (scenario.voice === "pending" || scenario.voice === "approved") {
     await agent.run(call.id, `${id}-confirm`, "prepare_confirmation", { response: "approve" });
     if (scenario.voice === "approved") {
-      await agent.digit(call.id, "1");
+      await agent.confirm(call.id, (await agent.store.getInternal(call.id)).pendingAction!.id);
       task = (await workflow.progress(patient, task.id)).task;
       tick();
     }
@@ -207,7 +207,7 @@ async function populateScenario(
     await new BookingExecutor(pool, { scheduler, now }).execute(task.id);
   } else if (scenario.stage === "withdraw") {
     await agent.run(call.id, `${id}-withdraw`, "prepare_withdrawal", {});
-    await agent.digit(call.id, "1");
+    await agent.confirm(call.id, (await agent.store.getInternal(call.id)).pendingAction!.id);
   } else if (scenario.stage === "handoff") {
     await agent.run(call.id, `${id}-handoff`, "request_human", {});
     task = await workflow.takeover(staff, task.id, {

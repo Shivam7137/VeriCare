@@ -118,7 +118,10 @@ test("rich population uses real workflow evidence, future appointments and scope
   assert.equal((await workflow.list(outsider)).length, 0);
   const pendingCall = calls.find((call) => call.pending_action?.kind === "confirm")!;
   await dispatchDueJobs(pool, { now, taskId: pendingCall.task_id });
-  await new VoiceAgent(pool, { now: () => now }).digit(pendingCall.id, "1");
+  await new VoiceAgent(pool, { now: () => now }).confirm(
+    pendingCall.id,
+    pendingCall.pending_action.id,
+  );
   assert.equal(
     (await workflow.progress(patient, pendingCall.task_id)).task.state,
     "ready_to_execute",

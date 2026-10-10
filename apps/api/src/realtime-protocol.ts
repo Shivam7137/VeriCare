@@ -28,7 +28,7 @@ export interface RealtimeBridgeOptions {
     callId: string,
     toolCallId: string,
   ): Promise<unknown>;
-  onDigit(digit: string, callId: string): Promise<unknown>;
+  onDigit(digit: string, callId: string, readbackActionId?: string): Promise<unknown>;
   onClose(callId: string, reason: string): Promise<void>;
   socketFactory?: (
     url: string,

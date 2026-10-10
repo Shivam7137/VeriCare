@@ -293,7 +293,7 @@ export function registerVoiceRoutes(
             return verified;
           },
           onTool: (name, args, callId, toolCallId) => agent.run(callId, toolCallId, name, args),
-          onDigit: (digit, callId) => agent.digit(callId, digit),
+          onDigit: (digit, callId, actionId) => agent.digit(callId, digit, actionId),
           onClose: async (callId, reason) => {
             closed = true;
             clearTimeout(timer);

@@ -334,7 +334,7 @@ test("DTMF cancellation reaches the backend callback and exact transport replays
   h.twilio.receive(digit);
   h.twilio.receive(digit);
   await settle();
-  assert.deepEqual(h.digits, [["2", "phone-call-1"]]);
+  assert.deepEqual(h.digits, [["2", "phone-call-1", undefined]]);
   assert.deepEqual(h.calls, []);
   const event = h.upstream.events("conversation.item.create")[0];
   assert.equal(event?.item.role, "user");
@@ -380,7 +380,7 @@ test("an early keypad press cannot approve a future action or an unplayed readba
   h.twilio.receive(keypad("6"));
   h.twilio.receive(keypad("6"));
   await settle();
-  assert.deepEqual(h.digits, [["1", "phone-call-1"]]);
+  assert.deepEqual(h.digits, [["1", "phone-call-1", pendingActionResult.pendingAction.id]]);
 });
 
 test("keypad approval requires a pending action and cannot use marks released by a cleared readback", async (t) => {

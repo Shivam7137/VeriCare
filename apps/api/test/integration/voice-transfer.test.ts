@@ -7,6 +7,7 @@ import { CareTeamDirectory } from "../../src/care-team-directory.js";
 import { VoiceTransfers } from "../../src/voice-transfers.js";
 import { TwilioDispatchError } from "../../src/twilio-provider.js";
 import { seedIdentity } from "../../src/identity-fixtures.js";
+import { grantAuthority, revokeAuthority } from "../../src/identity.js";
 
 test("staff codes and directory stay department scoped without patient appointment authority", async (t) => {
   const f = await workflowFixture(t);
@@ -195,3 +196,62 @@ test("repeat seeding preserves edited destinations and existing patient doctor a
   );
   assert.equal(all.members.find((member) => member.id === "synthetic-staff-001")!.revision, 2);
 });
+
+for (const scenario of ["department changed", "represented patient authority revoked"] as const) {
+  test(`confirmation cancels prepared live transfer after ${scenario}`, async (t) => {
+    const f = await workflowFixture(t);
+    let attempts = 0;
+    const transfers = new VoiceTransfers(f.pool, {
+      now: f.now,
+      provider: {
+        async transfer() {
+          attempts++;
+        },
+      },
+    });
+    const directory = new CareTeamDirectory(f.pool);
+    await directory.update(f.staff, "synthetic-staff-001", {
+      phoneNumber: "+15555550103",
+      expectedRevision: 1,
+    });
+    const store = new VoiceStore(f.pool, { now: f.now });
+    const actor = scenario === "department changed" ? f.staff : f.representative;
+    if (scenario !== "department changed")
+      await grantAuthority(
+        f.pool,
+        f.patient,
+        {
+          patientId: f.patient.patientId!,
+          requesterId: actor.id,
+          expiresAt: new Date(f.now().getTime() + 3_600_000).toISOString(),
+          evidenceRef: "synthetic-transfer-consent",
+        },
+        f.now(),
+      );
+    const call = await store.beginInbound({ sid: `CA${"9".repeat(32)}`, from: "+15555550102" });
+    await store.verifyCode(call.id, (await store.issueCode(actor)).code);
+    const action = await transfers.prepare(call.id, {
+      memberId: "synthetic-staff-001",
+      ...(scenario === "department changed" ? {} : { patientId: f.patient.patientId! }),
+    });
+    if (scenario === "department changed")
+      await f.pool.query("UPDATE principals SET department_id='other-department' WHERE id=$1", [
+        actor.id,
+      ]);
+    else await revokeAuthority(f.pool, f.patient, f.patient.patientId!, actor.id, f.now());
+    await assert.rejects(transfers.confirm(call.id, action.pendingAction.id), {
+      code: "transfer_authority_changed",
+    });
+    assert.equal(attempts, 0);
+    assert.equal((await store.getInternal(call.id)).pendingAction, null);
+    const saved = (
+      await f.pool.query("SELECT status,last_error FROM voice_transfers WHERE id=$1", [
+        action.transfer.id,
+      ])
+    ).rows[0];
+    assert.deepEqual(saved, { status: "cancelled", last_error: "transfer_authority_changed" });
+    await assert.rejects(transfers.confirm(call.id, action.pendingAction.id), {
+      code: "pending_action_missing",
+    });
+  });
+}

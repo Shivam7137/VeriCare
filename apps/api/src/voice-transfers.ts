@@ -234,7 +234,7 @@ export class VoiceTransfers {
   }> {
     const prepared = await transaction(this.pool, async (db) => {
       const call = await callRow(db, callId, true);
-      await requireActiveCall(db, call, this.now());
+      const actor = await requireActiveCall(db, call, this.now());
       if (call.status !== "in_progress") throw new BackendError("call_not_active", 409);
       const pending = call.pending_action;
       if (!pending || pending.id !== actionId || pending.kind !== "transfer")
@@ -250,6 +250,15 @@ export class VoiceTransfers {
       let failure: BackendError | undefined;
       if (Date.parse(pending.expiresAt) <= this.now().getTime())
         failure = new BackendError("pending_action_expired", 409);
+      // Authority and department can change after readback. Bind dispatch to the
+      // saved patient context while checking the caller's current permissions.
+      try {
+        const scope = await directoryScope(db, actor, row.patient_id ?? undefined, this.now());
+        if (scope.departmentId !== row.department_id) throw new BackendError("forbidden", 403);
+      } catch (error) {
+        if (!(error instanceof BackendError)) throw error;
+        failure ??= new BackendError("transfer_authority_changed", 403);
+      }
       const member = (
         await db.query<DirectoryRow>("SELECT * FROM care_team_directory WHERE id=$1 FOR SHARE", [
           row.member_id,
@@ -261,7 +270,7 @@ export class VoiceTransfers {
         member.phone_number !== row.destination_number ||
         member.department_id !== row.department_id
       )
-        failure = new BackendError("destination_changed", 409);
+        failure ??= new BackendError("destination_changed", 409);
       if (row.mode === "twilio" && !failure) {
         try {
           validateDestination(row.destination_number, this.options.ownNumber);

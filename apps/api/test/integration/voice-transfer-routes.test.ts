@@ -6,7 +6,8 @@ import { workflowFixture } from "./workflow-fixture.js";
 import { createSession, getPrincipal } from "../../src/identity.js";
 import { registerVoiceRoutes } from "../../src/voice-routes.js";
 import { readVoiceConfig } from "../../src/voice-config.js";
-import { VoiceAgent } from "../../src/voice-agent.js";
+import { VoiceAgent, voiceAgentTools } from "../../src/voice-agent.js";
+import { harness, keypad, outputAudio, settle, toolCall } from "../realtime-bridge-fixtures.js";
 
 const config = readVoiceConfig({
   VOICE_MODE: "twilio",
@@ -194,7 +195,7 @@ for (const [dialStatus, expected] of [
     const prepared = (await f.agent.run(call.id, "transfer-tool", "prepare_transfer", {
       memberId: "synthetic-staff-001",
     })) as { pendingAction: { id: string } };
-    await f.agent.digit(call.id, "1");
+    await f.agent.digit(call.id, "1", prepared.pendingAction.id);
     assert.equal(f.attempts(), 1);
     await f.agent.store.streamClosed(call.id, "twilio_stop");
     assert.equal((await f.agent.store.getInternal(call.id)).status, "transferring");
@@ -260,4 +261,93 @@ test("assigned doctor lookup surfaces ambiguity and refuses missing staff patien
   await assert.rejects(f.agent.directory.list(other, { patientId: f.patient.patientId! }), {
     code: "not_found",
   });
+});
+
+test("live keypad approval is bound to played action A when portal replaces it with unread B", async (t) => {
+  const f = await fixture(t);
+  await f.agent.directory.update(f.staff, "synthetic-staff-001", {
+    phoneNumber: "+15555550103",
+    expectedRevision: 1,
+  });
+  await f.agent.directory.update(f.staff, "demo-staff-daniel-morris", {
+    phoneNumber: "+15555550104",
+    expectedRevision: 1,
+  });
+  const call = await f.agent.store.beginInbound({ sid: parentSid, from: "+15555550102" });
+  await f.agent.store.verifyCode(call.id, (await f.agent.store.issueCode(f.staff)).code);
+  let prepared!: () => void, confirmed!: () => void;
+  const preparedPromise = new Promise<void>((resolve) => {
+    prepared = resolve;
+  });
+  const confirmationPromise = new Promise<void>((resolve) => {
+    confirmed = resolve;
+  });
+  const h = harness({
+    tools: voiceAgentTools,
+    verifyStart: async () => ({ callId: call.id }),
+    onTool: async (name, args, callId, toolId) => {
+      const result = await f.agent.run(callId, toolId, name, args);
+      prepared();
+      return result;
+    },
+    onDigit: async (digit, callId, actionId?: string) => {
+      try {
+        return await f.agent.digit(callId, digit, actionId);
+      } finally {
+        confirmed();
+      }
+    },
+  });
+  t.after(() => h.controller.close());
+  await h.connect();
+  h.upstream.receive({ type: "response.created", response: { id: "response-tool" } });
+  h.upstream.receive(
+    toolCall(JSON.stringify({ memberId: "synthetic-staff-001" }), "prepare-A", "prepare_transfer"),
+  );
+  await preparedPromise;
+  await settle();
+  const actionA = (await f.agent.store.getInternal(call.id)).pendingAction!;
+  h.upstream.receive({
+    type: "response.done",
+    response: { id: "response-tool", status: "completed" },
+  });
+  h.upstream.receive({ type: "response.created", response: { id: "readback-A" } });
+  outputAudio(h, "readback-item-A", "readback-A");
+  h.upstream.receive({
+    type: "response.done",
+    response: { id: "readback-A", status: "completed" },
+  });
+  const mark = h.twilio.events("mark")[0]!.mark.name;
+  h.twilio.receive({ event: "mark", streamSid: "MZsynthetic", mark: { name: mark } });
+  const headers = await f.headers(f.staff.id);
+  assert.equal(
+    (
+      await f.app.inject({
+        method: "POST",
+        url: `/voice/calls/${call.id}/cancel`,
+        headers,
+        payload: {},
+      })
+    ).statusCode,
+    200,
+  );
+  const replacement = await f.app.inject({
+    method: "POST",
+    url: `/voice/calls/${call.id}/transfers`,
+    headers,
+    payload: { memberId: "demo-staff-daniel-morris" },
+  });
+  assert.equal(replacement.statusCode, 201);
+  const actionB = replacement.json().pendingAction;
+  assert.notEqual(actionA.id, actionB.id);
+  h.twilio.receive(keypad("4"));
+  await confirmationPromise;
+  await settle();
+  assert.equal(f.attempts(), 0, "unread replacement must never dispatch");
+  assert.equal((await f.agent.store.getInternal(call.id)).pendingAction!.id, actionB.id);
+  assert.equal(
+    (await f.agent.transfers.list(f.staff, call.id)).find((transfer) => transfer.id === actionB.id)!
+      .status,
+    "prepared",
+  );
 });

@@ -368,12 +368,13 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
     // A press is evidence only for an existing, fully played action. Never queue
     // keypad input behind a tool which may create or replace the pending action.
     if (pendingActions || (digit === "1" && !readbackPlayed())) return;
+    const readbackActionId = readback?.actionId;
     if (digit === "1" || digit === "2") readback = undefined;
     interrupt();
     queueAction(async () => {
       let result: unknown;
       try {
-        result = await options.onDigit(digit, callId!);
+        result = await options.onDigit(digit, callId!, readbackActionId);
       } catch {
         result = { ok: false, error: "keypad_action_failed" };
       }

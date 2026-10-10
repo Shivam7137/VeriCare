@@ -295,7 +295,7 @@ export class VoiceAgent {
       throw error;
     }
   }
-  async digit(callId: string, digit: string) {
+  async digit(callId: string, digit: string, readbackActionId?: string) {
     if (digit === "2") {
       await this.store.cancelPending(callId);
       return {
@@ -310,6 +310,9 @@ export class VoiceAgent {
       };
     const { call } = await this.store.bound(callId);
     if (!call.pendingAction) throw new BackendError("no_pending_action");
-    return this.confirm(callId, call.pendingAction.id);
+    if (!readbackActionId) throw new BackendError("keypad_readback_required", 403);
+    if (call.pendingAction.id !== readbackActionId)
+      throw new BackendError("pending_action_mismatch", 409);
+    return this.confirm(callId, readbackActionId);
   }
 }

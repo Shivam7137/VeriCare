@@ -31,7 +31,13 @@ test("agent preparation and spoken assent leave workflow unchanged until explici
   );
   assert.equal((await agent.digit(call.id, "yes")).status, "ignored");
   assert.equal((await f.service.progress(f.patient, task.id)).task.revision, task.revision);
-  assert.equal((await agent.digit(call.id, "1")).status, "saved");
+  await assert.rejects(agent.digit(call.id, "1"), { code: "keypad_readback_required" });
+  assert.equal((await f.service.progress(f.patient, task.id)).task.revision, task.revision);
+  assert.equal(
+    (await agent.digit(call.id, "1", (await agent.store.getInternal(call.id)).pendingAction!.id))
+      .status,
+    "saved",
+  );
   const progress = await f.service.progress(f.patient, task.id);
   assert.equal(progress.task.revision, task.revision + 1);
   assert.deepEqual(progress.workflow?.callbackWindow, callbackWindow);
@@ -78,7 +84,7 @@ test("keypad proposal confirmation requests execution but neither AI nor hangup 
     (await f.service.progress(f.patient, task.id)).task.state,
     "awaiting_patient_confirmation",
   );
-  await agent.digit(call.id, "1");
+  await agent.digit(call.id, "1", pending.id);
   await agent.store.end(call.id, "caller_hangup");
   const progress = await f.service.progress(f.patient, task.id);
   assert.equal(progress.task.state, "ready_to_execute");
