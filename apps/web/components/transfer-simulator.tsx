@@ -147,7 +147,7 @@ export default function TransferSimulator({
             <option value="">General care-team call</option>
             {directory.patients.map((patient) => (
               <option value={patient.id} key={patient.id}>
-                {patient.name}
+                {patient.name === patient.id ? "Additional demo patient" : patient.name}
               </option>
             ))}
           </select>
