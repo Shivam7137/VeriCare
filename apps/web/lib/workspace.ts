@@ -1,4 +1,4 @@
-import type { Progress } from "./ui";
+import type { Booking, Progress } from "./ui";
 import { api, type Actor } from "./ui";
 import type { Portal } from "./portal";
 
@@ -58,4 +58,14 @@ export function nextStep(progress: Progress, patient = false, now = Date.now()):
       "The care team is handling this request. Automated booking actions are stopped.",
   };
   return steps[task.state] ?? task.nextAction;
+}
+
+/** A receipt describes this operation, never the appointment's mutable current booking. */
+export function savedBookingReceipt(
+  progress: Progress,
+): { confirmationRef: string; booking: Booking | null } | null {
+  const result = progress.operation?.result;
+  return result?.confirmationRef
+    ? { confirmationRef: result.confirmationRef, booking: result.booking ?? null }
+    : null;
 }

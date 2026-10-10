@@ -13,7 +13,7 @@ import {
 } from "../lib/ui";
 
 import Link from "next/link";
-import { nextStep } from "../lib/workspace";
+import { nextStep, savedBookingReceipt } from "../lib/workspace";
 
 type Props = {
   progress: Progress;
@@ -32,6 +32,7 @@ const closed = new Set(["completed", "withdrawn", "staff_takeover"]);
 
 export default function RequestDetail({ progress, actor, slots, busy, command }: Props) {
   const { task, workflow, activeProposal: proposal } = progress;
+  const receipt = savedBookingReceipt(progress);
   const requester = actor.id === task.requesterId;
   const staff = actor.role === "staff";
   const [slotId, setSlotId] = useState("");
@@ -107,12 +108,14 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
       <div className={`next-action ${task.state === "completed" ? "complete" : ""}`} role="status">
         <p className="eyebrow">{task.state === "completed" ? "CONFIRMED OUTCOME" : "NEXT STEP"}</p>
         <p>{nextStep(progress, requester)}</p>
-        {progress.operation?.result?.confirmationRef && (
+        {receipt && (
           <div className="booking-receipt">
             <strong>
-              {progress.booking ? date(progress.booking.startsAt) : "Appointment change saved"}
+              {receipt.booking
+                ? date(receipt.booking.startsAt)
+                : "Saved appointment time unavailable"}
             </strong>
-            <span>Demo scheduler receipt: {progress.operation.result.confirmationRef}</span>
+            <span>Demo scheduler receipt: {receipt.confirmationRef}</span>
           </div>
         )}
       </div>

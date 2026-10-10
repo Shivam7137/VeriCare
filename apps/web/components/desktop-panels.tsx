@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import DesktopIcon from "./desktop-icon";
-import { nextStep } from "../lib/workspace";
+import { nextStep, savedBookingReceipt } from "../lib/workspace";
 import { date, displayTimeZone, labels } from "../lib/ui";
 import { readable, taskLink, type DesktopProgress, type DesktopSnapshot } from "../lib/desktop";
 
@@ -16,7 +16,8 @@ export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
         <p className="desk-muted">Select a request to see its next step, proposal and history.</p>
       </aside>
     );
-  const { task, workflow, activeProposal, operation } = progress;
+  const { task, workflow, activeProposal } = progress;
+  const receipt = savedBookingReceipt(progress);
   const events = [...progress.events].sort(
     (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
   );
@@ -32,11 +33,11 @@ export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
         <strong>Next step</strong>
         <p>{nextStep(progress)}</p>
       </div>
-      {task.state === "completed" && operation?.result?.confirmationRef && (
+      {task.state === "completed" && receipt && (
         <div className="desk-evidence">
           <strong>Appointment change saved</strong>
-          {progress.booking && <p>{date(progress.booking.startsAt)}</p>}
-          <p>Demo scheduler receipt: {operation.result.confirmationRef}</p>
+          {receipt.booking && <p>{date(receipt.booking.startsAt)}</p>}
+          <p>Demo scheduler receipt: {receipt.confirmationRef}</p>
         </div>
       )}
       <dl className="desk-details">

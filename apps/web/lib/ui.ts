@@ -26,7 +26,7 @@ export type Progress = {
   jobs: { id: string; kind: string; status: string; dueAt: string; lastError: string | null }[];
   operation: {
     status: string;
-    result: { confirmationRef?: string } | null;
+    result: { confirmationRef?: string; booking?: Booking; status?: string } | null;
     lastError: string | null;
   } | null;
 };

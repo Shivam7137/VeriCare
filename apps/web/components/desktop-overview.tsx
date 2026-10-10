@@ -98,8 +98,7 @@ export default function DesktopOverview() {
             +
           </span>
           <span>
-            Health
-            <br />
+            Health <br />
             Coordinator
           </span>
         </Link>
