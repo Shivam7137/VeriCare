@@ -67,11 +67,14 @@ test("voice API authenticates portal sessions, isolates patients and rejects uns
   const readiness = await f.app.inject({ url: "/voice/config", headers: f.headers });
   assert.equal(readiness.statusCode, 200);
   assert.equal(readiness.json().mode, "simulated");
+  assert.equal(readiness.json().phoneNumber, liveConfig.phoneNumber);
+  assert.equal(readiness.json().allNumbersAllowed, false);
   for (const secret of [
     liveConfig.authToken!,
     liveConfig.openaiApiKey!,
-    liveConfig.phoneNumber!,
     liveConfig.accountSid!,
+    liveConfig.publicBaseUrl!,
+    ...liveConfig.allowedNumbers,
   ]) {
     assert.equal(readiness.body.includes(secret), false);
   }
