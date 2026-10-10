@@ -285,3 +285,27 @@ test("explicit provider rejection is distinguishable from an uncertain dispatch"
       error.message === "Twilio call dispatch rejected",
   );
 });
+
+test("wildcard dispatch accepts a new E.164 destination but rejects malformed numbers", async () => {
+  let attempts = 0;
+  const provider = createTwilioProvider(
+    { ...config, allowedNumbers: ["*"] },
+    {
+      calls: {
+        async create() {
+          attempts++;
+          return { sid, status: "queued" };
+        },
+      },
+    },
+  );
+  assert.deepEqual(await provider.createCall({ callId: "wildcard-call", to: "+15555550999" }), {
+    sid,
+    status: "queued",
+  });
+  await assert.rejects(
+    provider.createCall({ callId: "wildcard-call", to: "anonymous" }),
+    TwilioDispatchError,
+  );
+  assert.equal(attempts, 1);
+});

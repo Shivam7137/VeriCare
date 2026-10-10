@@ -1,6 +1,6 @@
 import twilio from "twilio";
 import type { CallListInstanceCreateOptions } from "twilio/lib/rest/api/v2010/account/call.js";
-import { E164_NUMBER, voiceReadiness, type VoiceConfig } from "./voice-config.js";
+import { voiceNumberAllowed, voiceReadiness, type VoiceConfig } from "./voice-config.js";
 
 export type TwilioCallStatus =
   | "queued"
@@ -164,8 +164,7 @@ export function createTwilioProvider(
     async createCall(input) {
       if (
         !voiceReadiness(config).liveReady ||
-        !E164_NUMBER.test(input.to) ||
-        !config.allowedNumbers.includes(input.to) ||
+        !voiceNumberAllowed(config, input.to) ||
         !/^[a-zA-Z0-9_-]{1,128}$/.test(input.callId)
       ) {
         throw new TwilioDispatchError("blocked");

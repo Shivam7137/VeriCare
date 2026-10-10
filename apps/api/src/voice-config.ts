@@ -85,7 +85,8 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
   if (enabled && enabled !== "true" && enabled !== "false") invalid.push("VOICE_LIVE_ENABLED");
   if (accountSid && !/^AC[0-9a-f]{32}$/i.test(accountSid)) invalid.push("TWILIO_ACCOUNT_SID");
   if (phoneNumber && !E164_NUMBER.test(phoneNumber)) invalid.push("TWILIO_PHONE_NUMBER");
-  if (numbers.some((number) => !E164_NUMBER.test(number))) invalid.push("VOICE_ALLOWED_NUMBERS");
+  if (numbers.some((number) => number !== "*" && !E164_NUMBER.test(number)))
+    invalid.push("VOICE_ALLOWED_NUMBERS");
   const publicBaseUrl = baseUrl ? publicOrigin(baseUrl) : undefined;
   if (baseUrl && !publicBaseUrl) invalid.push("VOICE_PUBLIC_BASE_URL");
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(realtimeModel))
@@ -113,11 +114,20 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
     phoneNumber,
     openaiApiKey: value("VOICE_OPENAI_API_KEY") ?? value("OPENAI_API_KEY"),
     publicBaseUrl,
-    allowedNumbers: [...new Set(numbers.filter((number) => E164_NUMBER.test(number)))],
+    allowedNumbers: [
+      ...new Set(numbers.filter((number) => number === "*" || E164_NUMBER.test(number))),
+    ],
     realtimeModel,
     voice,
     invalid,
   };
+}
+
+export function voiceNumberAllowed(config: VoiceConfig, number: string): boolean {
+  return (
+    E164_NUMBER.test(number) &&
+    (config.allowedNumbers.includes("*") || config.allowedNumbers.includes(number))
+  );
 }
 
 export function voiceReadiness(config: VoiceConfig): {
@@ -128,6 +138,7 @@ export function voiceReadiness(config: VoiceConfig): {
   missing: string[];
   invalid: string[];
   allowlistedNumberCount: number;
+  allNumbersAllowed: boolean;
 } {
   const requirements: [string, boolean][] = [
     ["VOICE_MODE", config.mode === "twilio"],
@@ -148,6 +159,7 @@ export function voiceReadiness(config: VoiceConfig): {
     liveReady,
     missing,
     invalid: [...config.invalid],
-    allowlistedNumberCount: config.allowedNumbers.length,
+    allowlistedNumberCount: config.allowedNumbers.filter((number) => number !== "*").length,
+    allNumbersAllowed: config.allowedNumbers.includes("*"),
   };
 }

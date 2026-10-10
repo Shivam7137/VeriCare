@@ -34,6 +34,8 @@ Keep keys in the server's private runtime environment or the ignored local `.env
 
 Entering credentials alone does not turn calls on. `npm run voice:check` reports missing/invalid variable names; `liveReady: true` establishes configuration presence only, not provider connectivity. The professional portal displays the same readiness without credentials, full numbers or account identifiers.
 
+Set `VOICE_ALLOWED_NUMBERS=*` explicitly to accept all E.164 caller and callback numbers. An empty setting still blocks live readiness. Signed Twilio webhooks, portal access codes, authenticated callback scheduling and explicit action approval remain required. Readiness reports `allNumbersAllowed: true` for this setting.
+
 Expose only these provider paths through your HTTPS reverse proxy/tunnel to API port 4100. Preserve the exact path/query, form body and `X-Twilio-Signature`; enable WebSocket upgrade for `/voice/stream`. Do not expose the local demo session endpoints. Keep the API on loopback behind the proxy, and keep the demonstration web app private.
 
 | Twilio setting or generated callback         | Method/path                     |

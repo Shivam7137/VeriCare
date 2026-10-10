@@ -14,7 +14,12 @@ import { BackendError } from "./domain.js";
 import { authenticate, type Principal } from "./identity.js";
 import { VoiceStore } from "./voice-store.js";
 import { VoiceAgent, voiceAgentInstructions, voiceAgentTools } from "./voice-agent.js";
-import { readVoiceConfig, voiceReadiness, type VoiceConfig } from "./voice-config.js";
+import {
+  readVoiceConfig,
+  voiceNumberAllowed,
+  voiceReadiness,
+  type VoiceConfig,
+} from "./voice-config.js";
 import {
   connectStreamTwiml,
   incomingTwiml,
@@ -142,7 +147,7 @@ export function registerVoiceRoutes(
         if (config.mode === "twilio") {
           if (!voiceReadiness(config).liveReady)
             throw new BackendError("voice_not_configured", 409);
-          if (!config.allowedNumbers.includes(input.to))
+          if (!voiceNumberAllowed(config, input.to))
             throw new BackendError("number_not_allowed", 400);
         }
         return reply
@@ -172,7 +177,7 @@ export function registerVoiceRoutes(
       });
       provider.post("/voice/incoming", async (request, reply) => {
         const form = request.body as Record<string, string>;
-        if (!config.allowedNumbers.includes(form.From ?? ""))
+        if (!voiceNumberAllowed(config, form.From ?? ""))
           return reply
             .type("text/xml")
             .send(hangupTwiml("This test line is not available for this number."));

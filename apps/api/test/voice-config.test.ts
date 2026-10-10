@@ -125,3 +125,14 @@ test("safe readiness omits keys, account identifiers, URL and allowlisted number
   }
   assert.equal(serialized.includes("+15555550102"), false);
 });
+
+test("an explicit wildcard permits all phone numbers without making an empty list open", () => {
+  const wildcard = readVoiceConfig({ ...liveEnv, VOICE_ALLOWED_NUMBERS: " * " });
+  assert.equal(voiceReadiness(wildcard).liveReady, true);
+  assert.deepEqual(wildcard.allowedNumbers, ["*"]);
+  assert.equal(voiceReadiness(wildcard).allowlistedNumberCount, 0);
+  assert.equal(
+    voiceReadiness(readVoiceConfig({ ...liveEnv, VOICE_ALLOWED_NUMBERS: "" })).liveReady,
+    false,
+  );
+});

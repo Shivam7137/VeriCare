@@ -231,6 +231,21 @@ test("inbound allowlist and five failed access-code attempts prevent unauthorize
   assert.equal((await f.store.bySid(sid))?.actorId, null);
 });
 
+test("wildcard callers still require signed webhooks and a valid portal access code", async (t) => {
+  const f = await fixture(t, { ...liveConfig, allowedNumbers: ["*"] });
+  const body = f.form({ From: "+15555550999" });
+  const unsigned = await f.app.inject({ method: "POST", url: "/voice/incoming", payload: body });
+  assert.equal(unsigned.statusCode, 403);
+  const incoming = await f.signed("/voice/incoming", body);
+  assert.match(incoming.body, /<Gather/);
+  assert.doesNotMatch(incoming.body, /<Stream/);
+  const wrongCode = await f.signed("/voice/verify", { ...body, Digits: "invalid" });
+  assert.doesNotMatch(wrongCode.body, /<Stream/);
+  const { code } = await f.store.issueCode(f.patient);
+  const verified = await f.signed("/voice/verify", { ...body, Digits: code });
+  assert.match(verified.body, /<Connect><Stream/);
+});
+
 test("outbound TwiML reconciles an uncertain dispatch and tolerates answered status before verification", async (t) => {
   const f = await fixture(t);
   let task = await f.service.create(f.patient, f.input);
