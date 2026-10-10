@@ -30,6 +30,7 @@ export interface RealtimeBridgeOptions {
   ): Promise<unknown>;
   onDigit(digit: string, callId: string, readbackActionId?: string): Promise<unknown>;
   onClose(callId: string, reason: string): Promise<void>;
+  onMonitor?(callId: string, entry: VoiceMonitorEntry): void;
   socketFactory?: (
     url: string,
     options: { headers: { Authorization: string }; maxPayload: number },
@@ -76,3 +77,4 @@ export function safeOutput(value: unknown): string {
   }
   return '{"ok":false,"error":"invalid_backend_result"}';
 }
+import type { VoiceMonitorEntry } from "@prc/contracts";

@@ -12,6 +12,8 @@ This is a fictional clinic demonstration. Web sessions enter automatically. Appo
 
 The directory and transfer simulator are at http://127.0.0.1:3100/professional/team (**Care team & phone**). For a hosted preview, use the same paths on its configured origin.
 
+The [call monitor](call-monitor.md) is at http://127.0.0.1:3100/professional/monitor (**Call monitor**). It follows live transcripts and tool activity, saves records for later review and exports JSON. Start with the explicitly labelled synthetic playback sample to inspect the layout without placing a call.
+
 ## Demonstrate an appointment change
 
 1. In the patient workspace, choose **New appointment request**. Select **Appointment to change** and an available **Preferred appointment**. Keep the callback window open now and finish it before the proposed appointment. Add a fictional **Request note**, then **Create request** and **Verify my request**.

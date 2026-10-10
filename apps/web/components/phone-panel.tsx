@@ -200,6 +200,8 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
           <Link href="/professional/team">
             Open the care-team directory and transfer simulator →
           </Link>
+          {" · "}
+          <Link href="/professional/monitor">Live call monitor →</Link>
         </p>
       )}
       {!professional && (
@@ -508,6 +510,11 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
             </p>
           )}
           <TransferHistory callId={call.id} portal={portal} />
+          {professional && (
+            <Link className="button-link" href={`/professional/monitor?call=${call.id}`}>
+              View transcript & tool activity →
+            </Link>
+          )}
           {!professional &&
             !["completed", "cancelled", "failed", "handoff", "transferring"].includes(
               call.status,

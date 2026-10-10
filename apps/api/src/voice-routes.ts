@@ -32,6 +32,8 @@ import { terminalCalls } from "./voice-store-support.js";
 import { createTwilioTransferProvider, transferOutcomeTwiml } from "./twilio-transfer.js";
 import { registerVoiceDirectoryRoutes } from "./voice-directory-routes.js";
 import type { TransferProvider } from "./voice-transfers.js";
+import { VoiceMonitorStore } from "./voice-monitor-store.js";
+import { RealtimeMonitor } from "./realtime-monitor.js";
 
 type CallParams = { Params: { id: string } };
 export function registerVoiceRoutes(
@@ -42,6 +44,7 @@ export function registerVoiceRoutes(
   const config = options.config ?? readVoiceConfig();
   const now = options.now ?? (() => new Date());
   const store = new VoiceStore(pool, { now });
+  const monitor = new VoiceMonitorStore(pool);
   const agent = new VoiceAgent(pool, {
     now,
     ownNumber: config.phoneNumber,
@@ -62,6 +65,7 @@ export function registerVoiceRoutes(
         await Promise.allSettled(active.map((connection) => connection.finished));
       }
       connections.clear();
+      await monitor.flush();
     });
     voice.setErrorHandler((error, _request, reply) => {
       if (error instanceof BackendError)
@@ -98,7 +102,8 @@ export function registerVoiceRoutes(
           },
         ],
         storesAudio: false,
-        storesTranscripts: false,
+        storesTranscripts: true,
+        transcriptStorage: "database",
       }));
       api.post("/voice/access-codes", async (request) => {
         const input = voiceAccessCodeInputSchema.parse(request.body);
@@ -115,6 +120,13 @@ export function registerVoiceRoutes(
       api.get<CallParams>("/voice/calls/:id", (request) =>
         store.get(actor(request), request.params.id),
       );
+      api.get<CallParams>("/voice/calls/:id/monitor", async (request, reply) => {
+        if (!["staff", "operator"].includes(actor(request).role))
+          throw new BackendError("forbidden", 403);
+        const call = await store.get(actor(request), request.params.id);
+        reply.header("Cache-Control", "no-store");
+        return { ...(await monitor.read(call.id)), streamConnected: connections.has(call.id) };
+      });
       api.post<CallParams>("/voice/calls/:id/verify", async (request) => {
         const call = await store.get(actor(request), request.params.id);
         if (call.mode !== "simulated" || call.actorId !== actor(request).id)
@@ -126,7 +138,19 @@ export function registerVoiceRoutes(
         if (call.mode !== "simulated" || call.actorId !== actor(request).id)
           throw new BackendError("forbidden", 403);
         const input = voiceToolInputSchema.parse(request.body);
-        return agent.run(call.id, input.toolCallId, input.name, input.arguments);
+        const capture = new RealtimeMonitor((entry) => monitor.capture(call.id, entry));
+        capture.toolStarted(input.toolCallId, input.name, input.arguments);
+        try {
+          const result = await agent.run(call.id, input.toolCallId, input.name, input.arguments);
+          capture.toolFinished(input.toolCallId, result);
+          return result;
+        } catch (error) {
+          capture.toolFinished(input.toolCallId, {
+            ok: false,
+            error: error instanceof BackendError ? error.code : "tool_failed",
+          });
+          throw error;
+        }
       });
       api.post<CallParams>("/voice/calls/:id/confirm", async (request) => {
         const call = await store.get(actor(request), request.params.id);
@@ -257,6 +281,7 @@ export function registerVoiceRoutes(
           voice: config.voice,
           instructions: `${voiceAgentInstructions}\nCurrent server time is ${now().toISOString()} UTC. The fictional clinic uses America/Halifax. Ask the caller to confirm exact dates and time zone for relative expressions such as next week.`,
           tools: voiceAgentTools,
+          onMonitor: (callId, entry) => monitor.capture(callId, entry),
           verifyStart: async ({ callSid, customParameters }) => {
             const verified = await store.claimStream(
               customParameters.callId ?? "",
@@ -299,6 +324,7 @@ export function registerVoiceRoutes(
             clearTimeout(timer);
             connections.delete(callId);
             await store.streamClosed(callId, reason);
+            await monitor.flush();
           },
         });
         activeConnections.add(connection);

@@ -32,6 +32,11 @@ test("directory is the only PATCH route", () => {
 });
 
 test("backend requests require a bearer-shaped header before API authentication", () => {
+  assert.equal(
+    gatewayPath("GET", "/backend/voice/calls/call-1/monitor", authorization),
+    "/voice/calls/call-1/monitor",
+  );
+  assert.equal(gatewayPath("GET", "/backend/voice/calls/call-1/monitor"), null);
   for (const header of [undefined, "", "Basic test", "Bearer short"]) {
     assert.equal(gatewayPath("GET", "/backend/me", header), null);
   }

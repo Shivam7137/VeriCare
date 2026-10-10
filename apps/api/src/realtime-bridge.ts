@@ -1,4 +1,5 @@
 import WebSocket from "ws";
+import { RealtimeMonitor, transcriptionModel } from "./realtime-monitor.js";
 
 import {
   identifier,
@@ -21,6 +22,9 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
   let upstream: BridgeSocket | undefined;
   let started = false;
   let callId: string | undefined;
+  const monitor = new RealtimeMonitor((entry) => {
+    if (callId) options.onMonitor?.(callId, entry);
+  });
   let streamSid: string | undefined;
   let closed = false;
   let closeReason = "bridge_closed";
@@ -79,6 +83,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
 
   function close(reason = "bridge_closed") {
     if (closed) return;
+    monitor.close(reason);
     closed = true;
     closeReason = reason;
     clearTimeout(startTimer);
@@ -135,6 +140,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
         audio: {
           input: {
             format: { type: "audio/pcmu" },
+            transcription: { model: transcriptionModel },
             turn_detection: {
               type: "server_vad",
               create_response: false,
@@ -167,6 +173,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
   }
 
   function interrupt(discardPendingResponse = true) {
+    monitor.interrupt(activeResponse);
     if (discardPendingResponse) responseNeeded = false;
     if (readback && !readbackPlayed())
       readback = { actionId: readback.actionId, hadAudio: false, completed: false };
@@ -325,11 +332,14 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
       /* Return a bounded error below. */
     }
     if (!record(args) || !options.tools.some((tool) => tool.name === name)) {
+      monitor.toolStarted(toolCallId, name, {});
+      monitor.toolFinished(toolCallId, { ok: false, error: "invalid_tool_request" });
       toolOutput(toolCallId, { ok: false, error: "invalid_tool_request" });
       flushResponse();
       return;
     }
     const toolArgs = args;
+    monitor.toolStarted(toolCallId, name, toolArgs);
     queueAction(async () => {
       let result: unknown;
       try {
@@ -337,6 +347,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
       } catch {
         result = { ok: false, error: "tool_failed" };
       }
+      monitor.toolFinished(toolCallId, result);
       if (!closed) toolOutput(toolCallId, result);
     });
   }
@@ -367,7 +378,15 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
     digits.set(event.sequenceNumber, digit);
     // A press is evidence only for an existing, fully played action. Never queue
     // keypad input behind a tool which may create or replace the pending action.
-    if (pendingActions || (digit === "1" && !readbackPlayed())) return;
+    if (pendingActions || (digit === "1" && !readbackPlayed())) {
+      monitor.event("keypad", "Keypad action ignored", {
+        reason: pendingActions ? "tool_in_progress" : "readback_not_fully_played",
+      });
+      return;
+    }
+    monitor.event("keypad", "Caller keypad action", {
+      action: digit === "1" ? "Approve" : digit === "2" ? "Cancel" : "Other key",
+    });
     const readbackActionId = readback?.actionId;
     if (digit === "1" || digit === "2") readback = undefined;
     interrupt();
@@ -378,6 +397,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
       } catch {
         result = { ok: false, error: "keypad_action_failed" };
       }
+      monitor.event("keypad", "Keypad result", { result });
       if (closed) return;
       send(upstream, {
         type: "conversation.item.create",
@@ -402,6 +422,12 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
       const event = parseFrame(data, maxMessageBytes);
       if (event.type === "session.updated" && configured && !ready) {
         ready = true;
+        monitor.event("session", "Voice connected", {
+          model: options.model ?? "gpt-realtime",
+          voice: options.voice ?? "marin",
+          transcriptionModel,
+          instructions: options.instructions,
+        });
         clearTimeout(setupTimer);
         for (const audio of pendingAudio)
           send(upstream, { type: "input_audio_buffer.append", audio });
@@ -418,8 +444,10 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
           cancellationRequests.has(error.event_id)
         )
           return;
+        monitor.receive(event);
         close("upstream_error");
       } else if (ready) {
+        monitor.receive(event);
         switch (event.type) {
           case "response.created": {
             if (!record(event.response) || !identifier(event.response.id) || activeResponse) {
@@ -515,6 +543,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
         return;
       }
       callId = verified.callId;
+      monitor.event("session", "Verified call stream opened");
       if (closed) return;
       clearTimeout(startTimer);
       setupTimer = setTimeout(

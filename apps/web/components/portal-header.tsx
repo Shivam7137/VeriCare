@@ -5,11 +5,13 @@ export default function PortalHeader({
   requestId,
   patientId,
   team = false,
+  monitor = false,
 }: {
   portal?: Portal;
   requestId?: string;
   patientId?: string;
   team?: boolean;
+  monitor?: boolean;
 }) {
   const query = requestId ? `?request=${encodeURIComponent(requestId)}` : "";
   return (
@@ -34,11 +36,17 @@ export default function PortalHeader({
           </>
         ) : portal ? (
           <>
-            <Link href={`/professional${query}`} aria-current={!team ? "page" : undefined}>
+            <Link
+              href={`/professional${query}`}
+              aria-current={!team && !monitor ? "page" : undefined}
+            >
               Requests
             </Link>
             <Link href="/professional/team" aria-current={team ? "page" : undefined}>
               Care team & phone
+            </Link>
+            <Link href="/professional/monitor" aria-current={monitor ? "page" : undefined}>
+              Call monitor
             </Link>
             {patientId === "synthetic-patient-001" && (
               <Link href={`/patient${query}`}>Patient view →</Link>

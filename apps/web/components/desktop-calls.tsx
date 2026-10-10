@@ -119,6 +119,9 @@ export default function DesktopCalls({ calls }: { calls: DesktopCall[] }) {
           )}
           {call.lastError && <p className="desk-warning">{readable(call.lastError)}</p>}
           <TransferHistory callId={call.id} />
+          <Link className="desk-text-link" href={`/professional/monitor?call=${call.id}`}>
+            View transcript & tool activity <DesktopIcon name="external" />
+          </Link>
           {call.taskId ? (
             <Link className="desk-text-link" href={taskLink(call.taskId)}>
               Open linked request <DesktopIcon name="external" />
