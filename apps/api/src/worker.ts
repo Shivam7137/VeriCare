@@ -1,6 +1,7 @@
 import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import type { Pool } from "pg";
+import { runVoiceWorker } from "./voice-worker.js";
 import { createPool } from "./db.js";
 import { dispatchDueJobs } from "./delivery.js";
 import { lockTask, readWorkflow, saveTaskEvent, saveWorkflow, transaction } from "./domain.js";
@@ -69,7 +70,8 @@ export async function runWorkerOnce(
   const expired = await expirePendingTasks(pool, now());
   const delivery = await dispatchDueJobs(pool, { now, limit: 100 });
   const operations = await new BookingExecutor(pool, { scheduler, now }).recover(100);
-  return { expired, delivery, operations };
+  const calls = await runVoiceWorker(pool, { now });
+  return { expired, delivery, operations, calls };
 }
 
 async function main() {
@@ -92,6 +94,7 @@ async function main() {
           once ||
           result.expired ||
           result.operations.length ||
+          result.calls.length ||
           Object.values(result.delivery).some(Boolean)
         )
           console.log(
@@ -100,6 +103,7 @@ async function main() {
               expired: result.expired,
               delivery: result.delivery,
               operations: result.operations.length,
+              calls: result.calls.length,
               errors: result.operations.filter((item) => item.status === "error").length,
             }),
           );

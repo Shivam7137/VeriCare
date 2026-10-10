@@ -20,7 +20,9 @@ npm run demo:credentials
 npm run dev
 ```
 
-Open the local web app on port 3100. Choose **Patient** to create and verify a request, **Staff** to propose and approve a time, then **Patient** again to confirm after the simulated callback. The worker saves the booking result automatically. **Operator** provides a read-only overview. All displayed and entered times are UTC. The API runs on port 4100 and this project's database on port 55439. `dev` starts the API, web page and durable worker. Local bearer sessions are saved in ignored `.env.sessions.json` with restricted file permissions; token values are never logged. Stop the app with Ctrl+C. `npm run db:stop` stops only this project's database and preserves its volume.
+Open the local web app on port 3100. The homepage links to separate **Patient** (`/patient`) and **Healthcare professional** (`/professional`) portals. Create and verify a patient request; use the professional staff account to propose and approve a time; then confirm in the patient portal after the simulated callback. Both portals can stay signed in independently. The worker saves the booking result automatically. **Operator** provides a read-only overview. All displayed and entered times are UTC. The API runs on port 4100 and this project's database on port 55439. `dev` starts the API, web page and durable worker. Local bearer sessions are saved in ignored `.env.sessions.json` with restricted file permissions; token values are never logged. Stop the app with Ctrl+C. `npm run db:stop` stops only this project's database and preserves its volume.
+
+The patient portal also supports simulated incoming calls, scheduled callbacks and explicit approval of AI-prepared actions. The professional portal shows calls and handovers. No provider keys are needed for simulation. See [phone and AI setup](docs/phone-setup.md) for Twilio/OpenAI configuration, agent behavior and the later live-call check. `npm run voice:check` checks configuration without placing calls.
 
 Optional local checks:
 
@@ -48,4 +50,4 @@ Start with [the source brief](docs/team-guide.md) and [contributing](CONTRIBUTIN
 
 The [eight GitHub issues](https://github.com/Shivam7137/patient-request-coordination/issues) and [demonstration milestone](https://github.com/Shivam7137/patient-request-coordination/milestone/1) are optional planning aids. See [setup verification](docs/setup-verification.md) for historical checks and [GitHub settings](docs/github-settings.md) for the current lightweight configuration.
 
-This private repository has no open-source license grant. Hosting, paid services, live voice, hospital connectors, and collaborator invitations are outside this setup.
+This private repository has no open-source license grant. Hosting, paid provider activation, live-call validation, hospital connectors, and collaborator invitations are outside this local setup.

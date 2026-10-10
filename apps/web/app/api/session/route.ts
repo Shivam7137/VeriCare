@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { NextRequest } from "next/server";
-import { backend, guardDemo, json, SESSION_COOKIE } from "../../../lib/demo-server";
+import { backend, guardDemo, json, portalSession, requestPortal } from "../../../lib/demo-server";
+import { permitsRole, portalCookies } from "../../../lib/portal";
 
 export const runtime = "nodejs";
 const accounts = {
@@ -13,11 +14,11 @@ const accounts = {
 export async function GET(request: NextRequest) {
   const denied = guardDemo(request);
   if (denied) return denied;
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return json({ error: "unauthorized" }, 401);
+  const portal = requestPortal(request);
+  if (!portal) return json({ error: "invalid_portal" }, 400);
   try {
-    const response = await backend("/me", token);
-    return json(await response.json(), response.status);
+    const session = await portalSession(request, portal);
+    return session instanceof Response ? session : json(session.actor);
   } catch {
     return json({ error: "service_unavailable" }, 503);
   }
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const denied = guardDemo(request);
   if (denied) return denied;
+  const portal = requestPortal(request);
+  if (!portal) return json({ error: "invalid_portal" }, 400);
   let persona: keyof typeof accounts;
   try {
     const input = await request.json();
@@ -35,6 +38,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return json({ error: "invalid_input" }, 400);
   }
+  if (!permitsRole(portal, persona)) return json({ error: "portal_role_not_allowed" }, 403);
   try {
     // Next runs from apps/web; credentials stay outside the public directory and Git.
     const saved = JSON.parse(
@@ -45,8 +49,15 @@ export async function POST(request: NextRequest) {
       return json({ error: "demo_session_expired" }, 401);
     const response = await backend("/me", session.token);
     if (!response.ok) return json({ error: "demo_session_expired" }, response.status);
-    const result = json(await response.json());
-    result.cookies.set(SESSION_COOKIE, session.token, {
+    const actor = await response.json();
+    if (
+      actor.id !== accounts[persona] ||
+      actor.role !== persona ||
+      !permitsRole(portal, actor.role)
+    )
+      return json({ error: "portal_role_not_allowed" }, 403);
+    const result = json(actor);
+    result.cookies.set(portalCookies[portal], session.token, {
       httpOnly: true,
       sameSite: "strict",
       secure: request.nextUrl.protocol === "https:",
@@ -62,10 +73,13 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const denied = guardDemo(request);
   if (denied) return denied;
+  const portal = requestPortal(request);
+  if (!portal) return json({ error: "invalid_portal" }, 400);
   const result = json({ signedOut: true });
-  result.cookies.set(SESSION_COOKIE, "", {
+  result.cookies.set(portalCookies[portal], "", {
     httpOnly: true,
     sameSite: "strict",
+    secure: request.nextUrl.protocol === "https:",
     path: "/api",
     maxAge: 0,
   });

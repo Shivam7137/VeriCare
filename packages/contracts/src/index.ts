@@ -189,3 +189,32 @@ export const agentToolInputSchema = z.discriminatedUnion("tool", [
 export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 export type ProposeInput = z.infer<typeof proposeInputSchema>;
 export type DecisionInput = z.infer<typeof decisionInputSchema>;
+
+export const voiceAccessCodeInputSchema = z.strictObject({
+  taskId: z.string().min(1).max(200).optional(),
+});
+export const voiceVerifyInputSchema = z.strictObject({ code: z.string().regex(/^\d{8}$/) });
+export const voiceCallbackInputSchema = z.strictObject({
+  taskId: z.string().min(1).max(200),
+  to: z.string().regex(/^\+[1-9]\d{7,14}$/),
+  dueAt: z.iso.datetime(),
+});
+export const voiceToolInputSchema = z.strictObject({
+  toolCallId: z.string().min(1).max(100),
+  name: z.enum([
+    "get_request_status",
+    "list_appointments",
+    "list_available_slots",
+    "prepare_request",
+    "prepare_callback",
+    "prepare_confirmation",
+    "prepare_withdrawal",
+    "request_human",
+  ]),
+  arguments: z.record(z.string(), z.unknown()),
+});
+export const voiceConfirmInputSchema = z.strictObject({ actionId: z.string().uuid() });
+export const voiceRequestInputSchema = createTaskInputSchema.omit({ patientId: true });
+export const voiceDecisionInputSchema = z.strictObject({ response: z.enum(["approve", "reject"]) });
+export const voiceCallbackWindowInputSchema = z.strictObject({ callbackWindow: timeWindowSchema });
+export const voiceEmptyInputSchema = z.strictObject({});

@@ -5,8 +5,12 @@ import type { Task } from "@prc/contracts";
 import { api, date, labels, type Actor, type Progress, type Queue, type Slot } from "../lib/ui";
 import RequestDetail from "./request-detail";
 import RequestForm from "./request-form";
+import PhonePanel from "./phone-panel";
+import PortalHeader from "./portal-header";
+import type { Portal } from "../lib/portal";
 
-export default function Dashboard() {
+export default function Dashboard({ portal }: { portal: Portal }) {
+  const patientPortal = portal === "patient";
   const [actor, setActor] = useState<Actor | null>(null);
   const [tasks, setTasks] = useState<Progress[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -25,10 +29,22 @@ export default function Dashboard() {
     const version = ++refreshId.current,
       identity = generation.current;
     const [requests, availability, currentBooking, operatorQueue] = await Promise.all([
-      api<{ tasks: Progress[] }>("/api/backend/tasks"),
-      api<{ slots: Slot[] }>("/api/backend/slots?patientId=synthetic-patient-001"),
-      api<{ startsAt: string }>("/api/backend/bookings/synthetic-appointment-001"),
-      actor.role === "operator" ? api<Queue>("/api/backend/operator/queue") : Promise.resolve(null),
+      api<{ tasks: Progress[] }>("/api/backend/tasks", undefined, undefined, portal),
+      api<{ slots: Slot[] }>(
+        "/api/backend/slots?patientId=synthetic-patient-001",
+        undefined,
+        undefined,
+        portal,
+      ),
+      api<{ startsAt: string }>(
+        "/api/backend/bookings/synthetic-appointment-001",
+        undefined,
+        undefined,
+        portal,
+      ),
+      actor.role === "operator"
+        ? api<Queue>("/api/backend/operator/queue", undefined, undefined, portal)
+        : Promise.resolve(null),
     ]);
     if (identity !== generation.current || version !== refreshId.current) return;
     setTasks(requests.tasks);
@@ -38,12 +54,14 @@ export default function Dashboard() {
     setSelectedId((id) =>
       requests.tasks.some((item) => item.task.id === id) ? id : (requests.tasks[0]?.task.id ?? ""),
     );
-  }, [actor]);
+  }, [actor, portal]);
   useEffect(() => {
     let active = true;
-    fetch("/api/session", { cache: "no-store" })
+    fetch("/api/session", { cache: "no-store", headers: { "x-prc-portal": portal } })
       .then(async (response) => {
         if (response.ok && active) setActor(await response.json());
+        else if (response.status !== 401 && active)
+          setError("Your portal session could not be restored. Sign in to try again.");
       })
       .catch(() => {
         if (active) setError("The local server is unavailable. Refresh to try again.");
@@ -54,7 +72,7 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [portal]);
   useEffect(() => {
     if (!actor || busy) return;
     let active = true;
@@ -75,6 +93,11 @@ export default function Dashboard() {
     };
   }, [actor, refresh, busy]);
   const selected = tasks.find((item) => item.task.id === selectedId);
+  const accountChoices: Actor["role"][] = patientPortal
+    ? actor
+      ? []
+      : ["patient"]
+    : ["staff", "operator"];
   async function switchAccount(persona: Actor["role"]) {
     setBusy(true);
     setError("");
@@ -88,7 +111,7 @@ export default function Dashboard() {
     setBooking(null);
     setCreating(false);
     try {
-      setActor(await api<Actor>("/api/session", { persona }));
+      setActor(await api<Actor>("/api/session", { persona }, "POST", portal));
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -98,7 +121,7 @@ export default function Dashboard() {
   async function signOut() {
     setBusy(true);
     try {
-      await api("/api/session", undefined, "DELETE");
+      await api("/api/session", undefined, "DELETE", portal);
       generation.current++;
       refreshId.current++;
       setActor(null);
@@ -106,6 +129,7 @@ export default function Dashboard() {
       setSlots([]);
       setQueue(null);
       setBooking(null);
+      setCreating(false);
       setError("");
       setNotice("");
     } catch (cause) {
@@ -120,7 +144,7 @@ export default function Dashboard() {
     setNotice("");
     refreshId.current++;
     try {
-      const result = await api<Task>(`/api/backend/${path}`, input);
+      const result = await api<Task>(`/api/backend/${path}`, input, "POST", portal);
       setSelectedId(result.id);
       if (created) setCreating(false);
       setNotice(
@@ -137,42 +161,50 @@ export default function Dashboard() {
     }
   }
   return (
-    <main>
-      <header>
-        <a href="/" className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            +
-          </span>
-          Care coordination
-        </a>
-        <span className="badge">Synthetic demo · One department</span>
-      </header>
+    <main className={`portal-workspace ${portal}-portal`}>
+      <PortalHeader portal={portal} />
       <section className="intro">
         <div>
-          <p className="eyebrow">APPOINTMENT REQUESTS</p>
+          <p className="eyebrow">
+            {patientPortal ? "PATIENT PORTAL" : "HEALTHCARE PROFESSIONAL PORTAL"}
+          </p>
           <h1>
-            A clear next step.
+            {patientPortal ? "Your care. Your next step." : "Keep care moving."}
             <br />
-            <span>Every step of the way.</span>
+            <span>{patientPortal ? "We’ll help you get there." : "One request at a time."}</span>
           </h1>
           <p className="lede">
-            Request a new time, review the proposal, and follow your appointment through to
-            confirmation.
+            {patientPortal
+              ? "Request a new time, review your proposal, and follow your appointment through to confirmation."
+              : "Review department requests, approve appointment proposals, and coordinate patient follow-up."}
           </p>
         </div>
         <div className="demo-note">
           <span className="dot" />
           Local demonstration
-          <p>Fictional appointments and simulated callbacks. No real messages are sent.</p>
+          <p>
+            Fictional appointments and phone assistance. Simulation is available without provider
+            credentials.
+          </p>
         </div>
       </section>
       <section className="account-bar" aria-label="Demo account">
         <div>
           <p className="eyebrow">DEMO ACCOUNT</p>
-          <span>{actor ? `Signed in as ${actor.role}` : "Choose a view to get started"}</span>
+          <span>
+            {actor
+              ? actor.role === "patient"
+                ? "Your patient workspace"
+                : actor.role === "staff"
+                  ? "Staff review · Proposals and approvals"
+                  : "Operator monitoring · Read only"
+              : patientPortal
+                ? "Sign in to manage your appointments"
+                : "Choose your professional workspace"}
+          </span>
         </div>
         <div className="account-options">
-          {(["patient", "staff", "operator"] as const).map((role) => (
+          {accountChoices.map((role) => (
             <button
               key={role}
               aria-pressed={actor?.role === role}
@@ -180,7 +212,11 @@ export default function Dashboard() {
               className={actor?.role === role ? "selected" : ""}
               onClick={() => switchAccount(role)}
             >
-              {role.charAt(0).toUpperCase() + role.slice(1)}
+              {role === "patient"
+                ? "Sign in as demo patient"
+                : role === "staff"
+                  ? "Staff review"
+                  : "Operator monitoring"}
             </button>
           ))}
         </div>
@@ -206,16 +242,24 @@ export default function Dashboard() {
       {loading ? (
         <section className="panel empty">Connecting to your workspace…</section>
       ) : !actor ? (
-        <section className="panel welcome">
-          <p className="eyebrow">TRY THE COMPLETE JOURNEY</p>
-          <h2>Start as a patient. Review as staff.</h2>
-          <p>
-            Create and verify a request in the patient view. Switch to staff to propose and approve
-            a time, then return to the patient view to confirm after the simulated callback.
+        <section className="panel welcome" id="requests">
+          <p className="eyebrow">
+            {patientPortal ? "YOUR APPOINTMENT WORKSPACE" : "YOUR DEPARTMENT WORKSPACE"}
           </p>
-          <p className="muted">
-            The worker records the booking outcome automatically. The operator view follows progress
-            across the queue.
+          <h2>
+            {patientPortal
+              ? "A new time starts with a request."
+              : "Turn patient requests into clear next steps."}
+          </h2>
+          <p>
+            {patientPortal
+              ? "Sign in with the fictional patient account to share your availability, review a proposed time, and confirm after your agreed callback."
+              : "Use Staff review to propose and approve appointment times. Operator monitoring provides a read-only overview of callbacks, outstanding actions, and booking outcomes."}
+          </p>
+          <p className="muted" id="phone">
+            {patientPortal
+              ? "Phone assistance is available after sign-in to help you follow progress or request a callback."
+              : "Phone activity and handovers appear after sign-in. Patients make their own confirmations in the separate patient portal."}
           </p>
           <details>
             <summary>Local setup help</summary>
@@ -228,7 +272,7 @@ export default function Dashboard() {
         </section>
       ) : (
         <>
-          <section className="stats" aria-label="Overview">
+          <section className="stats" id="requests" aria-label="Overview">
             <div>
               <span>Requests</span>
               <strong>{tasks.length}</strong>
@@ -254,7 +298,11 @@ export default function Dashboard() {
               </>
             ) : (
               <div className="current-booking">
-                <span>Current appointment · Demo patient</span>
+                <span>
+                  {patientPortal
+                    ? "Your current appointment"
+                    : "Current appointment · Demo patient"}
+                </span>
                 <strong>{booking ? date(booking.startsAt) : "Loading…"}</strong>
               </div>
             )}
@@ -338,6 +386,14 @@ export default function Dashboard() {
                   <p>Your saved request and its next step will appear here.</p>
                 </section>
               )}
+              <div id="phone">
+                <PhonePanel
+                  key={`${actor.id}:${creating ? "new" : selectedId}`}
+                  actor={actor}
+                  taskId={creating ? undefined : selected?.task.id}
+                  portal={portal}
+                />
+              </div>
             </div>
           </div>
         </>

@@ -1,4 +1,5 @@
 import type { ProposalDraft, Task } from "@prc/contracts";
+import { isPortal, type Portal } from "./portal";
 
 export type Actor = { id: string; role: "patient" | "staff" | "operator" };
 export type Slot = { id: string; startsAt: string; endsAt: string; available: boolean };
@@ -64,6 +65,9 @@ export function windowInput(start: string, end: string): Window {
   };
 }
 const errors: Record<string, string> = {
+  invalid_portal: "Open the patient or healthcare professional portal to continue.",
+  portal_role_not_allowed:
+    "This account cannot use this portal. Sign in with the portal's demo account.",
   unauthorized: "Your demo session ended. Choose a demo account to sign in again.",
   demo_session_expired:
     "The local demo session expired. Renew it with the setup instructions below.",
@@ -83,10 +87,18 @@ const errors: Record<string, string> = {
   storage_unavailable: "The backend is temporarily unavailable. Your saved requests are preserved.",
   service_unavailable: "Cannot reach the backend. Check that the API and database are running.",
 };
-export async function api<T>(path: string, body?: unknown, method?: string): Promise<T> {
+export async function api<T>(
+  path: string,
+  body?: unknown,
+  method?: string,
+  portal?: Portal,
+): Promise<T> {
+  const segment =
+    typeof window === "undefined" ? undefined : window.location.pathname.split("/")[1];
+  const scope = portal ?? (isPortal(segment) ? segment : undefined);
   const response = await fetch(path, {
     method: method ?? (body ? "POST" : "GET"),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(scope ? { "x-prc-portal": scope } : {}) },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });

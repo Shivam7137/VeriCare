@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { proposalDraftSchema, taskEventSchema, taskSchema } from "@prc/contracts";
 import type { Pool } from "pg";
+import { registerVoiceRoutes } from "./voice-routes.js";
 import { registerBackendRoutes } from "./backend-routes.js";
 
 export function buildApp(pool: Pool, demoEnabled = false) {
@@ -28,7 +29,11 @@ export function buildApp(pool: Pool, demoEnabled = false) {
         (SELECT 1 FROM action_requests LIMIT 1),
         (SELECT 1 FROM booking_operations LIMIT 1),
         (SELECT 1 FROM communication_jobs LIMIT 1),
-        (SELECT 1 FROM mock_deliveries LIMIT 1)`);
+        (SELECT 1 FROM mock_deliveries LIMIT 1),
+        (SELECT 1 FROM voice_calls LIMIT 1),
+        (SELECT 1 FROM voice_access_codes LIMIT 1),
+        (SELECT 1 FROM voice_events LIMIT 1),
+        (SELECT 1 FROM voice_tool_results LIMIT 1)`);
       return { status: "ready" };
     } catch {
       return reply
@@ -90,5 +95,6 @@ export function buildApp(pool: Pool, demoEnabled = false) {
     });
   }
   registerBackendRoutes(app, pool);
+  registerVoiceRoutes(app, pool);
   return app;
 }

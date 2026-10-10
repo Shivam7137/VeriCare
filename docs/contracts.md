@@ -150,6 +150,28 @@ Reload progress after a 409 and decide from the current state rather than blindl
 
 ## Basic web demo adapter
 
-The loopback Next.js app exposes `/api/session` (GET identity, POST `{persona:"patient"|"staff"|"operator"}`, DELETE sign out) only with `ENABLE_SYNTHETIC_DEMO=true`. It reads existing locally provisioned sessions; it cannot create new backend principals, roles, or sessions. The browser receives an HttpOnly, SameSite=Strict cookie and identity JSON without the token. Mutating requests require an Origin matching the loopback host on port 3100.
+The loopback Next.js app exposes `/api/session` (GET identity, POST `{persona:"patient"|"staff"|"operator"}`, DELETE sign out) only with `ENABLE_SYNTHETIC_DEMO=true`. Every session/proxy request includes `X-PRC-Portal: patient|professional`. The two portals have separate HttpOnly, SameSite=Strict cookies; patient permits only the patient role, professional permits staff/operator. Each proxy request rechecks the backend identity against that portal. It reads existing locally provisioned sessions; it cannot create new backend principals, roles, or sessions. Identity JSON never includes the bearer token. Mutating requests require an Origin matching the loopback host on port 3100.
 
-`/api/backend/*` forwards that cookie as bearer authorization only to an allowlist of task commands/reads, slots, the current booking, and the operator queue. It cannot proxy arbitrary URLs or access local files. Fastify applies the same authorization and revision checks to these requests. The frontend displays backend decisions and confirmation evidence; it has no completion or direct execution button. Time entry is explicitly UTC; polling is serialized, and disappearing appointment choices require explicit reselection.
+`/api/backend/*` forwards that cookie as bearer authorization only to an allowlist of task commands/reads, slots, the current booking, the operator queue and authenticated phone commands below. It cannot proxy arbitrary URLs, provider webhooks or local files. Fastify applies the same authorization and revision checks to these requests. The frontend displays backend decisions and confirmation evidence; it has no completion or direct execution button. Time entry is explicitly UTC; polling is serialized, and disappearing appointment choices require explicit reselection.
+
+## Phone API
+
+All paths below use the same authenticated bearer identity and current patient/department scope. Input objects reject unknown fields. Call IDs and pending action IDs are server-generated UUIDs.
+
+| Method/path                     | Input or result                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| GET `/voice/config`             | Safe readiness, agent responsibilities, audio/transcript storage flags; no credential values.    |
+| POST `/voice/access-codes`      | `{taskId?}` → `{code,expiresAt}`; active verified patient/requester only.                        |
+| POST `/voice/simulate`          | `{code}` → verified simulated call; disabled in Twilio mode.                                     |
+| GET `/voice/calls`              | `{calls}` scoped to the requester or professional department.                                    |
+| GET `/voice/calls/:id`          | Call status and limited operational events, without code/token hashes or full recipient numbers. |
+| POST `/voice/callbacks`         | `{taskId,to,dueAt}` → queued call within the agreed window; live numbers must be allowlisted.    |
+| POST `/voice/calls/:id/verify`  | `{code}` → authenticated simulated callback; assigned patient only.                              |
+| POST `/voice/calls/:id/tool`    | `{toolCallId,name,arguments}` → tool result or pending action; simulator, call owner only.       |
+| POST `/voice/calls/:id/confirm` | `{actionId}` → backend workflow result for that exact pending action; call owner only.           |
+| POST `/voice/calls/:id/cancel`  | `{}` cancels the pending action without changing the task.                                       |
+| POST `/voice/calls/:id/end`     | `{}` ends/cancels the phone session, without completing the appointment task.                    |
+
+The allowed phone tools are `get_request_status`, `list_appointments`, `list_available_slots`, `prepare_request`, `prepare_callback`, `prepare_confirmation`, `prepare_withdrawal` and `request_human`. There is no phone tool for staff approval, execution or booking completion. Read-only access can explain a completed request; mutations still enforce current state, revision, authority and exact proposal. A pending action expires after five minutes and cannot be silently replaced. Confirmation consumption is at most once; uncertain outcomes require inspecting saved request/audit state, not automatic replay.
+
+Public Twilio endpoints are separate, disabled by default, and require a valid signature for the configured public URL and account. Streaming also requires a single-use token bound to an authenticated call and its provider SID. [Phone setup](phone-setup.md) documents the URLs, live enable flags, credential handling, callback dispatch and protocol limits.

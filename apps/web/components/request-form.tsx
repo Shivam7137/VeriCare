@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { date, inputDate, windowInput, type Slot } from "../lib/ui";
 
 export default function RequestForm({
@@ -14,6 +14,7 @@ export default function RequestForm({
   create: (input: unknown) => Promise<void>;
   close: () => void;
 }) {
+  const headingId = useId();
   const [slotId, setSlotId] = useState("");
   const [start, setStart] = useState(() => inputDate());
   const [end, setEnd] = useState(() => inputDate(Date.now() + 3_600_000));
@@ -32,11 +33,11 @@ export default function RequestForm({
     });
   }
   return (
-    <section className="panel" aria-labelledby="new-heading">
+    <section className="panel" aria-labelledby={headingId}>
       <div className="panel-heading">
         <div>
           <p className="eyebrow">A NEW REQUEST</p>
-          <h2 id="new-heading">Find a better time</h2>
+          <h2 id={headingId}>Find a better time</h2>
         </div>
         <button className="quiet" onClick={close} disabled={busy}>
           Cancel

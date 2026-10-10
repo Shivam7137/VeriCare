@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isPortal, permitsRole, portalCookies, type Portal } from "./portal";
+import type { Actor } from "./ui";
 
-export const SESSION_COOKIE = "prc_demo_session";
 const loopbackHosts = new Set(["127.0.0.1:3100", "localhost:3100", "[::1]:3100"]);
 
 export function json(data: unknown, status = 200) {
@@ -28,4 +29,20 @@ export async function backend(path: string, token: string, body?: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
   });
+}
+
+export function requestPortal(request: NextRequest): Portal | null {
+  const portal = request.headers.get("x-prc-portal");
+  return isPortal(portal) ? portal : null;
+}
+
+// A cookie name chooses a workspace; the backend identity still establishes its authority.
+export async function portalSession(request: NextRequest, portal: Portal) {
+  const token = request.cookies.get(portalCookies[portal])?.value;
+  if (!token) return json({ error: "unauthorized" }, 401);
+  const response = await backend("/me", token);
+  const actor = await response.json();
+  if (!response.ok) return json(actor, response.status);
+  if (!permitsRole(portal, actor.role)) return json({ error: "portal_role_not_allowed" }, 403);
+  return { token, actor: actor as Actor };
 }

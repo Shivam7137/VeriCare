@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./portals.css";
 
 export const metadata: Metadata = {
   title: "Patient Request Coordination",

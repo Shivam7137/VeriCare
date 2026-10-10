@@ -1,0 +1,126 @@
+.portal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 12px;
+}
+.portal-nav a {
+  text-underline-offset: 5px;
+}
+.portal-welcome {
+  padding: 62px 0 36px;
+}
+.portal-welcome .lede {
+  max-width: 530px;
+}
+.portal-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.portal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 32px;
+  border: 1px solid #d5ddce;
+  border-radius: 14px;
+  background: #fbfcf7;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.portal-card:hover {
+  border-color: #58755a;
+  box-shadow: 0 6px 22px #233e3510;
+}
+.portal-symbol {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  margin-bottom: 28px;
+  color: #244d3c;
+  background: #e8ecdf;
+  font-size: 13px;
+}
+.portal-card h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.2;
+  margin-bottom: 18px;
+}
+.portal-card > p:not(.eyebrow) {
+  color: #66715e;
+  font-size: 14px;
+  max-width: 380px;
+  margin-bottom: 28px;
+}
+.portal-card-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #d5ddce;
+  font-size: 13px;
+  font-weight: 700;
+}
+.professional-card {
+  background: #edf1ee;
+}
+.professional-card .portal-symbol {
+  background: #dce5de;
+}
+.portal-demo-note {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 30px 0 0;
+  padding: 20px 24px;
+  border-radius: 10px;
+  background: #eeefe7;
+  font-size: 12px;
+}
+.portal-demo-note .dot {
+  flex-shrink: 0;
+}
+.portal-demo-note p {
+  margin: 6px 0 0;
+  color: #66715e;
+  max-width: 780px;
+}
+.professional-portal .intro .eyebrow {
+  color: #36574c;
+}
+.portal-workspace #requests,
+.portal-workspace #phone {
+  scroll-margin-top: 24px;
+}
+.portal-workspace .content,
+.portal-workspace .request-list {
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .portal-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .portal-welcome {
+    padding-top: 36px;
+  }
+  .portal-choices {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .portal-card {
+    padding: 26px;
+  }
+  .portal-workspace .account-options {
+    flex-wrap: wrap;
+  }
+}
