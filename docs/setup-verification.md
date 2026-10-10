@@ -2,6 +2,8 @@
 
 The initial implementation is commit `bcc1c45e2cb9f5657107f3db8594977fba721c7b`.
 
+These are historical setup checks. CI and automated dependency updates were subsequently removed at the user's request. Local check commands remain available, without mandatory gates.
+
 - Local Node.js 24: formatting and type checks passed, four unit checks passed, and the Next.js production build passed.
 - A real `npm run dev` launch on Windows started the web page on loopback port 3100 and API on port 4100. API health returned success. The rendered page accurately displayed the database-unavailable setup state.
 - [GitHub CI run 38019175036](https://github.com/Shivam7137/patient-request-coordination/actions/runs/38019175036) passed on a clean Linux checkout: npm ci, formatting, types, unit tests, build, and the PostgreSQL integration test.
@@ -10,4 +12,4 @@ The initial implementation is commit `bcc1c45e2cb9f5657107f3db8594977fba721c7b`.
 
 Docker Desktop was stopped locally and was left unchanged. The local PostgreSQL-backed browser state was therefore not exercised; PostgreSQL persistence was verified in CI. Full demonstration scenarios remain unimplemented as listed in acceptance.md. Repository privacy, eight open package issues, milestone, merge settings and enabled vulnerability alerts were checked through the authenticated GitHub API.
 
-Private-repository branch protection was refused by GitHub's plan restriction; see github-settings.md. Named teammates, full workflow implementation and hosting remain future project work.
+The current workspace intentionally has no branch protection or required reviews; see github-settings.md. Full workflow implementation and hosting remain future project work.

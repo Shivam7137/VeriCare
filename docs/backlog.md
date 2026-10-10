@@ -1,6 +1,6 @@
 # Team backlog
 
-Build order: A → B → C and D → integrate E, F and G → H. Use shared fixtures and mocked interfaces while dependencies are unfinished. Each package needs a named owner and a separate reviewer before implementation; the guide supplies roles, not teammate identities.
+Suggested build order: A → B → C and D → integrate E, F and G → H. Use shared fixtures and mocked interfaces while dependencies are unfinished. Packages and suggested roles are optional coordination aids. No owner assignment, separate reviewer or formal handoff is required to start experimenting.
 
 | Package           | Suggested owner       | Dependencies      | First task and completion evidence                                                                                                         |
 | ----------------- | --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -15,6 +15,6 @@ Build order: A → B → C and D → integrate E, F and G → H. Use shared fixt
 
 ## Setup already supplied
 
-Workspace structure, shared task/event schemas, synthetic T001 fixture, PostgreSQL migration and seed, a read-only demo endpoint/page, quality commands, GitHub workflow, contribution templates and repository instructions. These foundations do not close packages B, E or H.
+Workspace structure, shared task/event schemas, synthetic T001 fixture, PostgreSQL migration and seed, a read-only demo endpoint/page, optional local checks and repository instructions. These foundations do not close packages B, E or H. Automated workflows and contribution forms have been removed.
 
-Each issue should record completed, next, blocked by and help needed. Acceptance scenarios are listed in [acceptance.md](acceptance.md).
+Use issues however the team finds helpful. Acceptance scenarios are listed in [acceptance.md](acceptance.md).

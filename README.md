@@ -1,8 +1,6 @@
 # Patient Request Coordination
 
-[![CI](https://github.com/Shivam7137/patient-request-coordination/actions/workflows/ci.yml/badge.svg)](https://github.com/Shivam7137/patient-request-coordination/actions/workflows/ci.yml)
-
-A development foundation for one department's appointment-rescheduling prototype. The intended workflow carries a request through verification, a specific proposal, staff approval, patient confirmation, and a recorded scheduling outcome.
+A disposable, private workspace for experimenting with one department's appointment-rescheduling prototype. Push directly to main or use a branch and pull request when helpful. There is no CI, required review, branch protection, CODEOWNERS, or automated dependency-update workflow.
 
 **Current status: repository foundation.** The starter runs a Next.js development page and a persistent Node.js API, seeds fictional task T001 into PostgreSQL, and reads that saved task. It does not yet reschedule appointments, verify users, send reminders, or place calls. The [backlog](docs/backlog.md) defines the remaining work.
 
@@ -23,12 +21,14 @@ npm run dev
 
 Open [the development page](http://127.0.0.1:3100). The API runs on port 4100 and this project's database on port 55439. Stop the app with Ctrl+C. `npm run db:stop` stops only this project's database and preserves its volume.
 
+Optional local checks:
+
 ```sh
 npm run check
 npm run test:integration
 ```
 
-The integration command requires `DATABASE_URL` in the process environment; see [setup](docs/setup.md) for PowerShell and POSIX examples. CI creates an isolated PostgreSQL service, runs the quality checks, and checks persistence across a fresh application connection pool.
+The integration command requires `DATABASE_URL` in the process environment; see [setup](docs/setup.md) for PowerShell and POSIX examples. These commands are available locally and do not gate anyone's work.
 
 ## Workspace
 
@@ -43,8 +43,8 @@ The integration command requires `DATABASE_URL` in the process environment; see 
 | `docs/acceptance.md`   | Full demonstration scenarios and implementation status |
 | `docs/decisions.md`    | Starter choices and decisions the team still owns      |
 
-Start with [the source brief](docs/team-guide.md) and [contributing](CONTRIBUTING.md). Before coding, read [AGENTS.md](AGENTS.md). Contract changes need review. Assign named owners and reviewers when teammates are confirmed; suggested roles are not access grants.
+Start with [the source brief](docs/team-guide.md) and [contributing](CONTRIBUTING.md). Before coding, read [AGENTS.md](AGENTS.md). Let others know when shared contracts change. The backlog and suggested roles are coordination aids; an owner or reviewer assignment is not required to start.
 
-The [eight GitHub issues](https://github.com/Shivam7137/patient-request-coordination/issues) are grouped under the [first demonstration milestone](https://github.com/Shivam7137/patient-request-coordination/milestone/1). See [setup verification](docs/setup-verification.md) for evidence and [GitHub settings](docs/github-settings.md) for the private-plan branch-protection limitation.
+The [eight GitHub issues](https://github.com/Shivam7137/patient-request-coordination/issues) and [demonstration milestone](https://github.com/Shivam7137/patient-request-coordination/milestone/1) are optional planning aids. See [setup verification](docs/setup-verification.md) for historical checks and [GitHub settings](docs/github-settings.md) for the current lightweight configuration.
 
 This private repository has no open-source license grant. Hosting, paid services, live voice, hospital connectors, and collaborator invitations are outside this setup.

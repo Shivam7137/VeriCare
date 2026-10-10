@@ -17,7 +17,7 @@ npm run dev
 
 The app is at http://127.0.0.1:3100. The API is at http://127.0.0.1:4100; GET /health checks the process, GET /ready checks database/schema access, and GET /demo/tasks/T001 retrieves the fixture when explicitly enabled. An unavailable database yields a setup message in the web page, not a fabricated successful task.
 
-## Checks
+## Optional local checks
 
 ```sh
 npm run check
@@ -38,7 +38,7 @@ POSIX:
 DATABASE_URL=postgresql://prc:prc_local_only@127.0.0.1:55439/prc npm run test:integration
 ```
 
-CI supplies its own PostgreSQL service and DATABASE_URL. The persistence test recreates the application connection pool; it does not yet prove worker replay, callback survival, or scheduler reconciliation.
+No CI runs in this disposable workspace. The optional persistence test recreates the application connection pool; it does not yet prove worker replay, callback survival, or scheduler reconciliation.
 
 ## Stop and recovery
 

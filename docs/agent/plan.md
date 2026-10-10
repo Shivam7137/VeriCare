@@ -1,3 +1,3 @@
 # Planning
 
-Read the relevant backlog package, contracts and acceptance cases. State the intended outcome, dependencies, files affected, data migration implications, failure behavior and verification evidence. Settle interface changes before implementation. Do not mark a requirement complete because scaffolding exists.
+Use a brief plan only when it helps the requested work. Consult the relevant package and contract, flag overlap with teammates, and identify any data changes. No written spec, owner assignment or approval ceremony is required for this disposable workspace. Keep implemented and proposed behavior distinct.
