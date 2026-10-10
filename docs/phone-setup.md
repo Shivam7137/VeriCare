@@ -62,6 +62,8 @@ Expose only these provider paths through your HTTPS reverse proxy/tunnel to API 
 
 Allow outbound HTTPS to `api.twilio.com` and secure WebSockets to `api.openai.com`. The reverse proxy must support a persistent bidirectional connection. On a Twilio trial account, callback destinations may also need verification in Twilio. A public gateway still depends on its local API, worker, database and tunnel.
 
+The `/voice/stream` handshake validates signed WSS and HTTPS URL forms against the configured public origin, including Twilio's documented trailing-slash signature variant. This compatibility is limited to that exact GET route; POST callbacks still require their exact URL and signed form body. Twilio error [31920](https://www.twilio.com/docs/api/errors/31920) means the audio WebSocket did not upgrade successfully, even when the incoming-call webhook returned valid TwiML. Test the WSS signature as well as HTTPS when checking a tunnel.
+
 After configuring the number and public origin, explicitly enable live mode and restart API/worker. A test call from an allowlisted number should receive a brief greeting and an invitation to speak. General conversation, explaining the demo and preparing a portal-link text do not require a code. When a lookup or action needs access, the assistant asks for the eight-digit code from the relevant patient or care-team workspace. Enter it on the keypad; do not speak it aloud. Codes expire after ten minutes, are single-use, and bind to the portal identity and optional selected request. Keypad code digits stay out of the model conversation and monitor. Outbound calls also require authorization before protected actions; answering the phone is not identity verification.
 
 ## Agent and persistence behavior
