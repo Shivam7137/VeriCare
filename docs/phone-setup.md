@@ -40,7 +40,7 @@ Keep keys in the server's private runtime environment or the ignored local `.env
 | `VOICE_MODE`            | Leave `simulated` until ready; use `twilio` for provider calls.                                                                    |
 | `VOICE_LIVE_ENABLED`    | Leave `false` until ready; must explicitly be `true` to activate provider endpoints and dispatch.                                  |
 
-Entering credentials alone does not turn calls on. `npm run voice:check` reports missing/invalid variable names; `liveReady: true` establishes configuration presence only, not provider connectivity. The professional portal displays the same readiness without credentials, full numbers or account identifiers.
+Entering credentials alone does not turn calls on. `npm run voice:check` reports missing/invalid variable names; `liveReady: true` establishes configuration presence only, not provider connectivity. The professional portal displays the same readiness while hiding provider secrets and account identifiers. The public app phone line and authorized staff directory destination fields are displayed.
 
 Set `VOICE_ALLOWED_NUMBERS=*` explicitly to accept all E.164 caller and callback numbers. An empty setting still blocks live readiness. Signed Twilio webhooks, portal access codes, authenticated callback scheduling and explicit action approval remain required. Readiness reports `allNumbersAllowed: true` for this setting.
 
@@ -64,7 +64,7 @@ After configuring the number and public origin, explicitly enable live mode, res
 
 The appointment assistant uses the OpenAI Realtime GA WebSocket protocol with G.711 μ-law audio and Twilio bidirectional Media Streams. Its administrative tools list appointments/slots, read request progress, prepare a new request, callback change, proposal decision or withdrawal, and request professional help. It does not give clinical advice, approve as staff, execute a booking or assert completion without backend evidence.
 
-Mutating tools produce a five-minute pending action bound to the exact proposal/revision. The caller approves separately with keypad **1**, or cancels with **2**; the patient portal also provides explicit approval/cancellation. Spoken “yes” and model tool calls do not approve. A second preparation cannot replace a valid pending action. Stale, stopped or unauthorized requests fail backend checks. Staff cannot approve on behalf of a patient through the phone endpoint.
+Mutating tools produce a five-minute pending action bound to the exact proposal/revision. The caller approves separately with keypad **1**, or cancels with **2**. For simulated calls, the patient portal also provides explicit approval/cancellation; live approval requires caller keypad confirmation after readback. Spoken “yes” and model tool calls do not approve. A second preparation cannot replace a valid pending action. Stale, stopped or unauthorized requests fail backend checks. Staff cannot approve on behalf of a patient through the phone endpoint.
 
 Keypad approval unlocks only after the assistant's action readback finishes playing. Early keys and acknowledgements from interrupted audio do not approve an action; after an interruption the assistant can repeat the description. An approval is consumed once and recorded before the workflow command. If a crash or lost response leaves its outcome unknown, inspect the request and audit history before preparing another action; the application does not automatically replay an uncertain approval.
 
