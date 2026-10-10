@@ -34,6 +34,7 @@ test("migration upgrades a foundation database without changing saved tasks or e
       "008_voice_sms.sql",
       "009_voice_guest.sql",
       "010_voice_sms_status_evidence.sql",
+      "011_emergency_contact.sql",
     ],
   );
   assert.deepEqual((await pool.query("SELECT * FROM tasks")).rows, tasks);

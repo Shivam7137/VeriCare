@@ -1,6 +1,6 @@
 # Alex: conversational voice design
 
-Alex uses GPT-Live 1 with Cedar for speech and GPT-6 Luna for delegated backend work. The opening is one sentence introducing Alex as an AI assistant, followed by “How can I help?” The caller can explain the request before any authorization question.
+Alex uses GPT-Live 1 with Gleam for speech and GPT-6 Luna for delegated backend work. [OpenAI lists Gleam as a feminine North American voice](https://developers.openai.com/api/docs/guides/live-conversations#voice-options). The conversation prompt requests a gentle, expressive delivery, brief acknowledgment of worry, and one helpful next step. The opening is one sentence introducing Alex as an AI assistant, followed by “How can I help?” The caller can explain the request before any authorization question.
 
 ## What changed and why
 
@@ -30,3 +30,7 @@ The final test of likability is a person listening on the actual phone line. Che
 - [Delegation and tools](https://developers.openai.com/api/docs/guides/live-delegation): nested Responses events and application-owned tool execution.
 - [Managing sessions](https://developers.openai.com/api/docs/guides/live-conversations): greeting first, caption timing and playback limits.
 - [Twilio Message resource](https://www.twilio.com/docs/messaging/api/message-resource): creation acknowledgments and delivery status callbacks.
+
+## Emergency-contact scenario
+
+The focused phone scenario matches a full patient name and birthday, verifies the registered contact name and relationship, sends an eight-digit SMS code to the stored destination, and retrieves the fictional location only after keypad verification. It grants no patient or staff principal. All 137 unit tests and 201 backend tests pass, including wrong/expired/replayed codes, changed identity, concurrent attempts, duplicate sends, provider uncertainty and early delivery callbacks. Type and formatting checks pass. An independent review found no blocking issues. GPT-Live 1 accepted Gleam and the focused toolset; local and public API readiness and Twilio voice/SMS capability and routing checks pass. Automated tests use fake SMS and sockets; handset SMS receipt and the complete spoken flow require a caller-driven test.

@@ -17,6 +17,7 @@ export interface VoiceConfig {
   backendModel: string;
   departmentId: string | undefined;
   voice: string;
+  scenario: "coordination" | "emergency_contact";
   invalid: string[];
 }
 
@@ -84,8 +85,11 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
   const realtimeModel = value("OPENAI_REALTIME_MODEL") ?? "gpt-realtime";
   const liveModel = value("OPENAI_LIVE_MODEL") ?? "gpt-live-1";
   const backendModel = value("OPENAI_VOICE_BACKEND_MODEL") ?? "gpt-6-luna";
-  const voice = value("OPENAI_VOICE") ?? "cedar";
+  const voice = value("OPENAI_VOICE") ?? "gleam";
+  const scenario = value("VOICE_SCENARIO") ?? "coordination";
   const invalid: string[] = [];
+  if (scenario !== "coordination" && scenario !== "emergency_contact")
+    invalid.push("VOICE_SCENARIO");
   if (mode !== "simulated" && mode !== "twilio") invalid.push("VOICE_MODE");
   if (enabled && enabled !== "true" && enabled !== "false") invalid.push("VOICE_LIVE_ENABLED");
   if (accountSid && !/^AC[0-9a-f]{32}$/i.test(accountSid)) invalid.push("TWILIO_ACCOUNT_SID");
@@ -111,6 +115,7 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
       "verse",
       "marin",
       "cedar",
+      "gleam",
     ].includes(voice)
   )
     invalid.push("OPENAI_VOICE");
@@ -130,6 +135,7 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
     backendModel,
     departmentId: value("VOICE_DEPARTMENT_ID"),
     voice,
+    scenario: scenario === "emergency_contact" ? "emergency_contact" : "coordination",
     invalid,
   };
 }

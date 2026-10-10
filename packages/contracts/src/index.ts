@@ -214,6 +214,9 @@ export const voiceToolInputSchema = z.strictObject({
     "prepare_transfer",
     "prepare_sms",
     "get_sms_status",
+    "identify_emergency_patient",
+    "send_emergency_contact_code",
+    "get_emergency_patient_location",
   ]),
   arguments: z.record(z.string(), z.unknown()),
 });
@@ -289,3 +292,4 @@ export type VoiceTransfer = {
   lastError: string | null;
 };
 export * from "./voice-monitor.js";
+export * from "./emergency-contact.js";

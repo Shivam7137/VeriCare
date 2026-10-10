@@ -24,6 +24,8 @@ Task states normally advance through `awaiting_verification`, `awaiting_proposal
 
 ## Authority and decisions
 
+The separate emergency-contact phone scenario matches a patient's full name and birthday, checks the registered contact's name and relationship, and sends a one-time SMS code to the stored number. A successful keypad check permits a location lookup for that patient and call only. It does not bind a patient/staff principal or grant appointment authority. Fictional patient-location records and salted code hashes are stored separately; SMS previews redact the code and reuse existing signed delivery callbacks. See [the emergency-contact demo](emergency-contact-demo.md).
+
 Opaque bearer tokens identify an active, verified principal; only hashes are stored in the database. Local CLI provisioning supplies fictional identities. Patients access themselves. A representative needs an explicit, unexpired, unrevoked grant from the patient or department staff; emergency-contact status has no special power. Staff and operators are department-scoped. Operators monitor only. Identity and authority are rechecked by services, including before automated delivery and booking dispatch.
 
 Commands lock the task and compare the client's expected revision. New proposals or callback windows cancel previous decisions and pending jobs. Approval and confirmation bind to the active proposal version. Completion is backend-owned: neither client payloads, an agent tool, callback delivery nor an ended call can set it.

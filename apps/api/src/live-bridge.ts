@@ -13,6 +13,7 @@ import {
 
 export interface LiveBridgeOptions extends RealtimeBridgeOptions {
   backendModel?: string;
+  conversationInstructions?: string;
   onVerify(code: string, callId: string): Promise<unknown>;
 }
 
@@ -123,6 +124,8 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
   }
   function outcome(result: unknown) {
     if (!record(result)) return "The action outcome is unavailable. Do not claim it succeeded.";
+    if (result.status === "verified" && result.role === "emergency_contact")
+      return "Emergency contact verified for this patient only. Call get_emergency_patient_location now and share its result. Do not ask for a staff or portal code.";
     if (result.status === "verified")
       return record(result.pendingAction)
         ? `Access verified. There is still a pending action: ${String(result.pendingAction.description).slice(0, 400)} Read it back and say 'Press one to approve or two to cancel' before continuing the original request.`
@@ -257,7 +260,7 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
         clearTimeout(setupTimer);
         monitor.event("session", "GPT-Live connected", {
           model: options.model ?? "gpt-live-1",
-          voice: options.voice ?? "cedar",
+          voice: options.voice ?? "gleam",
           backendModel: options.backendModel ?? "gpt-6-luna",
           transcripts: "Native Live captions; grouping is approximate",
         });
@@ -389,10 +392,10 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
           session: {
             model: options.model ?? "gpt-live-1",
             store: false,
-            instructions: liveVoiceInstructions,
+            instructions: options.conversationInstructions ?? liveVoiceInstructions,
             audio: {
               format: { type: "audio/pcmu", rate: 8000 },
-              output: { voice: options.voice ?? "cedar" },
+              output: { voice: options.voice ?? "gleam" },
             },
             delegation: {
               type: "responses",

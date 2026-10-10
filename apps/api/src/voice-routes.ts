@@ -35,6 +35,11 @@ import { VoiceMonitorStore } from "./voice-monitor-store.js";
 import { RealtimeMonitor } from "./realtime-monitor.js";
 import { createTwilioSmsProvider } from "./twilio-sms.js";
 import { registerVoiceSmsRoutes } from "./voice-sms-routes.js";
+import {
+  emergencyBackendInstructions,
+  emergencyVoiceInstructions,
+  emergencyVoiceTools,
+} from "./emergency-voice.js";
 
 type CallParams = { Params: { id: string } };
 export function registerVoiceRoutes(
@@ -95,6 +100,7 @@ export function registerVoiceRoutes(
         model: config.liveModel,
         voice: config.voice,
         backendModel: config.backendModel,
+        scenario: config.scenario,
         authorization: "when_needed",
         smsEnabled: Boolean(agent.sms.appUrl),
         agents: [
@@ -319,8 +325,16 @@ export function registerVoiceRoutes(
           model: config.liveModel,
           backendModel: config.backendModel,
           voice: config.voice,
-          instructions: `${voiceAgentInstructions}\nCurrent server time is ${now().toISOString()} UTC. The fictional clinic uses America/Halifax. Ask the caller to confirm exact dates and time zone for relative expressions such as next week.`,
-          tools: voiceAgentTools,
+          conversationInstructions:
+            config.scenario === "emergency_contact" ? emergencyVoiceInstructions : undefined,
+          instructions: `${config.scenario === "emergency_contact" ? emergencyBackendInstructions : voiceAgentInstructions}\nCurrent server time is ${now().toISOString()} UTC. The fictional clinic uses America/Halifax. Ask the caller to confirm exact dates and time zone for relative expressions such as next week.`,
+          tools:
+            config.scenario === "emergency_contact"
+              ? [
+                  ...emergencyVoiceTools,
+                  voiceAgentTools.find((tool) => tool.name === "get_sms_status")!,
+                ]
+              : voiceAgentTools,
           onMonitor: (callId, entry) => monitor.capture(callId, entry),
           verifyStart: async ({ callSid, customParameters }) => {
             const verified = await store.claimStream(
@@ -359,17 +373,7 @@ export function registerVoiceRoutes(
           },
           onTool: (name, args, callId, toolCallId) => agent.run(callId, toolCallId, name, args),
           onDigit: (digit, callId, actionId) => agent.digit(callId, digit, actionId),
-          onVerify: async (code, callId) => {
-            await store.verifyCode(callId, code);
-            const { actor, call } = await store.bound(callId);
-            return {
-              status: "verified",
-              role: actor.role,
-              pendingAction: call.pendingAction,
-              message:
-                "Access verified. Briefly acknowledge and continue the caller's original request; do not ask them to repeat it.",
-            };
-          },
+          onVerify: (code, callId) => agent.verifyCode(callId, code),
           onClose: async (callId, reason) => {
             closed = true;
             clearTimeout(timer);

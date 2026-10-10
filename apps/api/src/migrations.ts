@@ -18,6 +18,7 @@ export async function migrate(pool: Pool) {
       "008_voice_sms.sql",
       "009_voice_guest.sql",
       "010_voice_sms_status_evidence.sql",
+      "011_emergency_contact.sql",
     ]) {
       const existing = await client.query("SELECT name FROM schema_migrations WHERE name = $1", [
         name,

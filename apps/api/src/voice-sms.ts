@@ -50,7 +50,7 @@ type SmsRow = {
   id: string;
   call_id: string;
   tool_call_id: string;
-  template: SmsTemplate;
+  template: SmsTemplate | "emergency_verification";
   appointment_id: string | null;
   actor_id: string | null;
   mode: "simulated" | "twilio";
@@ -297,6 +297,8 @@ export class VoiceSms {
     const prepared = await transaction(this.pool, async (db) => {
       const call = await callRow(db, callId, true);
       const row = await smsRow(db, id, true);
+      if (row.template === "emergency_verification")
+        throw new BackendError("verification_sms_not_pending_action", 409);
       if (row.call_id !== callId) throw new BackendError("not_found", 404);
       if (row.status !== "prepared") return { send: false, row };
       if (

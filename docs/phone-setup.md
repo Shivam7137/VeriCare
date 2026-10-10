@@ -1,5 +1,7 @@
 # Patient, professional and phone workspaces
 
+For the focused emergency-contact patient-location conversation, see [the emergency phone demo](emergency-contact-demo.md). `VOICE_SCENARIO=emergency_contact` uses an SMS verification code for the registered contact; it does not ask for portal or staff codes. The appointment and directory instructions below describe `VOICE_SCENARIO=coordination`.
+
 The app automatically enters the fictional `/patient` and `/professional` workspaces with independent HttpOnly sessions; no web sign-in is required. Patients create requests, track proposals and manage phone access. Care-team staff propose/approve appointments and review handovers. `/desktop` is the department overview and `/professional/team` is the fictional care-team directory and transfer simulator. The homepage links to the three main workspaces. These remain synthetic demonstration identities and a mock appointment scheduler.
 
 ## Run without credentials
@@ -35,7 +37,7 @@ Keep keys in the server's private runtime environment or the ignored local `.env
 | `OPENAI_API_KEY`             | OpenAI project API key. `VOICE_OPENAI_API_KEY` is an alternative and takes precedence; use it where `OPENAI_*` names are reserved.                |
 | `OPENAI_LIVE_MODEL`          | `gpt-live-1`, the implemented native Live voice model.                                                                                            |
 | `OPENAI_VOICE_BACKEND_MODEL` | Defaults to `gpt-6-luna`; handles delegated reasoning and tool requests through Responses.                                                        |
-| `OPENAI_VOICE`               | Defaults to `cedar`.                                                                                                                              |
+| `OPENAI_VOICE`               | Defaults to `gleam`, a feminine North American voice for GPT-Live.                                                                                |
 | `VOICE_PUBLIC_BASE_URL`      | Public HTTPS origin routed to this API, without a path/query, e.g. `https://voice.example.com`.                                                   |
 | `VOICE_ALLOWED_NUMBERS`      | Comma-separated consenting test numbers, in E.164 form, for inbound calls, outbound callbacks and SMS.                                            |
 | `VOICE_DEPARTMENT_ID`        | Use `demo-department` to scope newly arriving, unverified callers to the department's call monitor.                                               |

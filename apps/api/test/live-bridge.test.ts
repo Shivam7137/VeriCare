@@ -100,7 +100,7 @@ test("starts GPT-Live with native mulaw, brief greeting and separate backend rul
   assert.equal(h.urls[0], "wss://api.openai.com/v1/live/sessions");
   const s = h.live.events("session.start")[0]!.session;
   assert.equal(s.model, "gpt-live-1");
-  assert.equal(s.audio.output.voice, "cedar");
+  assert.equal(s.audio.output.voice, "gleam");
   assert.deepEqual(s.audio.format, { type: "audio/pcmu", rate: 8000 });
   assert.equal(s.delegation.responses.instructions, "Backend rules");
   assert.equal(h.live.events("response.create").length, 0);
@@ -177,6 +177,29 @@ test("requires the readback closing phrase and acknowledged playback before keyp
   h.digit("1", "12");
   await settle();
   assert.deepEqual(h.digits, [["1", "call-1", "action-1"]]);
+});
+test("emergency-contact keypad verification resumes location lookup without granting a patient role", async (t) => {
+  const h = harness({
+    onTool: async () => ({
+      status: "authorization_required",
+      scope: "emergency_contact",
+      digits: 8,
+    }),
+    onVerify: async () => ({ status: "verified", role: "emergency_contact" }),
+  });
+  t.after(() => h.controller.close());
+  await h.connect();
+  h.call();
+  await settle();
+  await settle();
+  for (const [i, digit] of [..."12345678"].entries()) h.digit(digit, String(i + 1));
+  await settle();
+  await settle();
+  const result = h.live.events("session.commentary.append").at(-1)!.content;
+  assert.match(result, /get_emergency_patient_location/);
+  assert.doesNotMatch(result, /verified as patient/i);
+  assert.ok(!JSON.stringify(h.live.sent).includes("12345678"));
+  assert.ok(!JSON.stringify(h.captured).includes("12345678"));
 });
 test("saves native caller and assistant transcript fragments, with backend events separate", async (t) => {
   const h = harness();
