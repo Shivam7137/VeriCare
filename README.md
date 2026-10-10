@@ -1,5 +1,7 @@
 # Patient Request Coordination
 
+[![CI](https://github.com/Shivam7137/patient-request-coordination/actions/workflows/ci.yml/badge.svg)](https://github.com/Shivam7137/patient-request-coordination/actions/workflows/ci.yml)
+
 A development foundation for one department's appointment-rescheduling prototype. The intended workflow carries a request through verification, a specific proposal, staff approval, patient confirmation, and a recorded scheduling outcome.
 
 **Current status: repository foundation.** The starter runs a Next.js development page and a persistent Node.js API, seeds fictional task T001 into PostgreSQL, and reads that saved task. It does not yet reschedule appointments, verify users, send reminders, or place calls. The [backlog](docs/backlog.md) defines the remaining work.
@@ -42,5 +44,7 @@ The integration command requires `DATABASE_URL` in the process environment; see 
 | `docs/decisions.md`    | Starter choices and decisions the team still owns      |
 
 Start with [the source brief](docs/team-guide.md) and [contributing](CONTRIBUTING.md). Before coding, read [AGENTS.md](AGENTS.md). Contract changes need review. Assign named owners and reviewers when teammates are confirmed; suggested roles are not access grants.
+
+The [eight GitHub issues](https://github.com/Shivam7137/patient-request-coordination/issues) are grouped under the [first demonstration milestone](https://github.com/Shivam7137/patient-request-coordination/milestone/1). See [setup verification](docs/setup-verification.md) for evidence and [GitHub settings](docs/github-settings.md) for the private-plan branch-protection limitation.
 
 This private repository has no open-source license grant. Hosting, paid services, live voice, hospital connectors, and collaborator invitations are outside this setup.
