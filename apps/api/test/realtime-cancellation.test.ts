@@ -105,6 +105,6 @@ test("an interrupted confirmation can be repeated without accepting stale playba
   h.twilio.receive(keypad("6"));
   h.twilio.receive(keypad("6"));
   await settle();
-  assert.deepEqual(h.digits, [["1", "phone-call-1"]]);
+  assert.deepEqual(h.digits, [["1", "phone-call-1", pendingActionResult.pendingAction.id]]);
   assert.equal(h.twilio.closeCalls, 0);
 });

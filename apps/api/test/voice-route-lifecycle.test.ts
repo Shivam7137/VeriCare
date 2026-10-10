@@ -41,7 +41,7 @@ test(
       claimStarted.resolve();
       return claim.promise;
     });
-    t.mock.method(VoiceStore.prototype, "end", async (callId: string, reason: string) => {
+    t.mock.method(VoiceStore.prototype, "streamClosed", async (callId: string, reason: string) => {
       endings.push({ callId, reason });
       finalizerStarted.resolve();
       await finalize.promise;
