@@ -39,15 +39,15 @@ Run the worker separately with `npm run worker`, or one recovery pass with `npm 
 
 ## Basic frontend walkthrough
 
-With `npm run dev` running, use the local web app on port 3100:
+With `npm run dev` running, use the local web app on port 3100 (see the [prototype demo guide](prototype-demo.md)):
 
-1. Choose **Patient**, select **New request**, choose an available appointment, and enter a callback window. All inputs and displayed times are UTC. For an immediate demo, keep the callback window open now.
+1. Choose **Open patient workspace**, select **New appointment request**, choose an available appointment, and enter a callback window. Appointment displays use Halifax time (ADT/AST); inputs identify the device time zone. For an immediate demo, keep the callback window open now.
 2. Create the request, then select **Verify my request**.
-3. Switch to **Staff**, choose the matching proposal time, select **Propose appointment**, then **Approve proposal**.
-4. Switch back to **Patient**. The page polls for the worker's simulated callback; once delivered, select **Confirm appointment**.
-5. Wait for **Appointment changed** and the scheduler confirmation reference. Reloading preserves the result. **Operator** shows the shared queue and overdue/failed/reconciling counts.
+3. Switch to **Open care-team workspace**, choose the matching proposal time, select **Propose appointment**, then **Approve proposal**.
+4. Switch back to the patient workspace. The page polls for the worker's simulated callback; once delivered, select **Confirm appointment**.
+5. Wait for **Appointment changed** and the scheduler confirmation reference. Reloading preserves the result. **Open overview** shows the shared department activity and saved booking results.
 
-The frontend also supports callback-window updates, rejected proposals, withdrawal, staff takeover, and activity history. It does not create real calls. Demo sign-in requires `ENABLE_SYNTHETIC_DEMO=true` and a loopback host on port 3100; it selects one of the existing local patient/staff/operator sessions rather than minting credentials. The session is an HttpOnly, SameSite=Strict cookie scoped to `/api`; it is not returned in JSON or stored in browser JavaScript/localStorage. Mutation routes require a matching Origin header. Signing out clears the browser cookie. This demo account switcher is not a production login system.
+The frontend also supports callback-window updates, rejected proposals, withdrawal, staff takeover and activity history. Ordinary workflow delivery is simulated; optional real voice is configured separately in [phone setup](phone-setup.md). Automatic fictional web entry requires `ENABLE_SYNTHETIC_DEMO=true`, a loopback host on port 3100 or an exact configured HTTPS `PUBLIC_DEMO_ORIGIN`, and existing provisioned credentials. Hosted Next reads them from server-only `DEMO_SESSIONS_JSON`. This does not mint credentials. Separate workspace sessions use HttpOnly, SameSite=Strict cookies scoped to `/api`; tokens are not returned in JSON or stored in browser JavaScript/localStorage. Mutation routes require a matching Origin header. These are demo identities, not production identity verification.
 
 ## Optional local checks
 

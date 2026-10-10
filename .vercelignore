@@ -1,0 +1,11 @@
+.git
+.superpowers
+.env*
+node_modules
+work
+data
+backups
+coverage
+**/.next
+**/dist
+**/*.log

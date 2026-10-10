@@ -1,6 +1,6 @@
 # Synthetic backend architecture
 
-The backend implements the single fictional department's rescheduling journey. Fastify and a separate worker share PostgreSQL records and domain services. Next.js provides basic patient, staff and operator views over these APIs. Its loopback-only demo sign-in selects an already provisioned local session, stores it in an HttpOnly cookie, and forwards allowed requests through same-origin route handlers. The backend still authorizes every command and owns completion.
+The backend implements the single fictional department's rescheduling journey. Fastify and a separate worker share PostgreSQL records and domain services. Next.js provides patient, care-team, directory and department overview workspaces. With synthetic demo mode enabled, it automatically resolves an already provisioned fictional session, stores it in a separate workspace HttpOnly cookie, and forwards allowed requests through same-origin route handlers. The demo accepts loopback access or an exact configured HTTPS `PUBLIC_DEMO_ORIGIN`; hosted Next can read the server-only `DEMO_SESSIONS_JSON` snapshot. The backend still authorizes every command and owns completion.
 
 ```mermaid
 flowchart LR
@@ -40,4 +40,10 @@ A real child-process crash test exits after scheduler commit and recovers throug
 
 ## Boundaries
 
-The prototype uses one configured demonstration policy and explicit UTC intervals with IANA time zones. It has no external calls, real identity proof, hospital connector, hosted access controls or retention policy. The text interpreter only extracts explicit intervals and asks for clarification otherwise. A production packaging and deployment design remains separate work.
+The prototype uses one demonstration policy and stores exact UTC intervals with IANA time zones. The UI displays Halifax appointment times and labels callback inputs with the device time zone. Ordinary workflow callback/reminder delivery and scheduler changes use local mocks, independently of the optional real voice mode.
+
+The fictional care-team directory has null phone destinations until staff saves them. Saving a destination never calls it. The separate transfer simulator requires explicit preparation and approval, then a chosen simulated outcome; connected/no-answer records are not evidence of a real handset connection. Real forwarding requires a configured destination, an authenticated phone identity and caller keypad approval after readback. The API validates signed Twilio callbacks and stream identity and records provider transfer outcomes separately from appointment completion.
+
+For a hosted Next preview, the restricted loopback demo gateway exposes only allowed `/backend` routes and provider routes. A bearer-shaped header is a forwarding filter, not authentication: the API checks the actual session and authority. Twilio signatures are also checked by the API. Fixture and provisioning routes are excluded. The local database, API, worker, gateway and public tunnel must remain available. See [prototype demo operations](prototype-demo.md).
+
+Real identity proof, hospital integration, production access/retention controls and durable deployment remain separate work. Real phone audio and handset transfer have not been validated. The text interpreter only extracts explicit intervals and asks for clarification otherwise.

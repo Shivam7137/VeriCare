@@ -1,6 +1,6 @@
 # Patient, professional and phone workspaces
 
-The app has separate `/patient` and `/professional` portals, with independent HttpOnly sessions. Patients create requests, track proposals and manage phone calls. Healthcare professionals use the staff account to propose/approve appointments and review handovers; the operator account is read-only. The homepage links to both. These remain synthetic demonstration identities and a mock appointment scheduler.
+The app automatically enters the fictional `/patient` and `/professional` workspaces with independent HttpOnly sessions; no web sign-in is required. Patients create requests, track proposals and manage phone access. Care-team staff propose/approve appointments and review handovers. `/desktop` is the department overview and `/professional/team` is the fictional care-team directory and transfer simulator. The homepage links to the three main workspaces. These remain synthetic demonstration identities and a mock appointment scheduler.
 
 ## Run without credentials
 
@@ -9,11 +9,19 @@ Follow the [quick start](../README.md), including migrations and local session p
 1. In the patient portal, create and verify a request. Select it, get a phone access code and start a simulated call.
 2. Try a progress check or prepare a callback change. Review the exact action, then explicitly approve or cancel it. Preparing an action does not change the request.
 3. For proposal confirmation, have a staff user propose and approve a slot in the professional portal first. The patient can then ask the assistant to prepare confirmation and approve that exact action. Only the backend worker can record a successful booking, using scheduler evidence.
-4. Schedule a callback inside the request's agreed callback window. When the worker changes it to ringing, generate a fresh code and use **Answer simulated callback with access code**. This does not use a phone network.
-5. For new-request phone intake, select **New request**, generate an unbound code and start a call. Use **Prepare a new request**, review it, and approve. Phone verification supplies the synthetic verified identity; staff still must propose and approve a slot.
-6. **Ask for a professional** records a handover and stops call automation. The professional portal shows that call. This is a review queue, not a live call transfer; staff takeover is a separate backend action.
+4. With the default simulated voice mode, choose **Schedule a simulated callback** and **Queue simulated callback** inside the request's agreed callback window. When the worker changes it to ringing, generate a fresh code and use **Answer simulated callback with access code**. This does not use a phone network.
+5. For new-request phone intake, choose **New appointment request** without submitting the web form. In the phone panel, generate an unbound code and choose **Start simulated call**. Use **Prepare a new request**, review it, and approve. Phone verification supplies the synthetic verified identity; staff still must propose and approve a slot.
+6. **Ask for a professional** records a handover and stops call automation. The professional portal shows that call. This records a review queue entry; staff takeover is a separate backend action. Care-team forwarding uses a separately prepared and approved transfer as described below.
 
 The simulator exposes the real agent tools as buttons. Spoken AI and telephone audio require the live provider configuration below. Ending a call never marks an appointment request complete.
+
+## Care-team directory and transfers
+
+Open `/professional/team` (**Care team & phone**). Members are fictional and their phone destinations start empty. **Add phone destination** / **Edit phone destination** and **Save destination** let staff save or clear an international-format destination. Saving never places a call. Do not enter a real number just to demonstrate the simulator.
+
+Under **Staff phone access**, choose **Get phone access code**, then **Start simulated call**. Select **Patient context (optional)** and **Find patient’s doctor**, or explicitly **Choose a teammate**. Ambiguous/unassigned doctors require selection. Choose **Prepare simulated transfer**, review the named destination, then **Approve simulated transfer** or **Cancel transfer**. **Simulate connected** and **Simulate no answer** save explicitly simulated results. No destination is dialled, even with real voice enabled. Forwarding history keeps these outcomes separate from appointment status.
+
+For a real Twilio call, a saved destination and an eight-digit phone code are required. After the assistant reads the exact action aloud, caller keypad **1** approves and **2** cancels. Spoken agreement and portal buttons cannot approve a live action. Approval unlocks only when readback finishes. The backend rejects unconfigured destinations, the app's own number and stale/replayed actions. A provider callback records the actual transfer result; dispatch alone does not establish a connection. Real telephone audio and handset forwarding have not been validated.
 
 ## Configure Twilio and OpenAI later
 
@@ -36,18 +44,19 @@ Entering credentials alone does not turn calls on. `npm run voice:check` reports
 
 Set `VOICE_ALLOWED_NUMBERS=*` explicitly to accept all E.164 caller and callback numbers. An empty setting still blocks live readiness. Signed Twilio webhooks, portal access codes, authenticated callback scheduling and explicit action approval remain required. Readiness reports `allNumbersAllowed: true` for this setting.
 
-Expose only these provider paths through your HTTPS reverse proxy/tunnel to API port 4100. Preserve the exact path/query, form body and `X-Twilio-Signature`; enable WebSocket upgrade for `/voice/stream`. Do not expose the local demo session endpoints. Keep the API on loopback behind the proxy, and keep the demonstration web app private.
+Expose only these provider paths through your HTTPS reverse proxy/tunnel to API port 4100. Preserve the exact path/query, form body and `X-Twilio-Signature`; enable WebSocket upgrade for `/voice/stream`. Do not expose local fixture or provisioning endpoints. Keep the API on loopback behind the proxy. `npm run demo:gateway` provides the restricted gateway on 4199, including the authenticated backend routes required by an optional hosted Next preview; see [prototype demo operations](prototype-demo.md).
 
-| Twilio setting or generated callback         | Method/path                     |
-| -------------------------------------------- | ------------------------------- |
-| Phone number → Voice → “A call comes in”     | POST `/voice/incoming`          |
-| Phone number → Voice → call status changes   | POST `/voice/status`            |
-| Verification prompt (generated TwiML)        | POST `/voice/verify`            |
-| Outbound TwiML (configured by the worker)    | POST `/voice/outbound/:id`      |
-| Outbound status (configured by the worker)   | POST `/voice/status?callId=:id` |
-| Bidirectional Media Stream (generated TwiML) | WSS `/voice/stream`             |
+| Twilio setting or generated callback         | Method/path                        |
+| -------------------------------------------- | ---------------------------------- |
+| Phone number → Voice → “A call comes in”     | POST `/voice/incoming`             |
+| Phone number → Voice → call status changes   | POST `/voice/status`               |
+| Verification prompt (generated TwiML)        | POST `/voice/verify`               |
+| Outbound TwiML (configured by the worker)    | POST `/voice/outbound/:id`         |
+| Outbound status (configured by the worker)   | POST `/voice/status?callId=:id`    |
+| Transfer result (generated TwiML)            | POST `/voice/transfers/:id/result` |
+| Bidirectional Media Stream (generated TwiML) | WSS `/voice/stream`                |
 
-Allow outbound HTTPS to `api.twilio.com` and secure WebSockets to `api.openai.com`. The reverse proxy must support a persistent bidirectional connection. On a Twilio trial account, callback destinations may also need verification in Twilio. No public endpoint or paid deployment is provisioned by this change.
+Allow outbound HTTPS to `api.twilio.com` and secure WebSockets to `api.openai.com`. The reverse proxy must support a persistent bidirectional connection. On a Twilio trial account, callback destinations may also need verification in Twilio. A public gateway still depends on its local API, worker, database and tunnel.
 
 After configuring the number and public origin, explicitly enable live mode, restart API/worker, then place a test call from an allowlisted number. Generate an eight-digit access code in the patient portal and enter it at the prompt. Codes expire after ten minutes, are single-use, and bind to the portal identity and optional selected request. Generate the code near the scheduled callback time. An outgoing call still requires this code; answering the phone is not identity verification.
 
@@ -67,6 +76,6 @@ Callbacks are durable and claimed once just before dispatch, with fresh requeste
 
 `npm test` exercises provider signatures/TwiML, configuration, portal boundaries and Realtime protocol sockets. `npm run test:backend` exercises the durable store, agent actions, authenticated/signed routes and callback worker against isolated PostgreSQL schemas. These use synthetic credentials and injected provider transports; no real calls are made. `npm run check` adds formatting, type checks and production builds.
 
-Live Twilio/OpenAI connectivity and spoken quality must be tested after actual credentials, a number and public HTTPS routing are supplied. Production identity verification, hospital scheduling integration, live human transfer and production handling of patient information remain separate integrations.
+Live Twilio/OpenAI connectivity and spoken quality must be tested after actual credentials, a number and public HTTPS routing are supplied. Real transfer capability is implemented with synthetic tests; actual live audio and handset transfer remain unverified. Production identity verification, hospital scheduling integration and production handling of patient information remain separate integrations.
 
 Protocol references: [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams/websocket-messages), [Twilio signature validation](https://www.twilio.com/docs/usage/security#validating-requests), [OpenAI Realtime WebSockets](https://developers.openai.com/api/docs/guides/realtime-websocket), and [OpenAI Realtime protocol types](https://github.com/openai/openai-node/blob/master/src/resources/realtime/realtime.ts).

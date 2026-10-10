@@ -12,6 +12,7 @@ Thumbs.db
 work/
 data/
 backups/
+.vercel/
 *.pem
 *.key
 apps/web/next-env.d.ts
