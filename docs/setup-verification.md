@@ -29,3 +29,13 @@ On branch `Shivam`, in the cloud workspace with Node.js 24.19, npm 11.9 and Post
 Cloud startup instructions were saved to the environment configuration draft, including database setup, local credential provisioning, all three processes and readiness checks. This confirms draft persistence and the current runtime only; publication and fresh-task restoration have not been performed or verified.
 
 The full frontend, external identity proof, live hospital/voice connections and deployment are separate work. The scheduler and delivery evidence above use persisted mocks; no real appointment or external message was created.
+
+## Basic frontend verification — 2026-10-10
+
+The Next.js development fixture was replaced with a basic responsive patient/staff/operator demo. `npm run check` passed again after this change, including formatting, workspace type checks, 13 unit tests and all builds.
+
+A real headless Chromium session completed the browser journey against the running API and worker: patient creation and verification, staff proposal and approval, simulated callback, patient confirmation, then a durable scheduler reference. Reloading preserved the completed request. Operator monitoring, sign-out, and the mobile layout at 390px also passed, with no page exceptions or horizontal overflow. This walkthrough created one new fictional request and moved its fictional booking; existing tasks and history were preserved.
+
+Additional browser checks rejected a cross-origin demo login and unsupported persona, verified the HttpOnly/SameSite cookie and absence from `document.cookie`, and denied task access after logout. A four-second task response still rendered without overlapping polling. Removing the selected appointment from a subsequent availability response preserved that selection and disabled submission until the user selected another time. Independent review confirmed both polling/selection fixes and found no remaining blocker in the local demo scope.
+
+The runtime remains the three processes from `npm run dev`, with the web UI on port 3100 and API on 4100. No production authentication or external provider connection was added. See the [frontend walkthrough](setup.md#basic-frontend-walkthrough).

@@ -1,6 +1,6 @@
 # Backend contracts
 
-The synthetic backend implements the workflow below with PostgreSQL, local identities, a database-backed mock scheduler, and fake delivery. Shared input and record schemas are exported by [`@prc/contracts`](../packages/contracts/src/index.ts). Real identity providers, hospital scheduling, telephone calls, and patient/staff frontend journeys remain separate work.
+The synthetic backend implements the workflow below with PostgreSQL, local identities, a database-backed mock scheduler, and fake delivery. Shared input and record schemas are exported by [`@prc/contracts`](../packages/contracts/src/index.ts). Real identity providers, hospital scheduling, telephone calls, and further frontend features remain separate work.
 
 ## Authentication and access
 
@@ -147,3 +147,9 @@ Reload progress after a 409 and decide from the current state rather than blindl
 ## Earlier internal draft service
 
 [`saveProposalDraft`](../apps/api/src/proposals.ts) remains an internal persistence helper covered by its original regression tests. It takes trusted audit context, locks/revision-checks an `awaiting_proposal` task, and returns `{task,proposal,event}` without activating a workflow proposal. It is not an HTTP authentication boundary and is not used by the active workflow's proposal endpoint. New clients use the authorized routes above.
+
+## Basic web demo adapter
+
+The loopback Next.js app exposes `/api/session` (GET identity, POST `{persona:"patient"|"staff"|"operator"}`, DELETE sign out) only with `ENABLE_SYNTHETIC_DEMO=true`. It reads existing locally provisioned sessions; it cannot create new backend principals, roles, or sessions. The browser receives an HttpOnly, SameSite=Strict cookie and identity JSON without the token. Mutating requests require an Origin matching the loopback host on port 3100.
+
+`/api/backend/*` forwards that cookie as bearer authorization only to an allowlist of task commands/reads, slots, the current booking, and the operator queue. It cannot proxy arbitrary URLs or access local files. Fastify applies the same authorization and revision checks to these requests. The frontend displays backend decisions and confirmation evidence; it has no completion or direct execution button. Time entry is explicitly UTC; polling is serialized, and disappearing appointment choices require explicit reselection.

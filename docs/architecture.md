@@ -1,6 +1,6 @@
 # Synthetic backend architecture
 
-The backend implements the single fictional department's rescheduling journey. Fastify and a separate worker share PostgreSQL records and domain services. Next.js currently renders the development fixture; patient, staff and operator APIs are ready for a fuller frontend.
+The backend implements the single fictional department's rescheduling journey. Fastify and a separate worker share PostgreSQL records and domain services. Next.js provides basic patient, staff and operator views over these APIs. Its loopback-only demo sign-in selects an already provisioned local session, stores it in an HttpOnly cookie, and forwards allowed requests through same-origin route handlers. The backend still authorizes every command and owns completion.
 
 ```mermaid
 flowchart LR

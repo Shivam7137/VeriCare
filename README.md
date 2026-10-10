@@ -2,7 +2,7 @@
 
 A disposable, private workspace for experimenting with one department's appointment-rescheduling prototype. Push directly to main or use a branch and pull request when helpful. There is no CI, required review, branch protection, CODEOWNERS, or automated dependency-update workflow.
 
-**Current status: the synthetic backend is implemented.** Authenticated patient, representative, staff and operator APIs share a durable rescheduling workflow: versioned proposals, exact-version decisions, agreed callbacks, fake reminders, repeat-safe booking changes and restart recovery. The scheduler and delivery transport use local fictional records. The Next.js page remains a development fixture; full frontend journeys and live identity, hospital and voice integrations are separate work.
+**Current status: the synthetic backend is implemented.** Authenticated patient, representative, staff and operator APIs share a durable rescheduling workflow: versioned proposals, exact-version decisions, agreed callbacks, fake reminders, repeat-safe booking changes and restart recovery. The scheduler and delivery transport use local fictional records. A basic Next.js frontend now supports patient requests, staff proposals/approvals, patient confirmation and operator monitoring. Live identity, hospital and voice integrations remain separate work.
 
 Only synthetic records and test integrations belong here. Development commands bind to loopback. The optional unauthenticated fixture endpoints are for the local development page. Local session provisioning is a test identity mechanism, not real patient verification.
 
@@ -20,7 +20,7 @@ npm run demo:credentials
 npm run dev
 ```
 
-Open [the development page](http://127.0.0.1:3100). The API runs on port 4100 and this project's database on port 55439. `dev` starts the API, web page and durable worker. Local bearer sessions are saved in ignored `.env.sessions.json` with restricted file permissions; token values are never logged. Stop the app with Ctrl+C. `npm run db:stop` stops only this project's database and preserves its volume.
+Open the local web app on port 3100. Choose **Patient** to create and verify a request, **Staff** to propose and approve a time, then **Patient** again to confirm after the simulated callback. The worker saves the booking result automatically. **Operator** provides a read-only overview. All displayed and entered times are UTC. The API runs on port 4100 and this project's database on port 55439. `dev` starts the API, web page and durable worker. Local bearer sessions are saved in ignored `.env.sessions.json` with restricted file permissions; token values are never logged. Stop the app with Ctrl+C. `npm run db:stop` stops only this project's database and preserves its volume.
 
 Optional local checks:
 
@@ -35,7 +35,7 @@ The backend integration command loads `.env` and creates isolated test schemas; 
 
 | Path                   | Purpose                                                     |
 | ---------------------- | ----------------------------------------------------------- |
-| `apps/web`             | Next.js App Router development page                         |
+| `apps/web`             | Next.js patient, staff and operator demo                    |
 | `apps/api`             | Authenticated Fastify API, workflow, worker, mock scheduler |
 | `packages/contracts`   | Shared task/event/proposal schemas and synthetic fixture    |
 | `docs/contracts.md`    | Implemented API, authority and agent tool contracts         |

@@ -36,6 +36,18 @@ JS
 
 Run the worker separately with `npm run worker`, or one recovery pass with `npm run worker:once`. `WORKER_INTERVAL_MS` defaults to 1000 and accepts 100–60000. The worker delivers due fake jobs, expires pending windows, executes ready tasks and reconciles unfinished operations. No external messages or calls are sent. `/operator/queue` reports scoped pending work and failed/uncertain outcomes. More than one worker can safely run against the same database.
 
+## Basic frontend walkthrough
+
+With `npm run dev` running, use the local web app on port 3100:
+
+1. Choose **Patient**, select **New request**, choose an available appointment, and enter a callback window. All inputs and displayed times are UTC. For an immediate demo, keep the callback window open now.
+2. Create the request, then select **Verify my request**.
+3. Switch to **Staff**, choose the matching proposal time, select **Propose appointment**, then **Approve proposal**.
+4. Switch back to **Patient**. The page polls for the worker's simulated callback; once delivered, select **Confirm appointment**.
+5. Wait for **Appointment changed** and the scheduler confirmation reference. Reloading preserves the result. **Operator** shows the shared queue and overdue/failed/reconciling counts.
+
+The frontend also supports callback-window updates, rejected proposals, withdrawal, staff takeover, and activity history. It does not create real calls. Demo sign-in requires `ENABLE_SYNTHETIC_DEMO=true` and a loopback host on port 3100; it selects one of the existing local patient/staff/operator sessions rather than minting credentials. The session is an HttpOnly, SameSite=Strict cookie scoped to `/api`; it is not returned in JSON or stored in browser JavaScript/localStorage. Mutation routes require a matching Origin header. Signing out clears the browser cookie. This demo account switcher is not a production login system.
+
 ## Optional local checks
 
 ```sh
