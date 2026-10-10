@@ -8,6 +8,7 @@ import { getPrincipal } from "./identity.js";
 import { MockScheduler } from "./scheduler.js";
 import { VoiceAgent } from "./voice-agent.js";
 import { WorkflowService } from "./workflow.js";
+import { seedCareTeam } from "./care-team-directory.js";
 
 const minute = 60_000;
 const day = 86_400_000;
@@ -43,6 +44,7 @@ async function profiles(pool: Pool) {
       [staff.id, department, staff.name],
     );
   }
+  await seedCareTeam(pool);
 }
 
 async function insertSlot(pool: Pool, id: string, start: Date) {

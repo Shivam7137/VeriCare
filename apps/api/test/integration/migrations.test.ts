@@ -29,9 +29,17 @@ test("migration upgrades a foundation database without changing saved tasks or e
       "003_backend.sql",
       "004_voice.sql",
       "005_demo_profiles.sql",
+      "006_voice_forwarding.sql",
     ],
   );
   assert.deepEqual((await pool.query("SELECT * FROM tasks")).rows, tasks);
   assert.deepEqual((await pool.query("SELECT * FROM task_events")).rows, events);
   assert.equal((await pool.query("SELECT * FROM proposal_drafts")).rowCount, 0);
+  const directory = await pool.query("SELECT id,phone_number FROM care_team_directory");
+  assert.equal(directory.rowCount, 4);
+  assert.equal(
+    directory.rows.every((row) => row.phone_number === null),
+    true,
+  );
+  assert.equal((await pool.query("SELECT * FROM voice_transfers")).rowCount, 0);
 });

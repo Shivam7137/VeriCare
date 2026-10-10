@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import { VoiceStore } from "./voice-store.js";
 import { readVoiceConfig, voiceReadiness, type VoiceConfig } from "./voice-config.js";
 import { createTwilioProvider, TwilioDispatchError } from "./twilio-provider.js";
+import { VoiceTransfers } from "./voice-transfers.js";
 
 export async function runVoiceWorker(
   pool: Pool,
@@ -13,6 +14,7 @@ export async function runVoiceWorker(
 ) {
   const config = options.config ?? readVoiceConfig();
   const store = new VoiceStore(pool, { now: options.now });
+  await new VoiceTransfers(pool, { now: options.now }).reconcileStale();
   const results: { id: string; status: string }[] = [];
   for (let dispatched = 0; dispatched < 20; dispatched++) {
     // Recheck authority, task state and the agreed window immediately before each dial.

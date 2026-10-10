@@ -137,7 +137,11 @@ test("new voice intake lists only owned appointments and creates a verified requ
   await agent.run(call.id, "new-request", "prepare_request", input);
   assert.equal(Number((await f.pool.query("SELECT count(*) FROM tasks")).rows[0].count), 0);
   const pending = (await agent.store.getInternal(call.id)).pendingAction!;
+  assert.doesNotMatch(pending.description, new RegExp(f.input.appointmentId));
+  assert.match(pending.description, /January .*2030/);
+  assert.match(pending.description, /America\/Halifax time/);
   const result = await agent.confirm(call.id, pending.id);
+  assert.ok("task" in result);
   assert.equal(result.task.patientId, f.patient.patientId);
   assert.equal(result.task.requesterId, f.patient.id);
   assert.equal(result.task.state, "awaiting_proposal");

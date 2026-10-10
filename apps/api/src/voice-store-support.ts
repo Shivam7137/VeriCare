@@ -5,7 +5,7 @@ import { getPrincipal, requirePatientAccess, type Principal } from "./identity.j
 
 export type PendingVoiceAction = {
   id: string;
-  kind: "create_request" | "callback" | "confirm" | "withdraw";
+  kind: "create_request" | "callback" | "confirm" | "withdraw" | "transfer";
   input: Record<string, unknown>;
   description: string;
   expiresAt: string;
@@ -26,7 +26,8 @@ export type VoiceCall = {
     | "failed"
     | "cancelled"
     | "reconciling"
-    | "handoff";
+    | "handoff"
+    | "transferring";
   createdAt: string;
   updatedAt: string;
   dueAt: string | null;
@@ -112,6 +113,17 @@ export async function currentPatient(db: Database, id: string) {
   return actor;
 }
 
+export async function currentVoiceActor(db: Database, id: string) {
+  const actor = await getPrincipal(db, id);
+  if (
+    !actor.active ||
+    !actor.verified ||
+    (actor.role !== "patient" && !(actor.role === "staff" && actor.departmentId))
+  )
+    throw new BackendError("unauthorized", 401);
+  return actor;
+}
+
 export async function assignedTask(db: Database, actor: Principal, id: string, now: Date) {
   const task = await lockTask(db, id);
   await requirePatientAccess(db, actor, task.patientId, now);
@@ -138,19 +150,24 @@ export async function mutableTask(db: Database, task: Task) {
 
 export async function boundActor(db: Database, row: CallRow, now: Date) {
   if (!row.actor_id || !row.verified_at) throw new BackendError("voice_unverified", 401);
-  const actor = await currentPatient(db, row.actor_id);
-  if (row.task_id) await assignedTask(db, actor, row.task_id, now);
+  const actor = await currentVoiceActor(db, row.actor_id);
+  if (row.task_id) {
+    if (actor.role !== "patient") throw new BackendError("forbidden", 403);
+    await assignedTask(db, actor, row.task_id, now);
+  }
   return actor;
 }
 
 export async function requireActiveCall(db: Database, row: CallRow, now: Date) {
   const actor = await boundActor(db, row, now);
   if (terminalCalls.has(row.status)) throw new BackendError("call_ended", 409);
+  if (row.status === "transferring") throw new BackendError("call_stopped", 409);
   return actor;
 }
 
 export async function requireOpen(db: Database, row: CallRow, now: Date) {
   const actor = await requireActiveCall(db, row, now);
+  if (actor.role !== "patient") throw new BackendError("forbidden", 403);
   if (row.task_id) await mutableTask(db, await assignedTask(db, actor, row.task_id, now));
   return actor;
 }
@@ -162,6 +179,11 @@ export async function visible(db: Database, actor: Principal, row: CallRow, now:
     if (row.actor_id !== current.id) throw new BackendError("not_found", 404);
     if (row.task_id) await assignedTask(db, current, row.task_id, now);
   } else {
+    const owner = row.actor_id ? await getPrincipal(db, row.actor_id) : null;
+    if (owner?.role === "staff") {
+      if (owner.departmentId !== current.departmentId) throw new BackendError("not_found", 404);
+      return;
+    }
     const patient = row.task_id
       ? (await db.query("SELECT payload->>'patientId' AS id FROM tasks WHERE id=$1", [row.task_id]))
           .rows[0]
@@ -184,7 +206,9 @@ export async function event(
   const safeDetail = Object.fromEntries(
     Object.entries(detail).filter(
       ([key, value]) =>
-        /^(actionId|taskId|kind|tool|reason|status|action|attempts|uncertain)$/.test(key) &&
+        /^(actionId|taskId|transferId|memberId|mode|kind|tool|reason|status|action|attempts|uncertain)$/.test(
+          key,
+        ) &&
         (typeof value === "boolean" ||
           typeof value === "number" ||
           (typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/.test(value))),

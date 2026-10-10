@@ -29,17 +29,24 @@ import {
 } from "./twilio-provider.js";
 import { bridgeRealtime } from "./realtime-bridge.js";
 import { terminalCalls } from "./voice-store-support.js";
+import { createTwilioTransferProvider, transferOutcomeTwiml } from "./twilio-transfer.js";
+import { registerVoiceDirectoryRoutes } from "./voice-directory-routes.js";
+import type { TransferProvider } from "./voice-transfers.js";
 
 type CallParams = { Params: { id: string } };
 export function registerVoiceRoutes(
   app: FastifyInstance,
   pool: Pool,
-  options: { config?: VoiceConfig; now?: () => Date } = {},
+  options: { config?: VoiceConfig; now?: () => Date; transferProvider?: TransferProvider } = {},
 ) {
   const config = options.config ?? readVoiceConfig();
   const now = options.now ?? (() => new Date());
   const store = new VoiceStore(pool, { now });
-  const agent = new VoiceAgent(pool, { now });
+  const agent = new VoiceAgent(pool, {
+    now,
+    ownNumber: config.phoneNumber,
+    transferProvider: options.transferProvider ?? createTwilioTransferProvider(config),
+  });
   const connections = new Map<string, { close(reason?: string): void }>();
   const activeConnections = new Set<ReturnType<typeof bridgeRealtime>>();
   let closing = false;
@@ -75,6 +82,7 @@ export function registerVoiceRoutes(
         actors.set(request, await authenticate(pool, token[1]!, now()));
       });
       const actor = (request: object) => actors.get(request)!;
+      registerVoiceDirectoryRoutes(api, agent.directory, agent.transfers, store, actor);
       api.get("/voice/config", async () => ({
         ...voiceReadiness(config),
         agents: [
@@ -97,7 +105,6 @@ export function registerVoiceRoutes(
         return store.issueCode(actor(request), input.taskId);
       });
       api.post("/voice/simulate", async (request, reply) => {
-        if (config.mode !== "simulated") throw new BackendError("simulation_disabled", 409);
         return reply
           .code(201)
           .send(
@@ -124,6 +131,7 @@ export function registerVoiceRoutes(
       api.post<CallParams>("/voice/calls/:id/confirm", async (request) => {
         const call = await store.get(actor(request), request.params.id);
         if (call.actorId !== actor(request).id) throw new BackendError("forbidden", 403);
+        if (call.mode !== "simulated") throw new BackendError("live_keypad_required", 403);
         return agent.confirm(call.id, voiceConfirmInputSchema.parse(request.body).actionId);
       });
       api.post<CallParams>("/voice/calls/:id/cancel", async (request) => {
@@ -138,6 +146,7 @@ export function registerVoiceRoutes(
         voiceEmptyInputSchema.parse(request.body);
         if (call.actorId !== actor(request).id && actor(request).role !== "staff")
           throw new BackendError("forbidden", 403);
+        if (call.status === "transferring") throw new BackendError("transfer_in_progress", 409);
         const ended = await store.end(call.id, "portal_ended");
         connections.get(call.id)?.close("portal_ended");
         return ended;
@@ -214,7 +223,7 @@ export function registerVoiceRoutes(
             .send(
               terminalCalls.has(current.status)
                 ? hangupTwiml(
-                    "Verification was not completed. Please obtain a new code in your patient portal.",
+                    "Verification was not completed. Please obtain a new code in your Health Coordinator workspace.",
                   )
                 : retryTwiml(config),
             );
@@ -229,6 +238,15 @@ export function registerVoiceRoutes(
         if (call) await store.statusCallback(call.id, form.CallSid!, form.CallStatus!);
         return reply.code(204).send();
       });
+      provider.post<CallParams>("/voice/transfers/:id/result", async (request, reply) => {
+        const form = request.body as Record<string, string>;
+        const transfer = await agent.transfers.result(request.params.id, {
+          parentSid: form.CallSid ?? "",
+          childSid: form.DialCallSid,
+          status: form.DialCallStatus ?? "",
+        });
+        return reply.type("text/xml").send(transferOutcomeTwiml(transfer.status));
+      });
       provider.get("/voice/stream", { websocket: true }, (socket) => {
         let timer: ReturnType<typeof setTimeout> | undefined;
         let handoffDeadline: number | undefined;
@@ -237,7 +255,7 @@ export function registerVoiceRoutes(
           apiKey: config.openaiApiKey!,
           model: config.realtimeModel,
           voice: config.voice,
-          instructions: voiceAgentInstructions,
+          instructions: `${voiceAgentInstructions}\nCurrent server time is ${now().toISOString()} UTC. The fictional clinic uses America/Halifax. Ask the caller to confirm exact dates and time zone for relative expressions such as next week.`,
           tools: voiceAgentTools,
           verifyStart: async ({ callSid, customParameters }) => {
             const verified = await store.claimStream(
@@ -255,6 +273,9 @@ export function registerVoiceRoutes(
                     // portal end, authority loss and server shutdown still close immediately.
                     handoffDeadline ??= Date.now() + 10_000;
                     if (Date.now() >= handoffDeadline) return connection.close("call_stopped");
+                  } else if (call.status === "transferring") {
+                    // The provider update, not this timer, ends Connect/Stream. Closing early
+                    // would execute the original trailing Hangup before Dial replaces it.
                   } else if (terminalCalls.has(call.status)) {
                     return connection.close("call_stopped");
                   }
@@ -277,7 +298,7 @@ export function registerVoiceRoutes(
             closed = true;
             clearTimeout(timer);
             connections.delete(callId);
-            await store.end(callId, reason);
+            await store.streamClosed(callId, reason);
           },
         });
         activeConnections.add(connection);

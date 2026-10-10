@@ -36,7 +36,7 @@ export class TwilioDispatchError extends Error {
   }
 }
 /** Rebuild from the configured public origin, never Host or forwarded request headers. */
-function webhookUrl(config: VoiceConfig, path: string): string {
+export function webhookUrl(config: VoiceConfig, path: string): string {
   if (!config.publicBaseUrl || !/^\/(?!\/)/.test(path) || /[\s\\#]/.test(path))
     throw new TwilioDispatchError("blocked");
   const raw = config.publicBaseUrl + path;
@@ -98,8 +98,8 @@ function accessCodeTwiml(config: VoiceConfig, retry: boolean): string {
   });
   gather.say(
     retry
-      ? "That code could not be verified. Please enter the eight digit phone access code from your patient portal."
-      : "You are speaking with an AI appointment coordination assistant. Please enter the eight digit phone access code from your patient portal.",
+      ? "That code could not be verified. Please enter the eight digit phone access code from your patient or professional portal."
+      : "You are speaking with an AI appointment coordination assistant. Please enter the eight digit phone access code from your patient or professional portal.",
   );
   response.say(
     "We could not verify your access. Please use your patient portal or contact your care team. Goodbye.",

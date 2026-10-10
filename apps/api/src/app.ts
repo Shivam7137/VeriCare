@@ -33,7 +33,10 @@ export function buildApp(pool: Pool, demoEnabled = false) {
         (SELECT 1 FROM voice_calls LIMIT 1),
         (SELECT 1 FROM voice_access_codes LIMIT 1),
         (SELECT 1 FROM voice_events LIMIT 1),
-        (SELECT 1 FROM voice_tool_results LIMIT 1)`);
+        (SELECT 1 FROM voice_tool_results LIMIT 1),
+        (SELECT 1 FROM care_team_directory LIMIT 1),
+        (SELECT 1 FROM patient_care_team LIMIT 1),
+        (SELECT 1 FROM voice_transfers LIMIT 1)`);
       return { status: "ready" };
     } catch {
       return reply

@@ -6,7 +6,7 @@ import {
   assignedTask,
   boundActor,
   callRow,
-  currentPatient,
+  currentVoiceActor,
   event,
   hash,
   mask,
@@ -35,9 +35,10 @@ type AccessCode = {
 export class VoiceStore extends VoiceCallbackStore {
   async issueCode(actor: Principal, taskId?: string): Promise<{ code: string; expiresAt: string }> {
     return transaction(this.pool, async (db) => {
-      // Serialize rotations, so one patient can have at most one unused access code.
+      // Serialize rotations, so one caller can have at most one unused access code.
       await db.query("SELECT id FROM principals WHERE id=$1 FOR NO KEY UPDATE", [actor.id]);
-      const principal = await currentPatient(db, actor.id);
+      const principal = await currentVoiceActor(db, actor.id);
+      if (taskId && principal.role !== "patient") throw new BackendError("forbidden", 403);
       const now = this.now();
       await db.query(
         "UPDATE voice_access_codes SET revoked_at=$2 WHERE actor_id=$1 AND consumed_call_id IS NULL AND revoked_at IS NULL",
@@ -85,9 +86,12 @@ export class VoiceStore extends VoiceCallbackStore {
       (!row.task_id || !found.task_id || row.task_id === found.task_id);
     if (valid && found) {
       try {
-        const actor = await currentPatient(db, found.actor_id);
+        const actor = await currentVoiceActor(db, found.actor_id);
         const taskId = row.task_id ?? found.task_id;
-        if (taskId) await assignedTask(db, actor, taskId, now);
+        if (taskId) {
+          if (actor.role !== "patient") throw new BackendError("forbidden", 403);
+          await assignedTask(db, actor, taskId, now);
+        }
       } catch (error) {
         if (!(error instanceof BackendError)) throw error;
         valid = false;
@@ -123,7 +127,7 @@ export class VoiceStore extends VoiceCallbackStore {
 
   async simulate(actor: Principal, code: string): Promise<VoiceCall> {
     return transaction(this.pool, async (db) => {
-      await currentPatient(db, actor.id);
+      await currentVoiceActor(db, actor.id);
       const id = randomUUID();
       await db.query(
         `INSERT INTO voice_calls (id,mode,direction,status,created_at,updated_at)
@@ -191,7 +195,7 @@ export class VoiceStore extends VoiceCallbackStore {
       `SELECT c.* FROM voice_calls c LEFT JOIN tasks t ON t.id=c.task_id
        LEFT JOIN principals p ON p.id=c.actor_id LEFT JOIN patients patient ON patient.id=p.patient_id
        WHERE ($1='patient' AND c.actor_id=$2) OR ($1 IN ('staff','operator') AND
-       COALESCE(t.payload->>'departmentId',patient.department_id)=$3)
+       COALESCE(t.payload->>'departmentId',patient.department_id,p.department_id)=$3)
        ORDER BY c.created_at DESC,c.id LIMIT 200`,
       [current.role, current.id, current.departmentId],
     );
@@ -306,6 +310,11 @@ export class VoiceStore extends VoiceCallbackStore {
         id,
         this.now(),
       ]);
+      if (row.pending_action?.kind === "transfer")
+        await db.query(
+          "UPDATE voice_transfers SET status='cancelled',last_error='action_cancelled',updated_at=$2 WHERE id=$1 AND status='prepared'",
+          [row.pending_action.id, this.now()],
+        );
       if (row.pending_action)
         await event(db, id, "action_cancelled", this.now(), { actionId: row.pending_action.id });
     });
@@ -325,8 +334,37 @@ export class VoiceStore extends VoiceCallbackStore {
       const row = await callRow(db, id, true);
       if (!terminalCalls.has(row.status)) {
         await db.query(
+          "UPDATE voice_transfers SET status='cancelled',last_error='call_ended',updated_at=$2 WHERE call_id=$1 AND status='prepared'",
+          [id, this.now()],
+        );
+        await db.query(
           `UPDATE voice_calls SET status='completed',pending_action=NULL,stream_token_hash=NULL,
            updated_at=$2 WHERE id=$1`,
+          [id, this.now()],
+        );
+        await event(db, id, "call_ended", this.now(), { reason: safeReason(reason) }, "call_ended");
+      }
+      return publicCall(await callRow(db, id));
+    });
+  }
+
+  async streamClosed(id: string, reason: string): Promise<VoiceCall> {
+    // Updating TwiML deliberately closes Connect/Stream while the parent call keeps running.
+    // The Dial result and parent status callbacks own the remainder of a transfer.
+    return transaction(this.pool, async (db) => {
+      const row = await callRow(db, id, true);
+      const dispatched = await db.query(
+        "SELECT id FROM voice_transfers WHERE call_id=$1 AND status NOT IN ('prepared','cancelled') LIMIT 1",
+        [id],
+      );
+      if (row.status === "transferring" || dispatched.rowCount) return publicCall(row);
+      if (!terminalCalls.has(row.status)) {
+        await db.query(
+          "UPDATE voice_calls SET status='completed',pending_action=NULL,stream_token_hash=NULL,updated_at=$2 WHERE id=$1",
+          [id, this.now()],
+        );
+        await db.query(
+          "UPDATE voice_transfers SET status='cancelled',last_error='call_ended',updated_at=$2 WHERE call_id=$1 AND status='prepared'",
           [id, this.now()],
         );
         await event(db, id, "call_ended", this.now(), { reason: safeReason(reason) }, "call_ended");
@@ -340,7 +378,12 @@ export class VoiceStore extends VoiceCallbackStore {
       const row = await callRow(db, id, true);
       await boundActor(db, row, this.now());
       if (row.status === "handoff") return publicCall(row);
+      if (row.status === "transferring") throw new BackendError("call_stopped", 409);
       if (terminalCalls.has(row.status)) throw new BackendError("call_ended", 409);
+      await db.query(
+        "UPDATE voice_transfers SET status='cancelled',last_error='handoff_requested',updated_at=$2 WHERE call_id=$1 AND status='prepared'",
+        [id, this.now()],
+      );
       await db.query(
         `UPDATE voice_calls SET status='handoff',pending_action=NULL,stream_token_hash=NULL,
          updated_at=$2 WHERE id=$1`,

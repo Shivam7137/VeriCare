@@ -15,7 +15,7 @@ const originalFetch = globalThis.fetch;
 const originalDemoSetting = process.env.ENABLE_SYNTHETIC_DEMO;
 const originalPublicOrigin = process.env.PUBLIC_DEMO_ORIGIN;
 const originalCredentials = process.env.DEMO_SESSIONS_JSON;
-const requests: { url: string; token: string }[] = [];
+const requests: { url: string; token: string; method?: string; body?: BodyInit | null }[] = [];
 let temporaryDirectory: string;
 
 before(async () => {
@@ -38,7 +38,7 @@ before(async () => {
   globalThis.fetch = async (input, init) => {
     const url = String(input);
     const token = new Headers(init?.headers).get("authorization") ?? "";
-    requests.push({ url, token });
+    requests.push({ url, token, method: init?.method, body: init?.body });
     const role = roles.find((item) => token === `Bearer fixture-${item}`);
     if (!role) return Response.json({ error: "unauthorized" }, { status: 401 });
     return Response.json(
@@ -223,6 +223,8 @@ test("proxy uses the selected cookie and permits only the documented voice route
     ["GET", "voice/config"],
     ["GET", "voice/calls"],
     ["GET", `voice/calls/${callId}`],
+    ["GET", "voice/directory"],
+    ["GET", `voice/calls/${callId}/transfers`],
     ["POST", "voice/access-codes"],
     ["POST", "voice/simulate"],
     ["POST", "voice/callbacks"],
@@ -231,6 +233,8 @@ test("proxy uses the selected cookie and permits only the documented voice route
     ["POST", `voice/calls/${callId}/end`],
     ["POST", `voice/calls/${callId}/verify`],
     ["POST", `voice/calls/${callId}/cancel`],
+    ["POST", `voice/calls/${callId}/transfers`],
+    ["POST", `voice/transfers/${callId}/simulate-result`],
   ] as const;
   for (const [method, path] of paths) {
     const response = await proxy[method](
@@ -264,6 +268,39 @@ test("proxy uses the selected cookie and permits only the documented voice route
   );
   assert.equal(professional.status, 200);
   assert.equal(requests.at(-1)?.token, "Bearer fixture-staff");
+});
+
+test("directory PATCH forwards its method and body and rejects provider callbacks and other PATCH routes", async () => {
+  const path = "voice/directory/synthetic-staff-001";
+  const body = { phoneNumber: null, expectedRevision: 1 };
+  const response = await proxy.PATCH(
+    request(`/api/backend/${path}`, {
+      method: "PATCH",
+      portal: "professional",
+      cookie: bothCookies,
+      body,
+    }),
+    { params: Promise.resolve({ path: path.split("/") }) },
+  );
+  assert.equal(response.status, 200);
+  assert.equal(requests.at(-1)?.method, "PATCH");
+  assert.deepEqual(JSON.parse(String(requests.at(-1)?.body)), body);
+  for (const invalid of [
+    "tasks/task-1",
+    "voice/config",
+    "voice/transfers/00000000-0000-4000-8000-000000000001/result",
+  ]) {
+    const denied = await proxy.PATCH(
+      request(`/api/backend/${invalid}`, {
+        method: "PATCH",
+        portal: "professional",
+        cookie: bothCookies,
+        body,
+      }),
+      { params: Promise.resolve({ path: invalid.split("/") }) },
+    );
+    assert.equal(denied.status, 404);
+  }
 });
 
 test("the client sends explicit portal scope or infers it from the current portal path", async () => {

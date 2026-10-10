@@ -210,6 +210,8 @@ export const voiceToolInputSchema = z.strictObject({
     "prepare_confirmation",
     "prepare_withdrawal",
     "request_human",
+    "list_care_team",
+    "prepare_transfer",
   ]),
   arguments: z.record(z.string(), z.unknown()),
 });
@@ -218,3 +220,69 @@ export const voiceRequestInputSchema = createTaskInputSchema.omit({ patientId: t
 export const voiceDecisionInputSchema = z.strictObject({ response: z.enum(["approve", "reject"]) });
 export const voiceCallbackWindowInputSchema = z.strictObject({ callbackWindow: timeWindowSchema });
 export const voiceEmptyInputSchema = z.strictObject({});
+
+export const careTeamQuerySchema = z.strictObject({
+  patientId: z.string().min(1).max(200).optional(),
+  doctor: z.boolean().optional(),
+  query: z.string().max(100).optional(),
+});
+export const careTeamDestinationInputSchema = z.strictObject({
+  phoneNumber: z
+    .string()
+    .regex(/^\+[1-9]\d{7,14}$/)
+    .nullable(),
+  expectedRevision: z.number().int().positive(),
+});
+export const voiceTransferInputSchema = z.strictObject({
+  memberId: z.string().min(1).max(200),
+  patientId: z.string().min(1).max(200).optional(),
+});
+export const simulatedTransferResultInputSchema = z.strictObject({
+  status: z.enum(["connected", "no-answer", "busy", "failed"]),
+});
+export type CareTeamMember = {
+  id: string;
+  name: string;
+  role: "doctor" | "nurse" | "coordinator";
+  departmentId: string;
+  departmentName: string;
+  phoneNumber: string | null;
+  maskedNumber: string | null;
+  configured: boolean;
+  revision: number;
+  fictional: true;
+};
+export type CareTeamDirectoryResult = {
+  caller: {
+    role: "patient" | "staff" | "operator";
+    patientId: string | null;
+    departmentId: string;
+  };
+  members: CareTeamMember[];
+  patients: { id: string; name: string; doctorMemberIds: string[] }[];
+  selection: "directory" | "resolved" | "ambiguous" | "unassigned";
+};
+export type VoiceTransfer = {
+  id: string;
+  callId: string;
+  memberId: string;
+  patientId: string | null;
+  destinationName: string;
+  destinationRole: CareTeamMember["role"];
+  departmentId: string;
+  maskedNumber: string | null;
+  mode: "simulated" | "twilio";
+  status:
+    | "prepared"
+    | "dispatching"
+    | "dialing"
+    | "connected"
+    | "no-answer"
+    | "busy"
+    | "failed"
+    | "cancelled"
+    | "reconciling";
+  createdAt: string;
+  updatedAt: string;
+  lastError: string | null;
+};

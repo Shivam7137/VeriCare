@@ -192,6 +192,7 @@ export class VoiceCallbackStore {
         mapped[status] === "in_progress" && !row.verified_at
           ? "awaiting_verification"
           : mapped[status]!;
+      if (row.status === "transferring" && !terminalCalls.has(next)) return;
       const ranks: Record<string, number> = {
         queued: 0,
         dialing: 1,

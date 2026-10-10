@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { transaction } from "./domain.js";
+import { seedCareTeam } from "./care-team-directory.js";
 
 // Fictional identities only. Re-running this must not re-enable identities or replace consent.
 export async function seedIdentity(pool: Pool): Promise<void> {
@@ -18,4 +19,5 @@ export async function seedIdentity(pool: Pool): Promise<void> {
       ('synthetic-operator-001', 'operator', NULL, 'demo-department', true)
       ON CONFLICT (id) DO NOTHING`);
   });
+  await seedCareTeam(pool);
 }

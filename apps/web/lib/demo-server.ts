@@ -42,9 +42,14 @@ export function guardDemo(request: NextRequest) {
   return null;
 }
 
-export async function backend(path: string, token: string, body?: string) {
+export async function backend(
+  path: string,
+  token: string,
+  body?: string,
+  method?: "GET" | "POST" | "PATCH",
+) {
   return fetch(`${process.env.API_URL ?? "http://127.0.0.1:4100"}${path}`, {
-    method: body === undefined ? "GET" : "POST",
+    method: method ?? (body === undefined ? "GET" : "POST"),
     headers: { authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body,
     cache: "no-store",

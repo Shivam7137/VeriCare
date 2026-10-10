@@ -18,10 +18,13 @@ const pending = (now: Date): PendingVoiceAction => ({
   expiresAt: new Date(now.getTime() + 60_000).toISOString(),
 });
 
-test("voice codes are hashed, rotated, restricted to current patients and used once", async (t) => {
+test("voice codes are hashed, rotated, restricted to current patient/staff callers and used once", async (t) => {
   const f = await workflowFixture(t);
   const store = new VoiceStore(f.pool, { now: f.now });
-  await assert.rejects(store.issueCode(f.staff), rejected("unauthorized"));
+  await assert.rejects(
+    store.issueCode(await getPrincipal(f.pool, "synthetic-operator-001")),
+    rejected("unauthorized"),
+  );
   const first = await store.issueCode(f.patient);
   assert.match(first.code, /^\d{8}$/);
   assert.equal(Date.parse(first.expiresAt) - f.now().getTime(), 600_000);
