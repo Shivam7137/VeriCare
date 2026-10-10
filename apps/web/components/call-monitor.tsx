@@ -19,7 +19,7 @@ type MonitorCall = {
   createdAt: string;
   taskId: string | null;
 };
-type Filter = "all" | "transcript" | "tool" | "events";
+type Filter = "all" | "transcript" | "tool" | "sms" | "events";
 const empty: VoiceMonitorSnapshot = {
   entries: [],
   captureWarning: null,
@@ -31,6 +31,11 @@ const request = <T,>(path: string) =>
 
 export default function CallMonitor() {
   const [calls, setCalls] = useState<MonitorCall[]>([]);
+  const [configuration, setConfiguration] = useState<{
+    model: string;
+    voice: string;
+    smsEnabled: boolean;
+  } | null>(null);
   const [selected, setSelected] = useState("");
   const [callFilter, setCallFilter] = useState("all");
   const [watchNewest, setWatchNewest] = useState(true);
@@ -50,6 +55,7 @@ export default function CallMonitor() {
     (entry) =>
       (filter === "all" ||
         filter === entry.kind ||
+        (filter === "sms" && entry.id.startsWith("sms-")) ||
         (filter === "events" && !["tool", "transcript"].includes(entry.kind))) &&
       `${entry.label} ${entry.text ?? ""} ${JSON.stringify(entry.details ?? {})}`
         .toLowerCase()
@@ -59,7 +65,10 @@ export default function CallMonitor() {
     if (new URLSearchParams(window.location.search).has("call")) setWatchNewest(false);
   }, []);
   useEffect(() => {
-    const live = calls.find((item) => item.mode === "twilio" && item.status === "in_progress");
+    const live = calls.find(
+      (item) =>
+        item.mode === "twilio" && ["in_progress", "awaiting_verification"].includes(item.status),
+    );
     if (watchNewest && live) setSelected(live.id);
   }, [calls, watchNewest]);
   useEffect(() => {
@@ -73,12 +82,21 @@ export default function CallMonitor() {
         setCalls(data.calls);
         setReady(true);
         setHistoryError("");
+        if (!configuration)
+          void request<{ model: string; voice: string; smsEnabled: boolean }>("config")
+            .then((data) => {
+              if (!disposed) setConfiguration(data);
+            })
+            .catch(() => {});
         setSelected(
           (current) =>
             current ||
             (new URLSearchParams(window.location.search).get("call") ??
-              data.calls.find((item) => item.mode === "twilio" && item.status === "in_progress")
-                ?.id ??
+              data.calls.find(
+                (item) =>
+                  item.mode === "twilio" &&
+                  ["in_progress", "awaiting_verification"].includes(item.status),
+              )?.id ??
               data.calls[0]?.id ??
               ""),
         );
@@ -161,6 +179,12 @@ export default function CallMonitor() {
           <p className="eyebrow">Voice lab · Fictional demo calls</p>
           <h1>Call monitor</h1>
           <p>See the conversation, inspect each tool, and review what happened.</p>
+          {configuration && (
+            <p className="hint">
+              New calls: {configuration.model} · {configuration.voice} voice · Access when needed
+              {configuration.smsEnabled ? " · SMS available" : ""}
+            </p>
+          )}
         </div>
         <Link className="button-link" href="/professional/team#phone">
           Get a phone access code →
@@ -206,7 +230,7 @@ export default function CallMonitor() {
                   callFilter === "all" ||
                   callFilter === item.mode ||
                   (callFilter === "active" &&
-                    ["in_progress", "transferring"].includes(item.status)),
+                    ["in_progress", "transferring", "awaiting_verification"].includes(item.status)),
               )
               .map((item) => (
                 <button
@@ -241,7 +265,8 @@ export default function CallMonitor() {
           )}
           {ready && !calls.length && (
             <p className="hint">
-              Verified calls will appear here. Get an access code, then call the demo line.
+              Calls appear here from the greeting onward. Call the demo line and tell Alex what you
+              need.
             </p>
           )}
         </aside>
@@ -289,7 +314,7 @@ export default function CallMonitor() {
           <div className="monitor-metrics">
             <div>
               <strong>{entries.filter((entry) => entry.kind === "transcript").length}</strong>
-              <span>Speech turns</span>
+              <span>Transcript segments</span>
             </div>
             <div>
               <strong>{entries.filter((entry) => entry.kind === "tool").length}</strong>
@@ -328,6 +353,7 @@ export default function CallMonitor() {
                   ["all", "All activity"],
                   ["transcript", "Transcript"],
                   ["tool", "Tools"],
+                  ["sms", "SMS"],
                   ["events", "Events"],
                 ] as const
               ).map(([value, label]) => (
@@ -393,7 +419,7 @@ export default function CallMonitor() {
                     ? "Try another view or search term."
                     : call?.mode === "simulated"
                       ? "Simulations capture tool actions, without spoken audio. Older demo calls have no transcript to replay."
-                      : "Transcripts appear once a verified caller speaks with the assistant. Calls made before monitoring was enabled have no saved transcript."}
+                      : "Transcripts appear as the caller speaks with Alex. Access codes are requested only for protected actions. Older calls may have no saved transcript."}
                 </p>
               </div>
             )}

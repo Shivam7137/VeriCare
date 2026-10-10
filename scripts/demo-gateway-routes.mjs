@@ -1,5 +1,5 @@
 const providerPath =
-  /^\/voice\/(?:incoming|verify|status|transfers\/[a-f0-9-]{36}\/result|outbound\/[a-zA-Z0-9_-]{1,128})(?:\?[^\s#]*)?$/;
+  /^\/voice\/(?:incoming|verify|status|sms\/[a-f0-9-]{36}\/status|transfers\/[a-f0-9-]{36}\/result|outbound\/[a-zA-Z0-9_-]{1,128})(?:\?[^\s#]*)?$/;
 const apiPath =
   /^\/backend\/(?:me|tasks(?:\/[A-Za-z0-9-]+(?:\/(?:verify|proposals|staff-approval|confirmation|callback|withdraw|takeover))?)?|slots|bookings\/[A-Za-z0-9-]+|operator\/queue|voice\/(?:config|calls(?:\/[A-Za-z0-9-]+(?:\/(?:tool|confirm|end|verify|cancel|transfers|monitor))?)?|access-codes|simulate|callbacks|directory(?:\/[A-Za-z0-9-]+)?|transfers\/[A-Za-z0-9-]+\/simulate-result))(?:\?[^\s#]*)?$/;
 

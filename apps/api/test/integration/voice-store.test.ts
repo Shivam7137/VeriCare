@@ -60,7 +60,8 @@ test("caller ID conveys no authority and verification failures persist and lock 
     call.id,
   );
   await assert.rejects(store.bound(call.id), rejected("voice_unverified"));
-  await assert.rejects(store.issueStream(call.id), rejected("voice_unverified"));
+  assert.ok((await store.issueStream(call.id)).token);
+  await assert.rejects(store.bound(call.id), rejected("voice_unverified"));
   const { code } = await store.issueCode(f.patient);
   for (let attempt = 0; attempt < 5; attempt++)
     await assert.rejects(store.verifyCode(call.id, "bad"), rejected("invalid_voice_code"));

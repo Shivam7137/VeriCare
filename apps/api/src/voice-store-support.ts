@@ -5,7 +5,7 @@ import { getPrincipal, requirePatientAccess, type Principal } from "./identity.j
 
 export type PendingVoiceAction = {
   id: string;
-  kind: "create_request" | "callback" | "confirm" | "withdraw" | "transfer";
+  kind: "create_request" | "callback" | "confirm" | "withdraw" | "transfer" | "sms";
   input: Record<string, unknown>;
   description: string;
   expiresAt: string;
@@ -35,6 +35,7 @@ export type VoiceCall = {
   lastError: string | null;
   pendingAction: PendingVoiceAction | null;
   providerSid: string | null;
+  authorizationRequestedAt: string | null;
   events?: { id: string; kind: string; detail: Record<string, unknown>; occurredAt: string }[];
 };
 
@@ -49,11 +50,14 @@ export type CallRow = {
   updated_at: Date;
   due_at: Date | null;
   recipient_number: string | null;
+  caller_number: string | null;
+  department_id: string | null;
   masked_number: string | null;
   last_error: string | null;
   pending_action: PendingVoiceAction | null;
   provider_sid: string | null;
   verified_at: Date | null;
+  authorization_requested_at: Date | null;
   verification_failures: number;
   stream_token_hash: string | null;
   stream_expires_at: Date | null;
@@ -86,6 +90,7 @@ export function publicCall(row: CallRow): VoiceCall {
     lastError: row.last_error,
     pendingAction: row.pending_action,
     providerSid: row.provider_sid,
+    authorizationRequestedAt: row.authorization_requested_at?.toISOString() ?? null,
   };
 }
 
@@ -165,6 +170,26 @@ export async function requireActiveCall(db: Database, row: CallRow, now: Date) {
   return actor;
 }
 
+// Transport access permits conversation, never actor authority or workflow mutations.
+export async function requireActiveSession(db: Database, row: CallRow, now: Date) {
+  if (row.verified_at) await boundActor(db, row, now);
+  if (terminalCalls.has(row.status)) throw new BackendError("call_ended", 409);
+  if (row.status === "transferring") throw new BackendError("call_stopped", 409);
+  if (row.status === "queued") throw new BackendError("invalid_transition", 409);
+  if (!row.verified_at && row.mode !== "twilio") throw new BackendError("voice_unverified", 401);
+}
+
+export async function cancelPreparedSms(db: Database, id: string, now: Date) {
+  await db.query(
+    "UPDATE voice_sms SET status='cancelled',last_error='call_ended',updated_at=$2 WHERE call_id=$1 AND status='prepared'",
+    [id, now],
+  );
+  await db.query(
+    "UPDATE voice_calls SET pending_action=NULL,updated_at=$2 WHERE id=$1 AND pending_action->>'kind'='sms'",
+    [id, now],
+  );
+}
+
 export async function requireOpen(db: Database, row: CallRow, now: Date) {
   const actor = await requireActiveCall(db, row, now);
   if (actor.role !== "patient") throw new BackendError("forbidden", 403);
@@ -179,6 +204,15 @@ export async function visible(db: Database, actor: Principal, row: CallRow, now:
     if (row.actor_id !== current.id) throw new BackendError("not_found", 404);
     if (row.task_id) await assignedTask(db, current, row.task_id, now);
   } else {
+    if (!row.actor_id && !row.task_id) {
+      if (
+        !["staff", "operator"].includes(current.role) ||
+        !row.department_id ||
+        row.department_id !== current.departmentId
+      )
+        throw new BackendError("not_found", 404);
+      return;
+    }
     const owner = row.actor_id ? await getPrincipal(db, row.actor_id) : null;
     if (owner?.role === "staff") {
       if (owner.departmentId !== current.departmentId) throw new BackendError("not_found", 404);

@@ -18,7 +18,9 @@ test("voice defaults to a ready simulator without activating supplied credential
   assert.equal(empty.mode, "simulated");
   assert.equal(empty.liveEnabled, false);
   assert.equal(empty.realtimeModel, "gpt-realtime");
-  assert.equal(empty.voice, "marin");
+  assert.equal(empty.liveModel, "gpt-live-1");
+  assert.equal(empty.backendModel, "gpt-6-luna");
+  assert.equal(empty.voice, "cedar");
   assert.equal(voiceReadiness(empty).ready, true);
   assert.equal(voiceReadiness(empty).liveReady, false);
   const keysOnly = readVoiceConfig({

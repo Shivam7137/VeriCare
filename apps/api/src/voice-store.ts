@@ -6,12 +6,13 @@ import {
   assignedTask,
   boundActor,
   callRow,
+  cancelPreparedSms,
   currentVoiceActor,
   event,
   hash,
   mask,
   publicCall,
-  requireActiveCall,
+  requireActiveSession,
   requireOpen,
   safeReason,
   terminalCalls,
@@ -141,16 +142,31 @@ export class VoiceStore extends VoiceCallbackStore {
     });
   }
 
-  async beginInbound(input: { sid: string; from: string }): Promise<VoiceCall> {
-    if (!/^[A-Za-z][A-Za-z0-9_-]{0,127}$/.test(input.sid))
+  async beginInbound(input: {
+    sid: string;
+    from: string;
+    departmentId?: string;
+  }): Promise<VoiceCall> {
+    if (
+      !/^[A-Za-z][A-Za-z0-9_-]{0,127}$/.test(input.sid) ||
+      (input.departmentId !== undefined &&
+        !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(input.departmentId))
+    )
       throw new BackendError("invalid_input", 400);
     return transaction(this.pool, async (db) => {
       const id = randomUUID();
       const result = await db.query<CallRow>(
-        `INSERT INTO voice_calls (id,mode,direction,status,created_at,updated_at,provider_sid,masked_number)
-         VALUES ($1,'twilio','inbound','awaiting_verification',$2,$2,$3,$4)
+        `INSERT INTO voice_calls (id,mode,direction,status,created_at,updated_at,provider_sid,masked_number,caller_number,department_id)
+         VALUES ($1,'twilio','inbound','awaiting_verification',$2,$2,$3,$4,$5,$6)
          ON CONFLICT (provider_sid) DO NOTHING RETURNING *`,
-        [id, this.now(), input.sid, mask(input.from)],
+        [
+          id,
+          this.now(),
+          input.sid,
+          mask(input.from),
+          mask(input.from) ? input.from : null,
+          input.departmentId ?? null,
+        ],
       );
       if (result.rows[0]) {
         await event(db, id, "inbound_started", this.now());
@@ -195,7 +211,8 @@ export class VoiceStore extends VoiceCallbackStore {
       `SELECT c.* FROM voice_calls c LEFT JOIN tasks t ON t.id=c.task_id
        LEFT JOIN principals p ON p.id=c.actor_id LEFT JOIN patients patient ON patient.id=p.patient_id
        WHERE ($1='patient' AND c.actor_id=$2) OR ($1 IN ('staff','operator') AND
-       COALESCE(t.payload->>'departmentId',patient.department_id,p.department_id)=$3)
+       COALESCE(t.payload->>'departmentId',patient.department_id,p.department_id,
+         CASE WHEN c.actor_id IS NULL AND c.task_id IS NULL THEN c.department_id END)=$3)
        ORDER BY c.created_at DESC,c.id LIMIT 200`,
       [current.role, current.id, current.departmentId],
     );
@@ -226,6 +243,28 @@ export class VoiceStore extends VoiceCallbackStore {
       const row = await callRow(db, id, true);
       const actor = await boundActor(db, row, this.now());
       return { call: publicCall(row), actor };
+    });
+  }
+
+  async sessionState(id: string): Promise<{ call: VoiceCall; verified: boolean }> {
+    return transaction(this.pool, async (db) => {
+      const row = await callRow(db, id, true);
+      if (row.verified_at) await boundActor(db, row, this.now());
+      return { call: publicCall(row), verified: !!row.verified_at };
+    });
+  }
+
+  async requestAuthorization(id: string): Promise<VoiceCall> {
+    return transaction(this.pool, async (db) => {
+      const row = await callRow(db, id, true);
+      await requireActiveSession(db, row, this.now());
+      if (row.verified_at || row.authorization_requested_at) return publicCall(row);
+      await db.query(
+        "UPDATE voice_calls SET authorization_requested_at=$2,updated_at=$2 WHERE id=$1",
+        [id, this.now()],
+      );
+      await event(db, id, "authorization_requested", this.now(), {}, "authorization_requested");
+      return publicCall(await callRow(db, id));
     });
   }
 
@@ -305,7 +344,8 @@ export class VoiceStore extends VoiceCallbackStore {
   async cancelPending(id: string): Promise<void> {
     await transaction(this.pool, async (db) => {
       const row = await callRow(db, id, true);
-      await boundActor(db, row, this.now());
+      if (row.pending_action?.kind === "sms") await requireActiveSession(db, row, this.now());
+      else await boundActor(db, row, this.now());
       await db.query("UPDATE voice_calls SET pending_action=NULL,updated_at=$2 WHERE id=$1", [
         id,
         this.now(),
@@ -314,6 +354,11 @@ export class VoiceStore extends VoiceCallbackStore {
         await db.query(
           "UPDATE voice_transfers SET status='cancelled',last_error='action_cancelled',updated_at=$2 WHERE id=$1 AND status='prepared'",
           [row.pending_action.id, this.now()],
+        );
+      if (row.pending_action?.kind === "sms")
+        await db.query(
+          "UPDATE voice_sms SET status='cancelled',last_error='caller_cancelled',updated_at=$2 WHERE call_id=$1 AND id=$3 AND status='prepared'",
+          [id, this.now(), row.pending_action.id],
         );
       if (row.pending_action)
         await event(db, id, "action_cancelled", this.now(), { actionId: row.pending_action.id });
@@ -332,6 +377,7 @@ export class VoiceStore extends VoiceCallbackStore {
   async end(id: string, reason: string): Promise<VoiceCall> {
     return transaction(this.pool, async (db) => {
       const row = await callRow(db, id, true);
+      await cancelPreparedSms(db, id, this.now());
       if (!terminalCalls.has(row.status)) {
         await db.query(
           "UPDATE voice_transfers SET status='cancelled',last_error='call_ended',updated_at=$2 WHERE call_id=$1 AND status='prepared'",
@@ -358,6 +404,7 @@ export class VoiceStore extends VoiceCallbackStore {
         [id],
       );
       if (row.status === "transferring" || dispatched.rowCount) return publicCall(row);
+      await cancelPreparedSms(db, id, this.now());
       if (!terminalCalls.has(row.status)) {
         await db.query(
           "UPDATE voice_calls SET status='completed',pending_action=NULL,stream_token_hash=NULL,updated_at=$2 WHERE id=$1",
@@ -380,6 +427,7 @@ export class VoiceStore extends VoiceCallbackStore {
       if (row.status === "handoff") return publicCall(row);
       if (row.status === "transferring") throw new BackendError("call_stopped", 409);
       if (terminalCalls.has(row.status)) throw new BackendError("call_ended", 409);
+      await cancelPreparedSms(db, id, this.now());
       await db.query(
         "UPDATE voice_transfers SET status='cancelled',last_error='handoff_requested',updated_at=$2 WHERE call_id=$1 AND status='prepared'",
         [id, this.now()],
@@ -397,7 +445,7 @@ export class VoiceStore extends VoiceCallbackStore {
   async issueStream(id: string): Promise<{ token: string }> {
     return transaction(this.pool, async (db) => {
       const row = await callRow(db, id, true);
-      await requireActiveCall(db, row, this.now());
+      await requireActiveSession(db, row, this.now());
       if (!row.provider_sid || row.mode !== "twilio")
         throw new BackendError("provider_call_required", 409);
       if (row.stream_claimed_at) throw new BackendError("stream_already_connected", 409);
@@ -424,9 +472,11 @@ export class VoiceStore extends VoiceCallbackStore {
         row.provider_sid !== providerSid
       )
         throw new BackendError("invalid_stream_token", 401);
-      await requireActiveCall(db, row, this.now());
+      await requireActiveSession(db, row, this.now());
       await db.query(
-        "UPDATE voice_calls SET stream_token_hash=NULL,stream_expires_at=NULL,stream_claimed_at=$2,status='in_progress',updated_at=$2 WHERE id=$1",
+        `UPDATE voice_calls SET stream_token_hash=NULL,stream_expires_at=NULL,stream_claimed_at=$2,
+         status=CASE WHEN verified_at IS NULL THEN 'awaiting_verification' ELSE 'in_progress' END,
+         updated_at=$2 WHERE id=$1`,
         [id, this.now()],
       );
       await event(db, id, "stream_connected", this.now());

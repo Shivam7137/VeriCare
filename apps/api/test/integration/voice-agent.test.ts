@@ -99,9 +99,14 @@ test("unverified callers, unsupported tools, malformed arguments and revoked pri
   const f = await workflowFixture(t);
   const { agent, task, call } = await boundTask(f);
   const unverified = await agent.store.beginInbound({ sid: "CAunverified", from: "+15555550102" });
-  await assert.rejects(agent.run(unverified.id, "unverified-tool", "get_request_status", {}), {
-    code: "voice_unverified",
-  });
+  const challenge = (await agent.run(
+    unverified.id,
+    "unverified-tool",
+    "get_request_status",
+    {},
+  )) as { status: string };
+  assert.equal(challenge.status, "authorization_required");
+  assert.equal((await agent.store.getInternal(unverified.id)).taskId, null);
   for (const name of ["complete_booking", "staff_approval", "execute_booking"]) {
     await assert.rejects(agent.run(call.id, name, name, {}), { code: "tool_not_allowed" });
   }

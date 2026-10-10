@@ -1,0 +1,32 @@
+# Alex: conversational voice design
+
+Alex uses GPT-Live 1 with Cedar for speech and GPT-6 Luna for delegated backend work. The opening is one sentence introducing Alex as an AI assistant, followed by “How can I help?” The caller can explain the request before any authorization question.
+
+## What changed and why
+
+- **Remove the telephone announcement.** Incoming TwiML connects straight to GPT-Live. The previous long introduction and access-code Gather no longer precede the conversation.
+- **Let the voice model handle timing.** GPT-Live listens and speaks continuously. The relay forwards native 8 kHz μ-law audio and leaves ordinary conversational turn-taking to the model. Delayed caption fragments never clear the audio queue or cut off fresh speech. Backend response completion is separate from spoken playback.
+- **Give Alex a restrained personality.** Warm phrasing, contractions, varied pace, occasional acknowledgment, one question at a time, and short replies. No forced laughter, repetitive enthusiasm, menu recitation, or claims to be human. Worried or frustrated callers get a calmer response.
+- **Ask for access at the relevant moment.** Greetings, general help and requested portal-link texts do not require a code. Appointment records and care-team actions trigger a backend challenge. Codes are collected on the keypad, never included in model input or monitor events. Verification resumes the existing request.
+- **Keep actions explicit.** Describe the proposed action in everyday language, preserve its exact details, then ask for keypad approval. Staff and patient appointment decisions remain separate. The model cannot complete bookings or invent transfer outcomes.
+- **Use SMS when asked.** Texts go to the current caller's number after approval. Templates cover the portal link, an authorized request's status, and the caller's current appointment. `get_sms_status` checks delivery without sending another text. Accepted, delivered, uncertain and simulated outcomes remain distinct.
+- **Make tuning observable.** Save native speaker captions, backend tool arguments/results, verification outcomes and SMS status. Captions are approximate, and generated words are not proof they were heard.
+
+## Evidence and remaining listening checks
+
+A synthetic caller generated locally asked the real GPT-Live service for an app-link text. The captured conversation introduced Alex briefly, called `prepare_sms` with `portal_link`, and asked for action approval without an access-code challenge. The final prompt produced “I can text the patient portal link to your number ending in zero one zero two,” followed by the approval prompt. The provider returned audio with no reported session error. No telephone call or actual SMS was sent in this test.
+
+Automated tests cover delayed authorization, secret-code handling, current-call SMS destinations, replay/duplicate dispatch, delivery callbacks that arrive before send acknowledgements, interruptions, early keypad presses, asynchronous shutdown, and saved monitoring. All 132 unit tests and 188 backend tests passed, along with type checks and the production build. The Twilio number reports both Voice and SMS capability. After replacing an inconsistently cached restricted key with equivalent permissions and expiry, consecutive provider connections accepted GPT-Live 1, Cedar and the GPT-6 Luna backend, including two successful audio tests.
+
+The native readback gate uses the closing confirmation phrase, audible speech followed by 320 ms of quiet audio, and Twilio playback acknowledgments. This is an application heuristic, not a provider guarantee of exact word-to-audio alignment. An interrupted or unplayed candidate does not authorize an action; confirmation still binds to the exact pending action and backend state.
+
+The final test of likability is a person listening on the actual phone line. Check a casual greeting, a pause to think, an interruption, a corrected date, a frustrated caller, an appointment lookup, a transfer request, and a requested text. Listen for natural pacing and useful brevity, and inspect the monitor for correct tool choice. Real handset audio, transfer completion and SMS delivery remain separate from the synthetic audio test.
+
+## Primary references
+
+- [GPT-Live 1 model](https://developers.openai.com/api/docs/models/gpt-live-1): native full-duplex voice model.
+- [Prompting GPT-Live](https://developers.openai.com/api/docs/guides/live-prompting): separate speaking style, backchannels, interruptions and delegation policy.
+- [GPT-Live WebSockets](https://developers.openai.com/api/docs/guides/voice-websockets?api=live): continuous audio, supported codecs and session startup.
+- [Delegation and tools](https://developers.openai.com/api/docs/guides/live-delegation): nested Responses events and application-owned tool execution.
+- [Managing sessions](https://developers.openai.com/api/docs/guides/live-conversations): greeting first, caption timing and playback limits.
+- [Twilio Message resource](https://www.twilio.com/docs/messaging/api/message-resource): creation acknowledgments and delivery status callbacks.

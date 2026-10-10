@@ -56,8 +56,13 @@ export default function PhoneAccess({
         </span>
       </div>
       <p>
-        Generate a one-time code, call the line, and enter the code when asked. After the assistant
-        reads an action aloud, press <strong>1 to approve</strong> or <strong>2 to cancel</strong>.
+        Call and tell Alex what you need. Get a code here if the assistant asks to access
+        appointments or staff actions. After the assistant reads an action aloud, press{" "}
+        <strong>1 to approve</strong> or <strong>2 to cancel</strong>.
+      </p>
+      <p className="hint">
+        You can also ask Alex to text you a portal link or your authorized appointment details.
+        Texts go to the number you are calling from after your approval.
       </p>
       <button className="secondary" disabled={busy || !config} onClick={generate}>
         {busy ? "Please wait…" : code ? "Generate a new access code" : "Get phone access code"}

@@ -2,6 +2,7 @@ import { setTimeout } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import type { Pool } from "pg";
 import { runVoiceWorker } from "./voice-worker.js";
+import { VoiceSms } from "./voice-sms.js";
 import { createPool } from "./db.js";
 import { dispatchDueJobs } from "./delivery.js";
 import { lockTask, readWorkflow, saveTaskEvent, saveWorkflow, transaction } from "./domain.js";
@@ -71,6 +72,7 @@ export async function runWorkerOnce(
   const delivery = await dispatchDueJobs(pool, { now, limit: 100 });
   const operations = await new BookingExecutor(pool, { scheduler, now }).recover(100);
   const calls = await runVoiceWorker(pool, { now });
+  await new VoiceSms(pool, { now }).reconcileStale();
   return { expired, delivery, operations, calls };
 }
 

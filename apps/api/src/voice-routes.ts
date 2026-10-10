@@ -22,18 +22,19 @@ import {
 } from "./voice-config.js";
 import {
   connectStreamTwiml,
-  incomingTwiml,
   retryTwiml,
   hangupTwiml,
   validateTwilioWebhook,
 } from "./twilio-provider.js";
-import { bridgeRealtime } from "./realtime-bridge.js";
+import { bridgeLive } from "./live-bridge.js";
 import { terminalCalls } from "./voice-store-support.js";
 import { createTwilioTransferProvider, transferOutcomeTwiml } from "./twilio-transfer.js";
 import { registerVoiceDirectoryRoutes } from "./voice-directory-routes.js";
 import type { TransferProvider } from "./voice-transfers.js";
 import { VoiceMonitorStore } from "./voice-monitor-store.js";
 import { RealtimeMonitor } from "./realtime-monitor.js";
+import { createTwilioSmsProvider } from "./twilio-sms.js";
+import { registerVoiceSmsRoutes } from "./voice-sms-routes.js";
 
 type CallParams = { Params: { id: string } };
 export function registerVoiceRoutes(
@@ -49,13 +50,15 @@ export function registerVoiceRoutes(
     now,
     ownNumber: config.phoneNumber,
     transferProvider: options.transferProvider ?? createTwilioTransferProvider(config),
+    smsProvider: createTwilioSmsProvider(config),
   });
   const connections = new Map<string, { close(reason?: string): void }>();
-  const activeConnections = new Set<ReturnType<typeof bridgeRealtime>>();
+  const activeConnections = new Set<ReturnType<typeof bridgeLive>>();
   let closing = false;
   app.register(async (voice) => {
     await voice.register(formbody);
     await voice.register(websocket, { options: { maxPayload: 128 * 1024 } });
+    registerVoiceSmsRoutes(voice, agent.sms, config);
     voice.addHook("onClose", async () => {
       closing = true;
       // Include streams still authenticating, and finish their call records before pool.end().
@@ -89,6 +92,11 @@ export function registerVoiceRoutes(
       registerVoiceDirectoryRoutes(api, agent.directory, agent.transfers, store, actor);
       api.get("/voice/config", async () => ({
         ...voiceReadiness(config),
+        model: config.liveModel,
+        voice: config.voice,
+        backendModel: config.backendModel,
+        authorization: "when_needed",
+        smsEnabled: Boolean(agent.sms.appUrl),
         agents: [
           {
             id: "appointment-coordinator",
@@ -125,7 +133,28 @@ export function registerVoiceRoutes(
           throw new BackendError("forbidden", 403);
         const call = await store.get(actor(request), request.params.id);
         reply.header("Cache-Control", "no-store");
-        return { ...(await monitor.read(call.id)), streamConnected: connections.has(call.id) };
+        const snapshot = await monitor.read(call.id);
+        const messages = await agent.sms.list(actor(request), call.id);
+        return {
+          ...snapshot,
+          entries: [
+            ...snapshot.entries,
+            ...messages.map((message) => ({
+              id: `sms-${message.id}`,
+              kind: "tool",
+              label: `SMS · ${message.status}`,
+              at: message.createdAt,
+              status: ["failed", "unknown"].includes(message.status)
+                ? "failed"
+                : ["prepared", "dispatching", "accepted", "sent"].includes(message.status)
+                  ? "running"
+                  : "complete",
+              text: message.body,
+              details: { ...message, updatedAt: message.updatedAt },
+            })),
+          ],
+          streamConnected: connections.has(call.id),
+        };
       });
       api.post<CallParams>("/voice/calls/:id/verify", async (request) => {
         const call = await store.get(actor(request), request.params.id);
@@ -214,8 +243,15 @@ export function registerVoiceRoutes(
           return reply
             .type("text/xml")
             .send(hangupTwiml("This test line is not available for this number."));
-        await store.beginInbound({ sid: form.CallSid!, from: form.From! });
-        return reply.type("text/xml").send(incomingTwiml(config));
+        const call = await store.beginInbound({
+          sid: form.CallSid!,
+          from: form.From!,
+          departmentId: config.departmentId,
+        });
+        const { token } = await store.issueStream(call.id);
+        return reply
+          .type("text/xml")
+          .send(connectStreamTwiml(config, { callId: call.id, streamToken: token }));
       });
       provider.post<CallParams>("/voice/outbound/:id", async (request, reply) => {
         const form = request.body as Record<string, string>;
@@ -227,7 +263,10 @@ export function registerVoiceRoutes(
         )
           return reply.type("text/xml").send(hangupTwiml());
         await store.markDialed(call.id, form.CallSid!);
-        return reply.type("text/xml").send(incomingTwiml(config));
+        const { token } = await store.issueStream(call.id);
+        return reply
+          .type("text/xml")
+          .send(connectStreamTwiml(config, { callId: call.id, streamToken: token }));
       });
       provider.post("/voice/verify", async (request, reply) => {
         const form = request.body as Record<string, string>;
@@ -275,9 +314,10 @@ export function registerVoiceRoutes(
         let timer: ReturnType<typeof setTimeout> | undefined;
         let handoffDeadline: number | undefined;
         let closed = false;
-        const connection = bridgeRealtime(socket, {
+        const connection = bridgeLive(socket, {
           apiKey: config.openaiApiKey!,
-          model: config.realtimeModel,
+          model: config.liveModel,
+          backendModel: config.backendModel,
           voice: config.voice,
           instructions: `${voiceAgentInstructions}\nCurrent server time is ${now().toISOString()} UTC. The fictional clinic uses America/Halifax. Ask the caller to confirm exact dates and time zone for relative expressions such as next week.`,
           tools: voiceAgentTools,
@@ -292,7 +332,7 @@ export function registerVoiceRoutes(
               connections.set(verified.callId, connection);
               const check = async () => {
                 try {
-                  const { call } = await store.bound(verified.callId);
+                  const { call } = await store.sessionState(verified.callId);
                   if (call.status === "handoff") {
                     // Tools already reject handoff. Allow a bounded final spoken acknowledgment;
                     // portal end, authority loss and server shutdown still close immediately.
@@ -319,6 +359,17 @@ export function registerVoiceRoutes(
           },
           onTool: (name, args, callId, toolCallId) => agent.run(callId, toolCallId, name, args),
           onDigit: (digit, callId, actionId) => agent.digit(callId, digit, actionId),
+          onVerify: async (code, callId) => {
+            await store.verifyCode(callId, code);
+            const { actor, call } = await store.bound(callId);
+            return {
+              status: "verified",
+              role: actor.role,
+              pendingAction: call.pendingAction,
+              message:
+                "Access verified. Briefly acknowledge and continue the caller's original request; do not ask them to repeat it.",
+            };
+          },
           onClose: async (callId, reason) => {
             closed = true;
             clearTimeout(timer);

@@ -212,6 +212,8 @@ export const voiceToolInputSchema = z.strictObject({
     "request_human",
     "list_care_team",
     "prepare_transfer",
+    "prepare_sms",
+    "get_sms_status",
   ]),
   arguments: z.record(z.string(), z.unknown()),
 });

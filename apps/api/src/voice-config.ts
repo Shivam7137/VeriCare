@@ -13,6 +13,9 @@ export interface VoiceConfig {
   publicBaseUrl: string | undefined;
   allowedNumbers: string[];
   realtimeModel: string;
+  liveModel: string;
+  backendModel: string;
+  departmentId: string | undefined;
   voice: string;
   invalid: string[];
 }
@@ -79,7 +82,9 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
       ?.split(",")
       .map((number) => number.trim()) ?? [];
   const realtimeModel = value("OPENAI_REALTIME_MODEL") ?? "gpt-realtime";
-  const voice = value("OPENAI_VOICE") ?? "marin";
+  const liveModel = value("OPENAI_LIVE_MODEL") ?? "gpt-live-1";
+  const backendModel = value("OPENAI_VOICE_BACKEND_MODEL") ?? "gpt-6-luna";
+  const voice = value("OPENAI_VOICE") ?? "cedar";
   const invalid: string[] = [];
   if (mode !== "simulated" && mode !== "twilio") invalid.push("VOICE_MODE");
   if (enabled && enabled !== "true" && enabled !== "false") invalid.push("VOICE_LIVE_ENABLED");
@@ -91,6 +96,9 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
   if (baseUrl && !publicBaseUrl) invalid.push("VOICE_PUBLIC_BASE_URL");
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(realtimeModel))
     invalid.push("OPENAI_REALTIME_MODEL");
+  if (liveModel !== "gpt-live-1") invalid.push("OPENAI_LIVE_MODEL");
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(backendModel))
+    invalid.push("OPENAI_VOICE_BACKEND_MODEL");
   if (
     ![
       "alloy",
@@ -118,6 +126,9 @@ export function readVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
       ...new Set(numbers.filter((number) => number === "*" || E164_NUMBER.test(number))),
     ],
     realtimeModel,
+    liveModel,
+    backendModel,
+    departmentId: value("VOICE_DEPARTMENT_ID"),
     voice,
     invalid,
   };

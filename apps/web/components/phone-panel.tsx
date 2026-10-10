@@ -359,6 +359,15 @@ export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
               <div className="phone-buttons">
                 <button
                   className="secondary"
+                  disabled={busy || !!call.pendingAction}
+                  onClick={() =>
+                    runTool("prepare_sms", { template: "portal_link", appointmentId: null })
+                  }
+                >
+                  Preview a text message
+                </button>
+                <button
+                  className="secondary"
                   disabled={busy}
                   onClick={() => runTool("get_request_status")}
                 >

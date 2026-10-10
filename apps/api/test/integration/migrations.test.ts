@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { migrate } from "../../src/migrations.js";
 import { seed } from "../../src/fixtures.js";
 import { isolatedDatabase } from "./database.js";
@@ -31,6 +31,9 @@ test("migration upgrades a foundation database without changing saved tasks or e
       "005_demo_profiles.sql",
       "006_voice_forwarding.sql",
       "007_voice_monitor.sql",
+      "008_voice_sms.sql",
+      "009_voice_guest.sql",
+      "010_voice_sms_status_evidence.sql",
     ],
   );
   assert.deepEqual((await pool.query("SELECT * FROM tasks")).rows, tasks);
@@ -43,4 +46,30 @@ test("migration upgrades a foundation database without changing saved tasks or e
     true,
   );
   assert.equal((await pool.query("SELECT * FROM voice_transfers")).rowCount, 0);
+  assert.equal((await pool.query("SELECT * FROM voice_sms_status_evidence")).rowCount, 0);
+});
+
+test("SMS evidence migration preserves calls and outbox records already saved through migration 009", async (t) => {
+  const database = await isolatedDatabase(t);
+  const pool = database.open();
+  const migrations = new URL("../../migrations/", import.meta.url);
+  await pool.query("CREATE TABLE schema_migrations (name text PRIMARY KEY)");
+  for (const name of (await readdir(migrations))
+    .filter((name) => name.endsWith(".sql") && name < "010_")
+    .sort()) {
+    await pool.query(await readFile(new URL(name, migrations), "utf8"));
+    await pool.query("INSERT INTO schema_migrations VALUES ($1)", [name]);
+  }
+  await pool.query(
+    "INSERT INTO voice_calls(id,mode,direction,status,created_at,updated_at) VALUES ('saved-call','simulated','inbound','in_progress',now(),now())",
+  );
+  await pool.query(`INSERT INTO voice_sms(id,call_id,tool_call_id,template,mode,body,content_fingerprint,status,expires_at,created_at,updated_at)
+    VALUES ('saved-sms','saved-call','saved-tool','portal_link','simulated','Saved preview','saved-fingerprint','prepared',now()+interval '5 minutes',now(),now())`);
+  const calls = (await pool.query("SELECT * FROM voice_calls")).rows;
+  const messages = (await pool.query("SELECT * FROM voice_sms")).rows;
+  await migrate(pool);
+  await migrate(pool);
+  assert.deepEqual((await pool.query("SELECT * FROM voice_calls")).rows, calls);
+  assert.deepEqual((await pool.query("SELECT * FROM voice_sms")).rows, messages);
+  assert.equal((await pool.query("SELECT * FROM voice_sms_status_evidence")).rowCount, 0);
 });

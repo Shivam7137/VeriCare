@@ -5,6 +5,7 @@ import type { Principal } from "./identity.js";
 import {
   assignedTask,
   callRow,
+  cancelPreparedSms,
   currentPatient,
   event,
   mask,
@@ -187,6 +188,8 @@ export class VoiceCallbackStore {
         // This method is reached only through a signed webhook containing our outbound call ID.
         await db.query("UPDATE voice_calls SET provider_sid=$2 WHERE id=$1", [id, sid]);
       }
+      if (terminalCalls.has(row.status) || terminalCalls.has(mapped[status]!))
+        await cancelPreparedSms(db, id, this.now());
       if (terminalCalls.has(row.status)) return;
       const next =
         mapped[status] === "in_progress" && !row.verified_at

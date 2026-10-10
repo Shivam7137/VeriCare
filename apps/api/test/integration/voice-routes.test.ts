@@ -167,8 +167,8 @@ test("signed inbound verification connects a bound stream and terminal callbacks
   const incoming = await f.signed("/voice/incoming", f.form());
   assert.equal(incoming.statusCode, 200);
   assert.match(incoming.headers["content-type"]!, /text\/xml/);
-  assert.match(incoming.body, /<Gather/);
-  assert.doesNotMatch(incoming.body, /<Stream/);
+  assert.match(incoming.body, /<Stream/);
+  assert.doesNotMatch(incoming.body, /<Gather|<Say/);
   await f.signed("/voice/incoming", f.form());
   assert.equal(Number((await f.pool.query("SELECT count(*) FROM voice_calls")).rows[0].count), 1);
   const verified = await f.signed("/voice/verify", f.form({ Digits: code }));
@@ -234,14 +234,14 @@ test("inbound allowlist and five failed access-code attempts prevent unauthorize
   assert.equal((await f.store.bySid(sid))?.actorId, null);
 });
 
-test("wildcard callers still require signed webhooks and a valid portal access code", async (t) => {
+test("wildcard callers enter a signed guest stream without gaining appointment authority", async (t) => {
   const f = await fixture(t, { ...liveConfig, allowedNumbers: ["*"] });
   const body = f.form({ From: "+15555550999" });
   const unsigned = await f.app.inject({ method: "POST", url: "/voice/incoming", payload: body });
   assert.equal(unsigned.statusCode, 403);
   const incoming = await f.signed("/voice/incoming", body);
-  assert.match(incoming.body, /<Gather/);
-  assert.doesNotMatch(incoming.body, /<Stream/);
+  assert.match(incoming.body, /<Stream/);
+  assert.doesNotMatch(incoming.body, /<Gather|<Say/);
   const wrongCode = await f.signed("/voice/verify", { ...body, Digits: "invalid" });
   assert.doesNotMatch(wrongCode.body, /<Stream/);
   const { code } = await f.store.issueCode(f.patient);
@@ -265,7 +265,7 @@ test("outbound TwiML reconciles an uncertain dispatch and tolerates answered sta
   assert.equal((await f.store.getInternal(call.id)).status, "reconciling");
   const recovered = await f.signed(`/voice/outbound/${call.id}`, f.form());
   assert.equal(recovered.statusCode, 200);
-  assert.match(recovered.body, /<Gather/);
+  assert.match(recovered.body, /<Stream/);
   assert.equal((await f.store.getInternal(call.id)).providerSid, sid);
   assert.equal(
     (await f.signed(`/voice/status?callId=${call.id}`, f.form({ CallStatus: "in-progress" })))
@@ -275,7 +275,7 @@ test("outbound TwiML reconciles an uncertain dispatch and tolerates answered sta
   assert.equal((await f.store.getInternal(call.id)).status, "awaiting_verification");
   const response = await f.signed(`/voice/outbound/${call.id}`, f.form());
   assert.equal(response.statusCode, 200);
-  assert.match(response.body, /<Gather/);
-  assert.doesNotMatch(response.body, /<Stream/);
+  assert.match(response.body, /<Stream/);
+  assert.doesNotMatch(response.body, /<Gather|<Say/);
   await assert.rejects(f.store.bound(call.id), { code: "voice_unverified" });
 });
