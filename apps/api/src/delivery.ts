@@ -211,6 +211,7 @@ export async function dispatchDueJobs(
   options: {
     now?: Date | (() => Date);
     limit?: number;
+    taskId?: string;
     beforeDelivery?: (job: CommunicationJob) => Promise<void>;
   } = {},
 ): Promise<DispatchResult> {
@@ -223,6 +224,7 @@ export async function dispatchDueJobs(
     !Number.isInteger(limit) ||
     limit < 1 ||
     limit > 1_000 ||
+    (options.taskId !== undefined && !options.taskId) ||
     !Number.isFinite(clock().getTime())
   ) {
     throw new BackendError("invalid_dispatch_options", 400);
@@ -230,8 +232,9 @@ export async function dispatchDueJobs(
   const result: DispatchResult = { delivered: 0, cancelled: 0, failed: 0, retried: 0 };
   const candidates = await pool.query<{ id: string; task_id: string }>(
     `SELECT id, task_id FROM communication_jobs
-     WHERE status = 'pending' AND due_at <= $1 ORDER BY due_at, id LIMIT $2`,
-    [clock(), limit],
+     WHERE status = 'pending' AND due_at <= $1 AND ($3::text IS NULL OR task_id=$3)
+     ORDER BY due_at, id LIMIT $2`,
+    [clock(), limit, options.taskId ?? null],
   );
   for (const candidate of candidates.rows) {
     const outcome = await transaction<Outcome>(pool, async (client) => {

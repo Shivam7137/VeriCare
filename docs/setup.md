@@ -10,11 +10,12 @@ npm run setup
 npm run db:up
 npm run db:migrate
 npm run db:seed
+npm run demo:populate
 npm run demo:credentials
 npm run dev
 ```
 
-`setup` creates `.env` only if missing. Ordered migrations are tracked in `schema_migrations` and applied transactionally under an advisory lock. Migration 002 adds immutable proposal drafts; migration 003 adds identity, consent, scheduler, decisions, operations and communication storage. Seeds preserve existing rows, moved bookings and task history. Existing slots and callback windows are intentionally not refreshed; for a new demonstration, use future synthetic slots and new tasks in a separate database rather than clearing saved records.
+`setup` creates `.env` only if missing. Ordered migrations are tracked in `schema_migrations` and applied transactionally under an advisory lock. Migration 002 adds immutable proposal drafts; migration 003 adds identity, consent, scheduler, decisions, operations and communication storage; migration 004 adds voice storage; migration 005 adds optional fictional profile names. Seeds preserve existing rows, moved bookings and task history. `demo:populate` adds the [rich clinic dataset](demo-data.md) with future dates. Rerunning the same daily batch preserves existing scenarios; use `-- --batch NAME` for another fresh batch without clearing saved records. The smaller `db:seed` fixture remains available for a minimal setup.
 
 `demo:credentials` provisions 24-hour sessions for `synthetic-patient-001`, `synthetic-representative-001`, `synthetic-staff-001` and `synthetic-operator-001`. Tokens go to ignored `.env.sessions.json` with mode 0600; only their hashes are stored in PostgreSQL. The script preserves an existing file. To renew expired credentials, move that local file to a secure ignored location, rerun the command, and delete the old local copy when no longer needed. No token, role selection or login endpoint is exposed over HTTP.
 

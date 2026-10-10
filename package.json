@@ -19,6 +19,7 @@
     "worker": "tsx --env-file=.env apps/api/src/worker.ts",
     "worker:once": "npm run worker -- --once",
     "demo:credentials": "tsx --env-file=.env apps/api/src/demo-credentials.ts",
+    "demo:populate": "tsx --env-file=.env apps/api/src/populate.ts",
     "voice:check": "tsx --env-file=.env apps/api/src/voice-check.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

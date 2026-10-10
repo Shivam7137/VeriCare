@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import type { CreateTaskInput, Task } from "@prc/contracts";
-import { api, date, inputDate, labels, windowInput, type Actor, type Slot } from "../lib/ui";
+import {
+  api,
+  date,
+  inputDate,
+  labels,
+  windowInput,
+  type Actor,
+  type Slot,
+  type Booking,
+} from "../lib/ui";
 import RequestForm from "./request-form";
 import "../app/phone.css";
 
@@ -28,9 +37,14 @@ type Configuration = {
   invalid: string[];
   agents: { id: string; name: string; description: string }[];
 };
-type Props = { actor: Actor; taskId?: string; portal: "patient" | "professional" };
+type Props = {
+  actor: Actor;
+  taskId?: string;
+  portal: "patient" | "professional";
+  bookings?: Booking[];
+};
 
-export default function PhonePanel({ actor, taskId, portal }: Props) {
+export default function PhonePanel({ actor, taskId, portal, bookings }: Props) {
   const [config, setConfig] = useState<Configuration | null>(null);
   const [calls, setCalls] = useState<Call[]>([]);
   const [selected, setSelected] = useState("");
@@ -401,6 +415,7 @@ export default function PhonePanel({ actor, taskId, portal }: Props) {
               {intake && !call.taskId && (
                 <RequestForm
                   slots={slots}
+                  bookings={bookings}
                   busy={busy}
                   close={() => setIntake(false)}
                   create={async (raw) => {

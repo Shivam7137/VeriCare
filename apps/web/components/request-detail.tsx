@@ -75,6 +75,9 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
         <div>
           <p className="eyebrow">REQUEST DETAILS</p>
           <h2 id="request-heading">{task.summary}</h2>
+          {progress.patient?.displayName && (
+            <p className="muted">{progress.patient.displayName} · Fictional patient</p>
+          )}
         </div>
         <span className={`status ${task.state === "completed" ? "success" : ""}`}>
           {labels[task.state]}
@@ -282,6 +285,7 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
               <span className="timeline-dot" />
               <div>
                 <strong>{event.action.replaceAll("_", " ")}</strong>
+                {event.actorDisplayName && <span>{event.actorDisplayName}</span>}
                 <time dateTime={event.occurredAt}>{date(event.occurredAt)}</time>
               </div>
             </li>

@@ -15,7 +15,6 @@ export default function Dashboard({ portal }: { portal: Portal }) {
   const [tasks, setTasks] = useState<Progress[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [queue, setQueue] = useState<Queue | null>(null);
-  const [booking, setBooking] = useState<{ startsAt: string } | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -28,16 +27,10 @@ export default function Dashboard({ portal }: { portal: Portal }) {
     if (!actor) return;
     const version = ++refreshId.current,
       identity = generation.current;
-    const [requests, availability, currentBooking, operatorQueue] = await Promise.all([
+    const [requests, availability, operatorQueue] = await Promise.all([
       api<{ tasks: Progress[] }>("/api/backend/tasks", undefined, undefined, portal),
       api<{ slots: Slot[] }>(
         "/api/backend/slots?patientId=synthetic-patient-001",
-        undefined,
-        undefined,
-        portal,
-      ),
-      api<{ startsAt: string }>(
-        "/api/backend/bookings/synthetic-appointment-001",
         undefined,
         undefined,
         portal,
@@ -49,7 +42,6 @@ export default function Dashboard({ portal }: { portal: Portal }) {
     if (identity !== generation.current || version !== refreshId.current) return;
     setTasks(requests.tasks);
     setSlots(availability.slots);
-    setBooking(currentBooking);
     setQueue(operatorQueue);
     setSelectedId((id) =>
       requests.tasks.some((item) => item.task.id === id) ? id : (requests.tasks[0]?.task.id ?? ""),
@@ -95,6 +87,12 @@ export default function Dashboard({ portal }: { portal: Portal }) {
     };
   }, [actor, refresh, busy]);
   const selected = tasks.find((item) => item.task.id === selectedId);
+  const booking = selected?.booking;
+  const bookings = [
+    ...new Map(
+      tasks.flatMap((item) => (item.booking ? [[item.booking.id, item.booking] as const] : [])),
+    ).values(),
+  ];
   const accountChoices: Actor["role"][] = patientPortal
     ? actor
       ? []
@@ -110,7 +108,6 @@ export default function Dashboard({ portal }: { portal: Portal }) {
     setTasks([]);
     setSlots([]);
     setQueue(null);
-    setBooking(null);
     setCreating(false);
     try {
       setActor(await api<Actor>("/api/session", { persona }, "POST", portal));
@@ -130,7 +127,6 @@ export default function Dashboard({ portal }: { portal: Portal }) {
       setTasks([]);
       setSlots([]);
       setQueue(null);
-      setBooking(null);
       setCreating(false);
       setError("");
       setNotice("");
@@ -300,12 +296,8 @@ export default function Dashboard({ portal }: { portal: Portal }) {
               </>
             ) : (
               <div className="current-booking">
-                <span>
-                  {patientPortal
-                    ? "Your current appointment"
-                    : "Current appointment · Demo patient"}
-                </span>
-                <strong>{booking ? date(booking.startsAt) : "Loading…"}</strong>
+                <span>Appointment for selected request</span>
+                <strong>{booking ? date(booking.startsAt) : "Select a request"}</strong>
               </div>
             )}
           </section>
@@ -353,6 +345,9 @@ export default function Dashboard({ portal }: { portal: Portal }) {
                     {labels[item.task.state]}
                   </span>
                   <strong>{item.task.summary}</strong>
+                  {!patientPortal && item.patient?.displayName && (
+                    <small>{item.patient.displayName}</small>
+                  )}
                   <small>
                     {item.task.id === "T001" ? "Starter request · T001" : date(item.task.createdAt)}
                   </small>
@@ -364,6 +359,7 @@ export default function Dashboard({ portal }: { portal: Portal }) {
               {creating && actor.role === "patient" ? (
                 <RequestForm
                   slots={slots}
+                  bookings={bookings}
                   busy={busy}
                   close={() => setCreating(false)}
                   create={(input) => mutate("tasks", input, true)}
@@ -390,6 +386,7 @@ export default function Dashboard({ portal }: { portal: Portal }) {
               )}
               <div id="phone">
                 <PhonePanel
+                  bookings={bookings}
                   key={`${actor.id}:${creating ? "new" : selectedId}`}
                   actor={actor}
                   taskId={creating ? undefined : selected?.task.id}

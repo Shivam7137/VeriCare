@@ -101,3 +101,14 @@ test("readiness rejects a database that has not received the proposal migration"
   assert.equal((await app.inject("/health")).statusCode, 200);
   assert.equal((await app.inject("/ready")).statusCode, 503);
 });
+
+test("readiness requires the profile columns used by authorized progress reads", async (t) => {
+  const database = await isolatedDatabase(t);
+  const pool = database.open();
+  await migrate(pool);
+  const app = buildApp(pool);
+  t.after(() => app.close());
+  assert.equal((await app.inject("/ready")).statusCode, 200);
+  await pool.query("ALTER TABLE patients DROP COLUMN display_name");
+  assert.equal((await app.inject("/ready")).statusCode, 503);
+});

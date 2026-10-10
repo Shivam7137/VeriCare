@@ -16,6 +16,7 @@ npm run setup
 npm run db:up
 npm run db:migrate
 npm run db:seed
+npm run demo:populate
 npm run demo:credentials
 npm run dev
 ```
@@ -27,6 +28,8 @@ The patient portal also supports simulated incoming calls, scheduled callbacks a
 Choose **Desktop overview** on the homepage, or open `/desktop`, to see department requests, booking evidence, history, appointments, calls, handovers and AI readiness together. **Open desktop demo** signs in with the read-only operator account; an existing professional session is reused. Search, status filters and request links help navigate the records. The view refreshes every five seconds, and it keeps the last successful snapshot with a warning if refresh fails. Patient sign-in remains separate.
 
 [View the desktop screenshot](docs/screenshots/desktop-overview.png).
+
+`npm run demo:populate` adds a rich fictional clinic dataset: 10 named patients, 4 care-team members, 26 requests and appointments, 90 time slots, and 32 simulated calls. Maya Chen is the existing patient demo account, with eight new requests at different stages. Each completed request has real mock-scheduler evidence; revised proposals, rejected offers, withdrawals, human handovers and a failed callback delivery make the queues useful to explore. See [demo data](docs/demo-data.md) for the scenario guide and repeat-safe refresh commands.
 
 Optional local checks:
 

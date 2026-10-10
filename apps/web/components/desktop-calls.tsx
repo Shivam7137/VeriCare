@@ -62,6 +62,7 @@ export default function DesktopCalls({ calls }: { calls: DesktopCall[] }) {
               <div>
                 <strong>
                   {item.direction === "inbound" ? "Incoming call" : "Scheduled callback"}
+                  {item.patientName && ` · ${item.patientName}`}
                 </strong>
                 <p>
                   {item.maskedNumber ?? "Portal-verified session"} ·{" "}

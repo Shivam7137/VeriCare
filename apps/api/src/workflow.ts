@@ -458,7 +458,10 @@ export class WorkflowService {
       ).rows;
       const events = (
         await db.query(
-          `SELECT id,actor_id AS "actorId",action,occurred_at AS "occurredAt",evidence_ref AS "evidenceRef" FROM task_events WHERE task_id=$1 ORDER BY occurred_at,id`,
+          `SELECT e.id,e.actor_id AS "actorId",p.display_name AS "actorDisplayName",e.action,
+           e.occurred_at AS "occurredAt",e.evidence_ref AS "evidenceRef"
+           FROM task_events e LEFT JOIN principals p ON p.id=e.actor_id
+           WHERE e.task_id=$1 ORDER BY e.occurred_at,e.id`,
           [taskId],
         )
       ).rows;
@@ -476,6 +479,15 @@ export class WorkflowService {
       ).rows;
       return {
         task,
+        patient:
+          (
+            await db.query('SELECT id,display_name AS "displayName" FROM patients WHERE id=$1', [
+              task.patientId,
+            ])
+          ).rows[0] ?? null,
+        booking: workflow
+          ? await this.options.scheduler.getBooking(workflow.appointmentId, db)
+          : null,
         workflow,
         proposals,
         activeProposal:

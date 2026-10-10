@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import DesktopIcon from "./desktop-icon";
 import { date, labels } from "../lib/ui";
@@ -41,7 +44,7 @@ export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
         </div>
         <div>
           <dt>Patient</dt>
-          <dd>{task.patientId}</dd>
+          <dd>{progress.patient?.displayName ?? task.patientId}</dd>
         </div>
         {activeProposal && (
           <div>
@@ -69,6 +72,9 @@ export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
             {events.map((event) => (
               <li key={event.id}>
                 <strong>{readable(event.action)}</strong>
+                {event.actorDisplayName && (
+                  <span className="desk-event-actor">{event.actorDisplayName}</span>
+                )}
                 <time dateTime={event.occurredAt}>{date(event.occurredAt)}</time>
               </li>
             ))}
@@ -85,6 +91,10 @@ export function RequestInspector({ progress }: { progress?: DesktopProgress }) {
 }
 
 export function AppointmentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
+  const [expanded, setExpanded] = useState(false);
+  const bookings = [...snapshot.bookings].sort(
+    (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
+  );
   return (
     <section className="desk-card" id="appointments" aria-labelledby="desk-appointments">
       <div className="desk-section-heading">
@@ -96,14 +106,17 @@ export function AppointmentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
       </div>
       <p className="desk-muted">Current bookings associated with department requests.</p>
       {snapshot.bookings.length ? (
-        snapshot.bookings.map((booking) => (
+        (expanded ? bookings : bookings.slice(0, 5)).map((booking) => (
           <div className="desk-booking" key={booking.id}>
             <span className="desk-calendar" aria-hidden="true">
               {new Date(booking.startsAt).getUTCDate()}
             </span>
             <div>
               <strong>{date(booking.startsAt)}</strong>
-              <p>{booking.patientId}</p>
+              <p>
+                {snapshot.tasks.find(({ task }) => task.patientId === booking.patientId)?.patient
+                  ?.displayName ?? booking.patientId}
+              </p>
               <small>{booking.id}</small>
             </div>
             <span className="desk-pill desk-pill-green">Booked</span>
@@ -111,6 +124,11 @@ export function AppointmentPanel({ snapshot }: { snapshot: DesktopSnapshot }) {
         ))
       ) : (
         <p className="desk-empty">No associated bookings yet.</p>
+      )}
+      {bookings.length > 5 && (
+        <button className="desk-link-button desk-show-more" onClick={() => setExpanded(!expanded)}>
+          {expanded ? "Show fewer appointments" : `Show all ${bookings.length} appointments`}
+        </button>
       )}
       <details className="desk-slots">
         <summary>

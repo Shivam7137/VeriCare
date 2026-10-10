@@ -1,21 +1,26 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
-import { date, inputDate, windowInput, type Slot } from "../lib/ui";
+import { date, inputDate, windowInput, type Slot, type Booking } from "../lib/ui";
 
 export default function RequestForm({
   slots,
+  bookings,
   busy,
   create,
   close,
 }: {
   slots: Slot[];
+  bookings?: Booking[];
   busy: boolean;
   create: (input: unknown) => Promise<void>;
   close: () => void;
 }) {
   const headingId = useId();
   const [slotId, setSlotId] = useState("");
+  const [appointmentId, setAppointmentId] = useState(
+    bookings?.[0]?.id ?? "synthetic-appointment-001",
+  );
   const [start, setStart] = useState(() => inputDate());
   const [end, setEnd] = useState(() => inputDate(Date.now() + 3_600_000));
   const available = slots.filter((slot) => slot.available);
@@ -26,7 +31,7 @@ export default function RequestForm({
     const form = new FormData(event.currentTarget);
     await create({
       patientId: "synthetic-patient-001",
-      appointmentId: "synthetic-appointment-001",
+      appointmentId,
       availability: { startsAt: slot.startsAt, endsAt: slot.endsAt, timeZone: "UTC" },
       callbackWindow: windowInput(start, end),
       summary: form.get("summary"),
@@ -49,6 +54,23 @@ export default function RequestForm({
       </p>
       <form onSubmit={submit}>
         <fieldset disabled={busy}>
+          {bookings && (
+            <label>
+              Appointment to change
+              <select
+                aria-label="Appointment to change"
+                value={appointmentId}
+                required
+                onChange={(event) => setAppointmentId(event.target.value)}
+              >
+                {bookings.map((booking) => (
+                  <option key={booking.id} value={booking.id}>
+                    {date(booking.startsAt)} · {booking.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Preferred appointment
             <select

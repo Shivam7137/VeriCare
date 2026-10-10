@@ -3,9 +3,12 @@ import { isPortal, type Portal } from "./portal";
 
 export type Actor = { id: string; role: "patient" | "staff" | "operator" };
 export type Slot = { id: string; startsAt: string; endsAt: string; available: boolean };
+export type Booking = { id: string; patientId: string; startsAt: string; endsAt: string };
 export type Window = { startsAt: string; endsAt: string; timeZone: string };
 export type Progress = {
   task: Task;
+  patient?: { id: string; displayName: string | null } | null;
+  booking?: Booking | null;
   workflow: {
     availability: Window;
     callbackWindow: Window;
@@ -13,7 +16,13 @@ export type Progress = {
   } | null;
   activeProposal: ProposalDraft | null;
   actions: { id: string; kind: string; proposalVersion: number; status: string }[];
-  events: { id: string; action: string; occurredAt: string; evidenceRef: string }[];
+  events: {
+    id: string;
+    action: string;
+    occurredAt: string;
+    evidenceRef: string;
+    actorDisplayName?: string | null;
+  }[];
   jobs: { id: string; kind: string; status: string; dueAt: string; lastError: string | null }[];
   operation: {
     status: string;

@@ -398,14 +398,14 @@ export default function DesktopOverview() {
                           </tr>
                         </thead>
                         <tbody>
-                          {visible.map(({ task }) => (
+                          {visible.map(({ task, patient }) => (
                             <tr
                               key={task.id}
                               className={progress?.task.id === task.id ? "desk-row-selected" : ""}
                             >
                               <td>
                                 <strong>{task.summary}</strong>
-                                <small>{task.patientId}</small>
+                                <small>{patient?.displayName ?? task.patientId}</small>
                               </td>
                               <td>
                                 <span

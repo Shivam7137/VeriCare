@@ -2,6 +2,7 @@ import { api, type Progress, type Queue, type Slot } from "./ui";
 
 export type DesktopCall = {
   id: string;
+  patientName?: string | null;
   taskId: string | null;
   direction: "inbound" | "outbound";
   mode: "simulated" | "twilio";
@@ -68,9 +69,12 @@ export function filterRequests(
   return tasks
     .filter((progress) => {
       const task = progress.task;
-      const matchesSearch = [task.id, task.patientId, task.summary].some((value) =>
-        value.toLocaleLowerCase().includes(search),
-      );
+      const matchesSearch = [
+        task.id,
+        task.patientId,
+        task.summary,
+        progress.patient?.displayName ?? "",
+      ].some((value) => value.toLocaleLowerCase().includes(search));
       const matchesState =
         filter === "all" ||
         (filter === "open" && !stoppedStates.has(task.state)) ||
@@ -128,7 +132,10 @@ export async function loadDesktopSnapshot(): Promise<DesktopSnapshot> {
   ]);
   return {
     tasks: queue.tasks,
-    calls: history.calls,
+    calls: history.calls.map((call) => ({
+      ...call,
+      patientName: queue.tasks.find(({ task }) => task.id === call.taskId)?.patient?.displayName,
+    })),
     queue,
     voice,
     bookings,
