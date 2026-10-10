@@ -1,0 +1,264 @@
+.desk-inspector h2 {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.desk-next {
+  padding: 14px;
+  background: #eff3e9;
+  border-left: 3px solid #8da376;
+  margin: 18px 0;
+}
+.desk-next strong,
+.desk-evidence strong {
+  font-size: 10px;
+}
+.desk-next p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.desk-evidence {
+  padding: 12px;
+  border: 1px solid #cbdcc0;
+  background: #f5f9f0;
+  margin-bottom: 14px;
+  border-radius: 5px;
+}
+.desk-evidence p {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  margin: 5px 0 0;
+}
+.desk-details {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+}
+.desk-details dt {
+  font-size: 9px;
+  color: #75806c;
+  margin-bottom: 5px;
+}
+.desk-details dd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.desk-history {
+  border-top: 1px solid #e3e8dc;
+  padding-top: 16px;
+  margin: 18px 0;
+}
+.desk-history summary,
+.desk-slots summary {
+  font-size: 11px;
+  font-weight: 500;
+}
+.desk-history summary span,
+.desk-slots summary span {
+  color: #768268;
+  font-size: 10px;
+  margin-left: 6px;
+}
+.desk-history ol {
+  max-height: 200px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0 0 0 12px;
+  margin: 18px 0 0;
+}
+.desk-history li {
+  position: relative;
+  padding: 0 0 18px 12px;
+  border-left: 1px solid #dce4d0;
+}
+.desk-history li::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: -3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #92a77a;
+}
+.desk-history li strong {
+  display: block;
+  font-size: 10px;
+  text-transform: capitalize;
+  font-weight: 500;
+}
+.desk-history li time {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: #75826a;
+}
+.desk-call-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.desk-call-list li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 0;
+  border-top: 1px solid #edf0e8;
+}
+.desk-call-list strong {
+  font-size: 11px;
+  font-weight: 500;
+}
+.desk-call-list p {
+  color: #76806c;
+  font-size: 10px;
+  margin: 3px 0 0;
+}
+.desk-call-list time {
+  display: block;
+  color: #7a846f;
+  font-size: 9px;
+  margin-top: 4px;
+}
+.desk-call-icon {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  width: 32px;
+  background: #e9f0e3;
+  border-radius: 8px;
+  color: #65884f;
+  font-size: 20px;
+}
+.desk-call-handoff {
+  background: #f3eedb;
+  color: #8c7841;
+}
+.desk-call-detail {
+  margin-top: 15px;
+  padding: 15px;
+  border-radius: 7px;
+  background: #f3f5ed;
+  font-size: 11px;
+}
+.desk-call-detail p {
+  margin: 8px 0;
+}
+.desk-show-more {
+  display: block;
+  margin-top: 10px;
+}
+.desk-booking {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e8ece2;
+}
+.desk-booking > div {
+  min-width: 0;
+  flex: 1;
+}
+.desk-booking strong {
+  font-size: 11px;
+}
+.desk-booking p {
+  font-size: 10px;
+  color: #75816c;
+  margin: 4px 0 0;
+}
+.desk-booking small {
+  font-size: 9px;
+  color: #75816c;
+  overflow-wrap: anywhere;
+}
+.desk-calendar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 43px;
+  flex-shrink: 0;
+  border: 1px solid #dbe3d2;
+  border-top: 5px solid #adc59a;
+  border-radius: 6px;
+  font-family: Georgia, serif;
+  font-size: 23px;
+}
+.desk-slots {
+  margin-top: 17px;
+}
+.desk-slots > p {
+  margin-top: 12px;
+}
+.desk-slots ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.desk-slots li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid #e8ece3;
+  font-size: 10px;
+}
+.desk-agent-list {
+  display: grid;
+  gap: 17px;
+  margin: 20px 0;
+}
+.desk-agent-list > div {
+  display: flex;
+  gap: 11px;
+}
+.desk-agent-list > div > span {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  width: 26px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  font-size: 9px;
+  background: #ebefdf;
+  color: #6b7c50;
+}
+.desk-agent-list h3 {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0 0 5px;
+}
+.desk-agent-list p {
+  font-size: 10px;
+  color: #748067;
+  margin: 0;
+}
+.desk-health {
+  border-top: 1px solid #e1e7d9;
+  margin-top: 20px;
+  padding-top: 15px;
+  display: grid;
+  gap: 10px;
+}
+.desk-health > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: #6f7b64;
+}
+.desk-health strong {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f1f3eb;
+  border-radius: 4px;
+  color: #466234;
+}

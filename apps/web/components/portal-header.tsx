@@ -14,6 +14,7 @@ export default function PortalHeader({ portal }: { portal?: Portal }) {
         <nav className="portal-nav" aria-label="Portal navigation">
           <a href="#requests">{portal === "patient" ? "My requests" : "Department queue"}</a>
           <a href="#phone">Phone assistance</a>
+          <Link href="/desktop">Desktop overview</Link>
           <Link href="/">All portals</Link>
         </nav>
       ) : (

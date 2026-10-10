@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PortalHeader from "../components/portal-header";
+import DesktopIcon from "../components/desktop-icon";
 
 export default function Home() {
   return (
@@ -17,6 +18,17 @@ export default function Home() {
           started.
         </p>
       </section>
+      <Link href="/desktop" className="desktop-entry">
+        <span className="portal-symbol" aria-hidden="true">
+          ◫
+        </span>
+        <div>
+          <p className="eyebrow">THE COMPLETE VIEW</p>
+          <h2>Open your desktop overview</h2>
+          <p>Requests, appointments, phone calls and AI agents, together in one workspace.</p>
+        </div>
+        <DesktopIcon name="external" />
+      </Link>
       <section className="portal-choices" aria-label="Choose your portal">
         <Link href="/patient" className="portal-card patient-card">
           <span className="portal-symbol" aria-hidden="true">

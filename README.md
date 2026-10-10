@@ -24,6 +24,10 @@ Open the local web app on port 3100. The homepage links to separate **Patient** 
 
 The patient portal also supports simulated incoming calls, scheduled callbacks and explicit approval of AI-prepared actions. The professional portal shows calls and handovers. No provider keys are needed for simulation. See [phone and AI setup](docs/phone-setup.md) for Twilio/OpenAI configuration, agent behavior and the later live-call check. `npm run voice:check` checks configuration without placing calls.
 
+Choose **Desktop overview** on the homepage, or open `/desktop`, to see department requests, booking evidence, history, appointments, calls, handovers and AI readiness together. **Open desktop demo** signs in with the read-only operator account; an existing professional session is reused. Search, status filters and request links help navigate the records. The view refreshes every five seconds, and it keeps the last successful snapshot with a warning if refresh fails. Patient sign-in remains separate.
+
+[View the desktop screenshot](docs/screenshots/desktop-overview.png).
+
 Optional local checks:
 
 ```sh

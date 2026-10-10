@@ -57,6 +57,8 @@ export default function Dashboard({ portal }: { portal: Portal }) {
   }, [actor, portal]);
   useEffect(() => {
     let active = true;
+    const requested = new URLSearchParams(window.location.search).get("request");
+    if (requested && /^[A-Za-z0-9-]+$/.test(requested)) setSelectedId(requested);
     fetch("/api/session", { cache: "no-store", headers: { "x-prc-portal": portal } })
       .then(async (response) => {
         if (response.ok && active) setActor(await response.json());
