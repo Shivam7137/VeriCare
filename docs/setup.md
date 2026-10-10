@@ -10,20 +10,40 @@ npm run setup
 npm run db:up
 npm run db:migrate
 npm run db:seed
+npm run demo:credentials
 npm run dev
 ```
 
-`setup` creates .env only if missing. Ordered migrations are tracked in schema_migrations and applied within a transaction under a PostgreSQL advisory lock. Migration 002 adds proposal drafts without changing existing task/event records. Seeding adds T001 and E001 transactionally and preserves existing rows on repeated runs.
+`setup` creates `.env` only if missing. Ordered migrations are tracked in `schema_migrations` and applied transactionally under an advisory lock. Migration 002 adds immutable proposal drafts; migration 003 adds identity, consent, scheduler, decisions, operations and communication storage. Seeds preserve existing rows, moved bookings and task history. Existing slots and callback windows are intentionally not refreshed; for a new demonstration, use future synthetic slots and new tasks in a separate database rather than clearing saved records.
 
-The app is at http://127.0.0.1:3100. The API is at http://127.0.0.1:4100; GET /health checks the process, GET /ready checks access to all three application tables, and GET /demo/tasks/T001 retrieves the fixture when explicitly enabled. GET /demo/tasks/T001/proposals and GET /demo/tasks/T001/events expose its stored draft versions and event history under the same demo setting. An unavailable database yields a setup message in the web page, not a fabricated successful task.
+`demo:credentials` provisions 24-hour sessions for `synthetic-patient-001`, `synthetic-representative-001`, `synthetic-staff-001` and `synthetic-operator-001`. Tokens go to ignored `.env.sessions.json` with mode 0600; only their hashes are stored in PostgreSQL. The script preserves an existing file. To renew expired credentials, move that local file to a secure ignored location, rerun the command, and delete the old local copy when no longer needed. No token, role selection or login endpoint is exposed over HTTP.
+
+The app is at http://127.0.0.1:3100; the API is at http://127.0.0.1:4100. `dev` starts API, web and worker. `GET /health` checks the process and `GET /ready` checks every application table. Optional `/demo/tasks/T001`, `/demo/tasks/T001/proposals` and `/demo/tasks/T001/events` are read-only fixture routes controlled by `ENABLE_SYNTHETIC_DEMO`; they require a loopback API bind. An unavailable database produces a truthful unavailable web state.
+
+All general backend routes require `Authorization: Bearer <local-session-token>`. See [contracts](contracts.md) for the complete journey and payloads. Do not paste tokens into source, logs or chat. This read-only smoke request loads its token from disk without printing it:
+
+```sh
+node --input-type=module <<'JS'
+import { readFile } from 'node:fs/promises';
+const sessions = JSON.parse(await readFile('.env.sessions.json', 'utf8'));
+const response = await fetch('http://127.0.0.1:4100/me', {
+  headers: { authorization: `Bearer ${sessions['synthetic-patient-001'].token}` },
+});
+if (!response.ok) throw new Error(`Unexpected status ${response.status}`);
+console.log(await response.json());
+JS
+```
+
+Run the worker separately with `npm run worker`, or one recovery pass with `npm run worker:once`. `WORKER_INTERVAL_MS` defaults to 1000 and accepts 100–60000. The worker delivers due fake jobs, expires pending windows, executes ready tasks and reconciles unfinished operations. No external messages or calls are sent. `/operator/queue` reports scoped pending work and failed/uncertain outcomes. More than one worker can safely run against the same database.
 
 ## Optional local checks
 
 ```sh
 npm run check
+npm run test:backend
 ```
 
-Run integration tests against a local or dedicated test database with permission to create schemas. Each test creates a uniquely named schema, applies migrations and synthetic fixtures there, and drops only that schema on completion. Tests do not modify the normal development schema or its T001. Set DATABASE_URL in your shell; the example local database works even after development records change. An interrupted test process can leave a test schema behind; do not delete unrelated schemas during cleanup.
+Run integration tests against a local or dedicated test database with permission to create schemas. Each test creates a uniquely named schema, applies migrations and synthetic fixtures there, and drops only that schema on completion. Tests do not modify the normal development schema or its T001. `test:backend` loads the root `.env`; alternatively set DATABASE_URL in your shell for `test:integration`; the example local database works even after development records change. An interrupted test process can leave a test schema behind; do not delete unrelated schemas during cleanup.
 
 PowerShell:
 
@@ -38,7 +58,7 @@ POSIX:
 DATABASE_URL=postgresql://prc:prc_local_only@127.0.0.1:55439/prc npm run test:integration
 ```
 
-No CI runs in this disposable workspace. Integration tests cover upgrades, proposal versions, revision conflicts, concurrent saves, transaction rollback, demo reads, and persistence across recreated connection pools. They do not yet prove server crash recovery, worker replay, callback survival, or scheduler reconciliation.
+No CI runs in this disposable workspace. Unit tests validate inputs and the text/tool boundary. PostgreSQL integration tests cover authentication, consent, complete workflow, callback deadlines, duplicate/concurrent execution, delivery cancellation/retry, unavailable slots, lost responses and a real process exit after scheduler commit. Tests isolate their data even when connection options are supplied. [Acceptance](acceptance.md) maps scenarios to evidence.
 
 ## Stop and recovery
 
@@ -46,4 +66,4 @@ Ctrl+C stops the development processes. `npm run db:stop` stops this project's d
 
 If port 55439 is occupied, choose a free loopback port in compose.yaml and update DATABASE_URL in .env. If Docker is stopped, start it yourself before db:up. If another PostgreSQL installation is preferred, provide a dedicated database through DATABASE_URL and skip db:up.
 
-Root .env is loaded by API development/start and database scripts, and by the web development/start scripts. Builds need no database or provider credentials. npm run build validates the API with TypeScript and creates the Next.js production build; the API start command runs TypeScript through tsx and expects development dependencies to be installed. A production packaging strategy is still a team decision.
+Root .env is loaded by API development/start and database, credential and worker scripts, and by the web development/start scripts. Builds need no database or provider credentials. npm run build validates the API with TypeScript and creates the Next.js production build; the API start command runs TypeScript through tsx and expects development dependencies to be installed. A production packaging strategy is still a team decision.

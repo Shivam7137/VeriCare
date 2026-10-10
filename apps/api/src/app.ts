@@ -1,16 +1,34 @@
 import Fastify from "fastify";
 import { proposalDraftSchema, taskEventSchema, taskSchema } from "@prc/contracts";
 import type { Pool } from "pg";
+import { registerBackendRoutes } from "./backend-routes.js";
 
-export function buildApp(pool: Pick<Pool, "query">, demoEnabled = false) {
+export function buildApp(pool: Pool, demoEnabled = false) {
   const app = Fastify({ logger: false });
-  app.get("/health", async () => ({ status: "ok", service: "prc-api", stage: "foundation" }));
+  app.get("/health", async () => ({
+    status: "ok",
+    service: "prc-api",
+    stage: "synthetic_backend",
+  }));
   app.get("/ready", async (_request, reply) => {
     try {
       await pool.query(`SELECT
         (SELECT 1 FROM tasks LIMIT 1),
         (SELECT 1 FROM task_events LIMIT 1),
-        (SELECT 1 FROM proposal_drafts LIMIT 1)`);
+        (SELECT 1 FROM proposal_drafts LIMIT 1),
+        (SELECT 1 FROM patients LIMIT 1),
+        (SELECT 1 FROM principals LIMIT 1),
+        (SELECT 1 FROM sessions LIMIT 1),
+        (SELECT 1 FROM authority_grants LIMIT 1),
+        (SELECT 1 FROM authority_requests LIMIT 1),
+        (SELECT 1 FROM scheduler_slots LIMIT 1),
+        (SELECT 1 FROM scheduler_bookings LIMIT 1),
+        (SELECT 1 FROM scheduler_receipts LIMIT 1),
+        (SELECT 1 FROM workflow_tasks LIMIT 1),
+        (SELECT 1 FROM action_requests LIMIT 1),
+        (SELECT 1 FROM booking_operations LIMIT 1),
+        (SELECT 1 FROM communication_jobs LIMIT 1),
+        (SELECT 1 FROM mock_deliveries LIMIT 1)`);
       return { status: "ready" };
     } catch {
       return reply
@@ -19,7 +37,7 @@ export function buildApp(pool: Pick<Pool, "query">, demoEnabled = false) {
     }
   });
   if (demoEnabled) {
-    // Hard-coded synthetic fixture only; general patient lookup awaits the identity package.
+    // Hard-coded, read-only fixture for the loopback development page.
     app.get("/demo/tasks/T001", async (_request, reply) => {
       try {
         const result = await pool.query("SELECT payload FROM tasks WHERE id = $1", ["T001"]);
@@ -71,5 +89,6 @@ export function buildApp(pool: Pick<Pool, "query">, demoEnabled = false) {
       }
     });
   }
+  registerBackendRoutes(app, pool);
   return app;
 }

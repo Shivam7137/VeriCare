@@ -7,7 +7,7 @@ const unavailable = {
   query: async () => {
     throw new Error("database offline");
   },
-} as unknown as Pick<Pool, "query">;
+} as unknown as Pool;
 
 test("liveness remains available but readiness fails when the database is offline", async () => {
   const app = buildApp(unavailable);
@@ -19,16 +19,16 @@ test("liveness remains available but readiness fails when the database is offlin
   }
 });
 
-test("synthetic task endpoint is closed by default and arbitrary patient lookup is absent", async () => {
+test("synthetic task endpoint is closed by default and task routes require authentication", async () => {
   const app = buildApp(unavailable);
   try {
     assert.equal((await app.inject("/demo/tasks/T001")).statusCode, 404);
     assert.equal((await app.inject("/demo/tasks/T001/proposals")).statusCode, 404);
     assert.equal((await app.inject("/demo/tasks/T001/events")).statusCode, 404);
-    assert.equal((await app.inject("/tasks/someone-else")).statusCode, 404);
+    assert.equal((await app.inject("/tasks/someone-else")).statusCode, 401);
     assert.equal(
       (await app.inject({ method: "POST", url: "/tasks/T001/execute" })).statusCode,
-      404,
+      401,
     );
   } finally {
     await app.close();

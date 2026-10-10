@@ -101,3 +101,91 @@ export const saveProposalDraftInputSchema = z.strictObject({
 });
 
 export type SaveProposalDraftInput = z.infer<typeof saveProposalDraftInputSchema>;
+
+export const timeWindowSchema = z
+  .strictObject({
+    startsAt: z.iso.datetime(),
+    endsAt: z.iso.datetime(),
+    timeZone: z
+      .string()
+      .min(1)
+      .refine((value) => {
+        // Intl also accepts numeric UTC offsets; the workflow requires a named IANA zone.
+        if (!/^[A-Za-z_]+(?:\/[A-Za-z0-9_+-]+)*$/.test(value)) return false;
+        try {
+          new Intl.DateTimeFormat("en", { timeZone: value });
+          return true;
+        } catch {
+          return false;
+        }
+      }, "An explicit IANA time zone is required."),
+  })
+  .refine(
+    (value) => Date.parse(value.endsAt) > Date.parse(value.startsAt),
+    "Window end must follow its start.",
+  );
+
+export const createTaskInputSchema = z.strictObject({
+  patientId: z.string().min(1).max(200),
+  appointmentId: z.string().min(1).max(200),
+  availability: timeWindowSchema,
+  callbackWindow: timeWindowSchema,
+  summary: z.string().trim().min(1).max(500),
+});
+export const revisionInputSchema = z.strictObject({
+  expectedRevision: z.number().int().nonnegative(),
+});
+export const proposeInputSchema = revisionInputSchema.extend({
+  slotId: z.string().min(1).max(200),
+  expiresAt: z.iso.datetime(),
+});
+export const decisionInputSchema = revisionInputSchema.extend({
+  proposalVersion: z.number().int().positive(),
+  response: z.enum(["approve", "reject"]),
+  evidenceRef: z.string().trim().min(1).max(200),
+});
+export const callbackInputSchema = revisionInputSchema.extend({ callbackWindow: timeWindowSchema });
+export const stopInputSchema = revisionInputSchema.extend({
+  evidenceRef: z.string().trim().min(1).max(200),
+});
+export const authorityRequestInputSchema = z.strictObject({
+  patientId: z.string().min(1).max(200),
+});
+export const authorityGrantInputSchema = authorityRequestInputSchema.extend({
+  requesterId: z.string().min(1).max(200),
+  expiresAt: z.iso.datetime(),
+  evidenceRef: z.string().trim().min(1).max(200),
+});
+export const authorityReviewInputSchema = z.strictObject({
+  approved: z.boolean(),
+  expiresAt: z.iso.datetime().optional(),
+  evidenceRef: z.string().trim().min(1).max(200),
+});
+export const textIntentInputSchema = z.strictObject({ text: z.string().trim().min(1).max(2000) });
+export const agentToolInputSchema = z.discriminatedUnion("tool", [
+  z.strictObject({ tool: z.literal("progress"), taskId: z.string().min(1) }),
+  z.strictObject({
+    tool: z.literal("request_callback"),
+    taskId: z.string().min(1),
+    input: callbackInputSchema,
+  }),
+  z.strictObject({
+    tool: z.literal("confirm"),
+    taskId: z.string().min(1),
+    input: decisionInputSchema,
+  }),
+  z.strictObject({
+    tool: z.literal("withdraw"),
+    taskId: z.string().min(1),
+    input: stopInputSchema,
+  }),
+  z.strictObject({
+    tool: z.literal("call_ended"),
+    taskId: z.string().min(1),
+    evidenceRef: z.string().trim().min(1).max(200),
+  }),
+]);
+
+export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
+export type ProposeInput = z.infer<typeof proposeInputSchema>;
+export type DecisionInput = z.infer<typeof decisionInputSchema>;

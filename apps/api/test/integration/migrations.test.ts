@@ -23,7 +23,7 @@ test("migration upgrades a foundation database without changing saved tasks or e
   const applied = (await pool.query("SELECT name FROM schema_migrations ORDER BY name")).rows;
   assert.deepEqual(
     applied.map((row) => row.name),
-    ["001_foundation.sql", "002_proposal_drafts.sql"],
+    ["001_foundation.sql", "002_proposal_drafts.sql", "003_backend.sql"],
   );
   assert.deepEqual((await pool.query("SELECT * FROM tasks")).rows, tasks);
   assert.deepEqual((await pool.query("SELECT * FROM task_events")).rows, events);

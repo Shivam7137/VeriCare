@@ -10,22 +10,20 @@
 - No open-source license selected. No collaborator identities assumed.
 - No hosting, provider credentials or live calls configured.
 
-## Decisions for the first team session
+## Implemented prototype decisions
 
-The following are useful questions as the prototype develops. They are not required setup paperwork:
+- `demo-department` requires staff approval and requester confirmation of the exact proposal version. This is an explicit rule for this fictional department, not a universal hospital policy.
+- Identity is pre-provisioned locally; verified synthetic principals receive opaque 24-hour sessions. No HTTP endpoint can select a role or mint sessions. This does not perform real-world identity proof.
+- The patient or current department staff can grant/revoke representative rescheduling authority with evidence and expiry. Emergency-contact status supplies no authority.
+- Availability and callback windows use explicit UTC instants and a named IANA time zone. Relative phrases need clarification. Callback windows end before the appointment availability starts; confirmations must occur after delivery and before the window ends.
+- Staff chooses proposal expiry. Both decisions expire with that proposal. A replacement or changed callback window invalidates prior decisions and pending communications.
+- Approval enqueues one fake callback and, when it fits the window and expiry, one reminder five minutes after the later of approval time and window start. Delivery retries at most three times with bounded backoff. Expired work returns to proposal preparation.
+- The database-backed mock scheduler records both confirmations and rejections per operation key. Uncertain results reconcile against that receipt before retry. A committed dispatch cannot be assumed cancelled by a later withdrawal or takeover.
+- Text interpretation is deterministic and read-only. Agent tools request the same permitted workflow commands and cannot approve for staff, execute bookings or declare completion.
 
-| Decision                                                | Responsible role             | Blocks                        |
-| ------------------------------------------------------- | ---------------------------- | ----------------------------- |
-| Who is working on each package                          | Team                         | Coordination only             |
-| Demo department policy and staff approval rule          | Domain lead                  | Workflow transitions          |
-| Verification and representative consent method          | Identity/security lead       | Patient access                |
-| Callback hours, explicit windows and time-zone handling | Domain and integration leads | Follow-up/voice               |
-| Proposal and decision expiry                            | Domain lead                  | Versioned decisions/execution |
-| Mock scheduler result and reconciliation contract       | Integration lead             | Booking executor              |
-| Voice model and test-call configuration                 | AI/voice lead                | Live voice integration        |
-| Hosting, access control, retention and observability    | Technical lead               | Hosted pilot                  |
+## Remaining integration decisions
 
-The guide's staff approval is a rule for the example journey. Do not silently promote it into a universal hospital policy.
+Real identity verification, hospital scheduling adapters, voice/model configuration, complete frontend journeys, hosting, retention and production observability remain outside the synthetic backend. No paid services or external messages are configured.
 
 ## Technical references
 
