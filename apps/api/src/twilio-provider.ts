@@ -80,6 +80,15 @@ export function validateTwilioWebhook(config: VoiceConfig, request: TwilioWebhoo
     } else {
       return false;
     }
+    if (request.method === "GET" && request.url === "/voice/stream") {
+      // Media Streams sign the public WebSocket URL. Twilio also documents a
+      // trailing-slash variant: https://www.twilio.com/docs/usage/security
+      // Keep HTTPS compatibility for upgrades; never derive origins from headers.
+      const streamUrl = url.replace(/^https:/, "wss:");
+      return [streamUrl, streamUrl + "/", url, url + "/"].some((candidate) =>
+        twilio.validateRequest(config.authToken!, request.signature!, candidate, params),
+      );
+    }
     return twilio.validateRequest(config.authToken!, request.signature, url, params);
   } catch {
     return false;

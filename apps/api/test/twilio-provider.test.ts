@@ -140,6 +140,67 @@ test("Media Stream upgrade validates the HTTPS signature and disallows unsigned 
   assert.equal(validateTwilioWebhook(config, { ...request, signature: undefined }), false);
 });
 
+for (const signedUrl of [
+  "wss://voice.example.com/voice/stream",
+  "wss://voice.example.com/voice/stream/",
+  "https://voice.example.com/voice/stream/",
+]) {
+  test(`Media Stream accepts Twilio's handshake signature for ${signedUrl}`, () => {
+    const request: TwilioWebhookRequest = {
+      method: "GET",
+      url: "/voice/stream",
+      body: undefined,
+      signature: twilio.getExpectedTwilioSignature(config.authToken!, signedUrl, {}),
+    };
+    assert.equal(validateTwilioWebhook(config, request), true);
+    assert.equal(validateTwilioWebhook(config, { ...request, body: { injected: "value" } }), false);
+    assert.equal(
+      validateTwilioWebhook({ ...config, publicBaseUrl: "https://other.example.com" }, request),
+      false,
+    );
+  });
+}
+
+test("stream URL compatibility never extends to other paths or POST callbacks", () => {
+  for (const signedUrl of [
+    "wss://attacker.example.com/voice/stream",
+    "wss://voice.example.com/voice/incoming",
+    "wss://voice.example.com/voice/stream?extra=1",
+    "wss://voice.example.com/voice/stream//",
+    "http://voice.example.com/voice/stream",
+  ]) {
+    assert.equal(
+      validateTwilioWebhook(config, {
+        method: "GET",
+        url: "/voice/stream",
+        body: {},
+        signature: twilio.getExpectedTwilioSignature(config.authToken!, signedUrl, {}),
+      }),
+      false,
+      signedUrl,
+    );
+  }
+  for (const path of ["/voice/incoming", "/voice/status"]) {
+    const request = signedRequest(path);
+    for (const signedUrl of [
+      config.publicBaseUrl! + path + "/",
+      config.publicBaseUrl!.replace(/^https:/, "wss:") + path,
+    ]) {
+      assert.equal(
+        validateTwilioWebhook(config, {
+          ...request,
+          signature: twilio.getExpectedTwilioSignature(
+            config.authToken!,
+            signedUrl,
+            request.body as Record<string, string>,
+          ),
+        }),
+        false,
+      );
+    }
+  }
+});
+
 test("inbound TwiML collects eight DTMF digits and safely ends a silent call", () => {
   for (const xml of [incomingTwiml(config), retryTwiml(config)]) {
     assert.match(xml, /<Gather[^>]*input="dtmf"/);
