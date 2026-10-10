@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { taskSchema } from "@prc/contracts";
+import { proposalDraftSchema, taskEventSchema, taskSchema } from "@prc/contracts";
 import type { Pool } from "pg";
 
 export function buildApp(pool: Pick<Pool, "query">, demoEnabled = false) {
@@ -7,7 +7,10 @@ export function buildApp(pool: Pick<Pool, "query">, demoEnabled = false) {
   app.get("/health", async () => ({ status: "ok", service: "prc-api", stage: "foundation" }));
   app.get("/ready", async (_request, reply) => {
     try {
-      await pool.query("SELECT 1 FROM tasks LIMIT 1");
+      await pool.query(`SELECT
+        (SELECT 1 FROM tasks LIMIT 1),
+        (SELECT 1 FROM task_events LIMIT 1),
+        (SELECT 1 FROM proposal_drafts LIMIT 1)`);
       return { status: "ready" };
     } catch {
       return reply
@@ -22,6 +25,47 @@ export function buildApp(pool: Pick<Pool, "query">, demoEnabled = false) {
         const result = await pool.query("SELECT payload FROM tasks WHERE id = $1", ["T001"]);
         if (!result.rows[0]) return reply.code(404).send({ error: "Run npm run db:seed first." });
         return taskSchema.parse(result.rows[0].payload);
+      } catch {
+        return reply.code(503).send({ error: "Synthetic task storage is unavailable." });
+      }
+    });
+    app.get("/demo/tasks/T001/proposals", async (_request, reply) => {
+      try {
+        const result = await pool.query(
+          `SELECT p.payload FROM tasks t
+           LEFT JOIN proposal_drafts p ON p.task_id = t.id
+           WHERE t.id = $1 ORDER BY p.version`,
+          ["T001"],
+        );
+        if (!result.rows[0]) return reply.code(404).send({ error: "Run npm run db:seed first." });
+        return {
+          taskId: "T001",
+          proposals: result.rows
+            .filter((row) => row.payload !== null)
+            .map((row) => proposalDraftSchema.parse(row.payload)),
+        };
+      } catch {
+        return reply.code(503).send({ error: "Synthetic task storage is unavailable." });
+      }
+    });
+    app.get("/demo/tasks/T001/events", async (_request, reply) => {
+      try {
+        const result = await pool.query(
+          `SELECT e.id, t.id AS "taskId", e.actor_id AS "actorId", e.action,
+                  e.occurred_at AS "occurredAt", e.evidence_ref AS "evidenceRef"
+           FROM tasks t LEFT JOIN task_events e ON e.task_id = t.id
+           WHERE t.id = $1 ORDER BY e.occurred_at, e.id`,
+          ["T001"],
+        );
+        if (!result.rows[0]) return reply.code(404).send({ error: "Run npm run db:seed first." });
+        return {
+          taskId: "T001",
+          events: result.rows
+            .filter((row) => row.id !== null)
+            .map((row) =>
+              taskEventSchema.parse({ ...row, occurredAt: row.occurredAt.toISOString() }),
+            ),
+        };
       } catch {
         return reply.code(503).send({ error: "Synthetic task storage is unavailable." });
       }

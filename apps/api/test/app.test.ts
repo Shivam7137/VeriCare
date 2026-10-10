@@ -23,9 +23,30 @@ test("synthetic task endpoint is closed by default and arbitrary patient lookup 
   const app = buildApp(unavailable);
   try {
     assert.equal((await app.inject("/demo/tasks/T001")).statusCode, 404);
+    assert.equal((await app.inject("/demo/tasks/T001/proposals")).statusCode, 404);
+    assert.equal((await app.inject("/demo/tasks/T001/events")).statusCode, 404);
     assert.equal((await app.inject("/tasks/someone-else")).statusCode, 404);
     assert.equal(
       (await app.inject({ method: "POST", url: "/tasks/T001/execute" })).statusCode,
+      404,
+    );
+  } finally {
+    await app.close();
+  }
+});
+
+test("demo history routes report unavailable storage without returning database details", async () => {
+  const app = buildApp(unavailable, true);
+  try {
+    for (const path of ["proposals", "events"]) {
+      const response = await app.inject(`/demo/tasks/T001/${path}`);
+      assert.equal(response.statusCode, 503);
+      assert.deepEqual(response.json(), { error: "Synthetic task storage is unavailable." });
+    }
+    assert.equal((await app.inject("/demo/tasks/someone-else/events")).statusCode, 404);
+    assert.equal(
+      (await app.inject({ method: "POST", url: "/demo/tasks/T001/proposals", payload: {} }))
+        .statusCode,
       404,
     );
   } finally {

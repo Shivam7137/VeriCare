@@ -13,9 +13,9 @@ npm run db:seed
 npm run dev
 ```
 
-`setup` creates .env only if missing. Migration 001 is tracked in schema_migrations and applied within a transaction under a PostgreSQL advisory lock. Seeding adds T001 and E001 transactionally and preserves existing rows on repeated runs.
+`setup` creates .env only if missing. Ordered migrations are tracked in schema_migrations and applied within a transaction under a PostgreSQL advisory lock. Migration 002 adds proposal drafts without changing existing task/event records. Seeding adds T001 and E001 transactionally and preserves existing rows on repeated runs.
 
-The app is at http://127.0.0.1:3100. The API is at http://127.0.0.1:4100; GET /health checks the process, GET /ready checks database/schema access, and GET /demo/tasks/T001 retrieves the fixture when explicitly enabled. An unavailable database yields a setup message in the web page, not a fabricated successful task.
+The app is at http://127.0.0.1:3100. The API is at http://127.0.0.1:4100; GET /health checks the process, GET /ready checks access to all three application tables, and GET /demo/tasks/T001 retrieves the fixture when explicitly enabled. GET /demo/tasks/T001/proposals and GET /demo/tasks/T001/events expose its stored draft versions and event history under the same demo setting. An unavailable database yields a setup message in the web page, not a fabricated successful task.
 
 ## Optional local checks
 
@@ -23,7 +23,7 @@ The app is at http://127.0.0.1:3100. The API is at http://127.0.0.1:4100; GET /h
 npm run check
 ```
 
-Run integration tests only against a disposable test database. They apply the foundation schema and insert synthetic fixtures; they do not reset or delete existing rows. For a dedicated test database, set DATABASE_URL in your shell. The example local database also works before any development changes to T001.
+Run integration tests against a local or dedicated test database with permission to create schemas. Each test creates a uniquely named schema, applies migrations and synthetic fixtures there, and drops only that schema on completion. Tests do not modify the normal development schema or its T001. Set DATABASE_URL in your shell; the example local database works even after development records change. An interrupted test process can leave a test schema behind; do not delete unrelated schemas during cleanup.
 
 PowerShell:
 
@@ -38,7 +38,7 @@ POSIX:
 DATABASE_URL=postgresql://prc:prc_local_only@127.0.0.1:55439/prc npm run test:integration
 ```
 
-No CI runs in this disposable workspace. The optional persistence test recreates the application connection pool; it does not yet prove worker replay, callback survival, or scheduler reconciliation.
+No CI runs in this disposable workspace. Integration tests cover upgrades, proposal versions, revision conflicts, concurrent saves, transaction rollback, demo reads, and persistence across recreated connection pools. They do not yet prove server crash recovery, worker replay, callback survival, or scheduler reconciliation.
 
 ## Stop and recovery
 

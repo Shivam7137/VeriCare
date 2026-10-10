@@ -15,6 +15,6 @@ Suggested build order: A → B → C and D → integrate E, F and G → H. Use s
 
 ## Setup already supplied
 
-Workspace structure, shared task/event schemas, synthetic T001 fixture, PostgreSQL migration and seed, a read-only demo endpoint/page, optional local checks and repository instructions. These foundations do not close packages B, E or H. Automated workflows and contribution forms have been removed.
+Workspace structure, shared task/event/proposal schemas, synthetic T001 fixture, PostgreSQL migrations and seed, read-only demo task/history endpoints and page, optional local checks and repository instructions. Initial backend work adds immutable proposal drafts with revision checks and atomic events. Migration upgrades, concurrency, rollback, and persistence across connections have integration coverage. These foundations do not close packages B, E or H: workflow transitions, versioned decisions, authorized mutations, and booking execution remain unfinished. Automated workflows and contribution forms have been removed.
 
 Use issues however the team finds helpful. Acceptance scenarios are listed in [acceptance.md](acceptance.md).

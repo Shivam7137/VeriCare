@@ -2,7 +2,7 @@
 
 The supplied team guide defines a durable appointment-rescheduling workflow. This setup establishes a single TypeScript workspace with clear component boundaries so packages can develop against agreed contracts.
 
-The current slice is intentionally small: PostgreSQL stores synthetic T001 and its initial event; the persistent Fastify process reads it; the Next.js server renders the saved task or a truthful unavailable state. There is no workflow executor, general patient endpoint, or booking mutation yet.
+The current slice is intentionally small: PostgreSQL stores synthetic tasks, events, and immutable proposal drafts; the persistent Fastify process reads T001 and its history; the Next.js server renders the saved task or a truthful unavailable state. An internal proposal service atomically stores a draft, advances the task revision, and records an event, guarded by a task row lock and expected revision. It accepts only tasks already in `awaiting_proposal` and leaves workflow state unchanged. There is no workflow executor, general patient endpoint, or booking mutation yet.
 
 ```mermaid
 flowchart LR
