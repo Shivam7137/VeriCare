@@ -151,12 +151,18 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
   function observeResult(result: unknown) {
     if (!record(result)) return;
     if (result.status === "authorization_required") {
+      if (result.scope === "emergency_contact") monitor.protectSpokenCodes();
       if (!awaitingCode) {
         awaitingCode = true;
         code = "";
         codeEpoch++;
       }
       pending = undefined;
+    }
+    if (result.status === "verified") {
+      awaitingCode = false;
+      code = "";
+      codeEpoch++;
     }
     if (record(result.pendingAction) && identifier(result.pendingAction.id)) {
       awaitingCode = false;
@@ -425,7 +431,7 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
       !ready ||
       !callId ||
       !record(event.dtmf) ||
-      event.dtmf.track !== "inbound_track" ||
+      event.dtmf.track !== "inbound" ||
       typeof event.dtmf.digit !== "string" ||
       !/^[0-9*#]$/.test(event.dtmf.digit) ||
       typeof event.sequenceNumber !== "string"

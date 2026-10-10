@@ -9,3 +9,7 @@ export const emergencyContactInputSchema = z.strictObject({
   relationship: z.string().trim().min(2).max(80),
   resend: z.boolean(),
 });
+
+export const emergencyCodeInputSchema = z.strictObject({
+  code: z.string().trim().min(1).max(160),
+});

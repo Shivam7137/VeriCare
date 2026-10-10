@@ -85,7 +85,7 @@ function harness(extra: Partial<LiveBridgeOptions> = {}) {
       event: "dtmf",
       streamSid: "MZsynthetic",
       sequenceNumber: sequence,
-      dtmf: { track: "inbound_track", digit: value },
+      dtmf: { track: "inbound", digit: value },
     });
   }
   function caption() {

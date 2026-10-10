@@ -13,15 +13,15 @@ The original appointment and forwarding phone scenario remains selectable with `
 1. Call the configured Twilio number and explain that you are trying to find a patient.
 2. Give the patient's full name, then date of birth. Alex asks one question at a time and checks both details in the call's department.
 3. Give your full name and relationship. The backend compares both to the registered emergency contact.
-4. A one-time text is sent to the registered number. Enter the eight digits on the phone keypad. The code expires after five minutes; press `*` to clear partial digits. No portal or staff code is required.
+4. A one-time text is sent to the registered number. Read its eight digits aloud, one at a time, or enter them on the phone keypad. Alex submits spoken digits to the backend verifier without guessing missing digits or repeating the code aloud. The code expires after five minutes; press `*` to clear partial keypad digits. No portal or staff code is required.
 5. After verification, Alex reads the recorded hospital, department and area, plus visitor instructions. Verification applies only to the selected patient and this call.
 
 Use **Maya Chen**, born **12 April 1990**, for the main demo. Her fictional record places her at **Halifax Infirmary, Emergency Department, Assessment area B**. The shared contact identity and real SMS destination are deliberately absent from committed documentation; use the values configured privately for this demo.
 
 ## Monitoring and failure behavior
 
-Open `/professional/monitor` to view the call's transcript and tool events. SMS delivery is recorded separately: accepted or queued is not yet delivered. The saved message body redacts the code, and keypad digits are never forwarded to the model or monitor.
+Open `/professional/monitor` to view the call's transcript and tool events. SMS delivery is recorded separately: accepted or queued is not yet delivered. The saved message body and verification tool arguments redact the code. After an emergency SMS challenge, caller digit words and numbers are masked in saved captions until hangup, including delayed fragments. Spoken codes pass through the voice provider and the verification tool; keypad digits are never forwarded to the model or monitor.
 
 An unmatched patient or contact prompts a correction without revealing expected answers. Incorrect codes allow five attempts. A requested resend invalidates the prior code, waits at least 60 seconds and respects send limits. Uncertain provider outcomes do not trigger automatic retries. A changed patient or contact requires fresh verification. If verification cannot finish, Alex directs the caller to hospital reception and does not claim a live handover.
 
-Automated validation uses isolated schemas and a fake SMS provider. A caller-driven phone test is needed to confirm handset audio and SMS receipt together.
+Automated validation uses isolated schemas and a fake SMS provider. A real demo call confirmed SMS delivery; a new caller-driven test must confirm spoken or corrected keypad verification through the location response. Both methods share the same expiry, single-use code and five-attempt limit.

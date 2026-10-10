@@ -85,6 +85,91 @@ test("emergency lookup verifies the registered contact before revealing location
   assert.match(sms[0]!.body, /redacted/);
 });
 
+test("spoken SMS digits verify only the emergency contact and share the same code consumption as the keypad", async (t) => {
+  const f = await fixture(t);
+  await f.identify();
+  await f.send();
+  const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+  const spoken = [...f.code()].map((digit) => words[Number(digit)]).join(" ");
+  const result = await f.run("verify_emergency_contact_code", { code: spoken });
+  assert.equal(result.status, "verified");
+  assert.equal(result.role, "emergency_contact");
+  assert.equal((await f.run("get_emergency_patient_location")).status, "location_available");
+  assert.equal((await f.agent.store.sessionState(f.call.id)).verified, false);
+  assert.equal(
+    ((await f.agent.verifyCode(f.call.id, f.code())) as any).status,
+    "verification_failed",
+  );
+  const stored = JSON.stringify(
+    (await f.pool.query("SELECT * FROM voice_events WHERE call_id=$1", [f.call.id])).rows,
+  );
+  assert.equal(stored.includes(f.code()), false);
+  assert.equal(stored.includes(spoken), false);
+});
+
+test("unclear spoken codes are not guessed or counted; wrong complete codes use the existing five-attempt limit", async (t) => {
+  const f = await fixture(t);
+  assert.equal(
+    (await f.run("verify_emergency_contact_code", { code: "12345678" })).status,
+    "patient_details_required",
+  );
+  await f.identify();
+  await f.send();
+  for (const code of [
+    "one two three",
+    "twenty three four five six seven eight",
+    "my code is 12345678",
+    "123456789",
+  ]) {
+    assert.equal(
+      (await f.run("verify_emergency_contact_code", { code })).status,
+      "spoken_code_unclear",
+    );
+  }
+  const count = await f.pool.query(
+    "SELECT verification_failures FROM voice_emergency_sessions WHERE call_id=$1",
+    [f.call.id],
+  );
+  assert.equal(count.rows[0].verification_failures, 0);
+  const wrong = f.code() === "00000000" ? "11111111" : "00000000";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    assert.equal(
+      (await f.run("verify_emergency_contact_code", { code: wrong })).status,
+      attempt === 4 ? "verification_locked" : "verification_failed",
+    );
+  }
+  assert.equal(
+    (await f.run("verify_emergency_contact_code", { code: f.code() })).status,
+    "verification_locked",
+  );
+});
+
+test("spaced spoken digits preserve leading zeroes", async (t) => {
+  const f = await fixture(t);
+  await f.identify();
+  await f.send();
+  const { hash } = await import("../../src/voice-store-support.js");
+  await f.pool.query("UPDATE voice_emergency_codes SET code_hash=$2 WHERE sms_id=$1", [
+    f.sent[0]!.smsId,
+    hash(`${f.sent[0]!.smsId}:01234567`),
+  ]);
+  const result = await f.run("verify_emergency_contact_code", {
+    code: "oh, one two three four five six seven",
+  });
+  assert.equal(result.status, "verified");
+});
+
+test("a pending SMS challenge resumes verification without recollecting contact identity or resending", async (t) => {
+  const f = await fixture(t);
+  await f.identify();
+  await f.send();
+  const result = await f.run("get_emergency_patient_location");
+  assert.equal(result.status, "authorization_required");
+  assert.equal(result.scope, "emergency_contact");
+  assert.equal(result.method, "speech_or_keypad");
+  assert.equal(f.sent.length, 1);
+});
+
 test("patient matching needs full name and birthday; contact claims and arbitrary destinations do not authorize lookup", async (t) => {
   const f = await fixture(t);
   assert.equal(
@@ -205,10 +290,7 @@ test("provider rejection is reported without exposing a code or retrying automat
   assert.equal(result.status, "code_send_failed");
   await f.send(false, "failed-send");
   assert.equal(attempts, 1);
-  assert.equal(
-    (await f.run("get_emergency_patient_location")).status,
-    "contact_verification_required",
-  );
+  assert.equal((await f.run("get_emergency_patient_location")).status, "code_send_failed");
 });
 
 test("delivery callbacks arriving before acknowledgment reconcile with the acknowledged message", async (t) => {

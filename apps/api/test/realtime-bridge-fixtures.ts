@@ -129,5 +129,5 @@ export const keypad = (sequenceNumber: string) => ({
   event: "dtmf",
   sequenceNumber,
   streamSid: "MZsynthetic",
-  dtmf: { track: "inbound_track", digit: "1" },
+  dtmf: { track: "inbound", digit: "1" },
 });

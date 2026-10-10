@@ -24,7 +24,7 @@ export function monitorDetail(value: unknown, depth = 0): unknown {
         .slice(0, 60)
         .map(([key, item]) => [
           key,
-          /(?:authorization|cookie|password|secret|(?:^|[_-])token$|Token$|access.?code|api.?key|^audio$|audio_data|audio_base64)/i.test(
+          /(?:authorization|cookie|password|secret|(?:^|[_-])token$|Token$|access.?code|^code$|api.?key|^audio$|audio_data|audio_base64)/i.test(
             key,
           )
             ? "[redacted]"

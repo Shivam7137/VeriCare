@@ -216,6 +216,7 @@ export const voiceToolInputSchema = z.strictObject({
     "get_sms_status",
     "identify_emergency_patient",
     "send_emergency_contact_code",
+    "verify_emergency_contact_code",
     "get_emergency_patient_location",
   ]),
   arguments: z.record(z.string(), z.unknown()),

@@ -1,6 +1,10 @@
 import { randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import type { Pool } from "pg";
-import { emergencyContactInputSchema, emergencyPatientInputSchema } from "@prc/contracts";
+import {
+  emergencyCodeInputSchema,
+  emergencyContactInputSchema,
+  emergencyPatientInputSchema,
+} from "@prc/contracts";
 import { BackendError, transaction, type Database } from "./domain.js";
 import { callRow, event, hash, mask, requireActiveSession } from "./voice-store-support.js";
 import type { SmsProvider } from "./twilio-sms.js";
@@ -39,6 +43,19 @@ type Challenge = {
   recipient_number: string | null;
 };
 const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+const digitWords: Record<string, string> = {
+  zero: "0",
+  oh: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+};
 const fingerprint = (patient: PatientRecord) =>
   hash(
     JSON.stringify([
@@ -129,14 +146,14 @@ export class EmergencyLookup {
     return {
       status: "authorization_required",
       scope: "emergency_contact",
-      method: "keypad",
+      method: "speech_or_keypad",
       digits: 8,
       smsStatus: challenge.status,
       maskedRecipient: challenge.recipient_number ? mask(challenge.recipient_number) : null,
       message:
         challenge.status === "unknown"
-          ? "The text's sending status is uncertain. If a code arrives, enter its eight digits on the keypad. Do not send again automatically."
-          : `The verification text is ${challenge.status === "delivered" ? "delivered" : "queued"} to the registered phone ending ${challenge.recipient_number?.slice(-4)}. Ask the caller to enter its eight digits on the keypad. Do not ask them to say it aloud or use a portal code.`,
+          ? "The text's sending status is uncertain. If a code arrives, read its eight digits aloud one at a time or enter them on the keypad. Do not send again automatically."
+          : `The verification text is ${challenge.status === "delivered" ? "delivered" : "queued"} to the registered phone ending ${challenge.recipient_number?.slice(-4)}. Ask the caller to read the eight digits aloud one at a time or use the keypad. Do not ask for a portal or staff code.`,
     };
   }
   async identify(callId: string, raw: unknown) {
@@ -339,13 +356,30 @@ export class EmergencyLookup {
           smsId,
           callId,
           to: patient.contact_number,
-          body: `Health Coordinator demo: your verification code is ${code}. It expires in 5 minutes. Enter it on the keypad during your current call. Reply STOP to opt out.`,
+          body: `Health Coordinator demo: your verification code is ${code}. It expires in 5 minutes. Read the digits aloud or enter them on the keypad during your current call. Reply STOP to opt out.`,
         },
       };
     });
     if (prepared.result) return prepared.result;
     await dispatchEmergencySms(this.pool, this.options.provider!, prepared.send!, this.now);
     return this.codeResult((await this.challenge(this.pool, callId, prepared.send!.smsId))!);
+  }
+  async verifySpokenCode(callId: string, raw: unknown) {
+    const input = emergencyCodeInputSchema.parse(raw);
+    const parts = input.code
+      .toLowerCase()
+      .split(/[\s,.-]+/)
+      .filter(Boolean);
+    const digits = parts.map((part) => (/^\d+$/.test(part) ? part : digitWords[part]));
+    const code = digits.join("");
+    if (digits.some((digit) => digit === undefined) || !/^\d{8}$/.test(code))
+      return {
+        status: "spoken_code_unclear",
+        message:
+          "I need all eight digits. Ask the caller to repeat the latest SMS code slowly, one digit at a time, or use the keypad. Never guess missing digits or try alternatives.",
+      };
+    // Spoken SMS codes use only the emergency scope, never the portal-code fallback.
+    return (await this.verifyCode(callId, code)) ?? needPatient();
   }
   async verifyCode(callId: string, code: string) {
     return transaction(this.pool, async (db) => {
@@ -392,7 +426,7 @@ export class EmergencyLookup {
           : {
               status: "verification_failed",
               message:
-                "That code didn't match. Please enter the eight digits from the latest text on your keypad. Press star to clear partial digits.",
+                "That code didn't match. Ask the caller to repeat all eight digits from the latest text, one at a time, or use the keypad. Never guess or try alternative codes. Press star to clear partial keypad digits.",
             };
       }
       await db.query("UPDATE voice_emergency_codes SET consumed_at=$2 WHERE sms_id=$1", [
@@ -430,8 +464,20 @@ export class EmergencyLookup {
         !session.verified_until ||
         session.verified_until <= this.now() ||
         session.contact_fingerprint !== fingerprint(patient)
-      )
+      ) {
+        const challenge = await this.challenge(db, callId);
+        if (
+          patient &&
+          challenge &&
+          !challenge.invalidated_at &&
+          !challenge.consumed_at &&
+          challenge.patient_id === patient.patient_id &&
+          challenge.contact_fingerprint === fingerprint(patient) &&
+          session.verification_failures < 5
+        )
+          return this.codeResult(challenge);
         return needContact();
+      }
       if (!patient.location_shareable)
         return {
           status: "location_unavailable",

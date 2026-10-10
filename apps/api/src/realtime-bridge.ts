@@ -356,7 +356,7 @@ export function bridgeRealtime(twilioSocket: BridgeSocket, options: RealtimeBrid
     if (
       !ready ||
       !record(event.dtmf) ||
-      event.dtmf.track !== "inbound_track" ||
+      event.dtmf.track !== "inbound" ||
       typeof event.dtmf.digit !== "string" ||
       !/^[0-9*#ABCD]$/.test(event.dtmf.digit) ||
       typeof event.sequenceNumber !== "string" ||

@@ -155,6 +155,8 @@ export class VoiceAgent {
     if (name === "identify_emergency_patient") return this.emergency.identify(callId, args);
     if (name === "send_emergency_contact_code")
       return this.emergency.sendCode(callId, toolCallId, args);
+    if (name === "verify_emergency_contact_code")
+      return this.emergency.verifySpokenCode(callId, args);
     if (name === "get_emergency_patient_location") {
       voiceEmptyInputSchema.parse(args);
       return this.emergency.location(callId);

@@ -119,7 +119,7 @@ test("rejects malformed pending-start frames and never executes an unverified ke
       event: "dtmf",
       sequenceNumber: "3",
       streamSid: "MZsynthetic",
-      dtmf: { track: "inbound_track", digit: "1" },
+      dtmf: { track: "inbound", digit: "1" },
     },
   ]) {
     let authorize!: (value: { callId: string }) => void;
@@ -329,7 +329,7 @@ test("DTMF cancellation reaches the backend callback and exact transport replays
     event: "dtmf",
     sequenceNumber: "4",
     streamSid: "MZsynthetic",
-    dtmf: { track: "inbound_track", digit: "2" },
+    dtmf: { track: "inbound", digit: "2" },
   };
   h.twilio.receive(digit);
   h.twilio.receive(digit);

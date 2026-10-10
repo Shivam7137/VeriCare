@@ -23,6 +23,7 @@ type Caption = {
   seen: Set<string>;
   characters: number;
   truncated: boolean;
+  codeSensitive: boolean;
 };
 
 function boundedSink(emit: (entry: VoiceMonitorEntry) => void) {
@@ -72,6 +73,7 @@ export class LiveMonitor extends RealtimeMonitor {
   private captions = new Map<string, Caption>();
   private latestWindow = new Map<string, number>();
   private captionsClosed = false;
+  private codeInput = false;
   private readonly captionSink: ReturnType<typeof boundedSink>;
 
   constructor(emit: (entry: VoiceMonitorEntry) => void) {
@@ -80,7 +82,21 @@ export class LiveMonitor extends RealtimeMonitor {
     this.captionSink = sink;
   }
 
+  protectSpokenCodes() {
+    // Keep masking until hangup, including delayed captions and repeated codes.
+    this.codeInput = true;
+  }
+
   private publishCaption(caption: Caption) {
+    const joined = caption.fragments.map((fragment) => fragment.text).join("");
+    const text = caption.codeSensitive
+      ? joined
+          .replace(/\d+/g, "[code redacted]")
+          .replace(
+            /\b(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)\b/gi,
+            "[code redacted]",
+          )
+      : joined;
     return this.captionSink.publish({
       id: caption.id,
       kind: "transcript",
@@ -89,7 +105,7 @@ export class LiveMonitor extends RealtimeMonitor {
       speaker: caption.speaker,
       status: caption.status,
       // Redact after joining, so a secret split between adjacent deltas is still removed.
-      text: monitorDetail(caption.fragments.map((fragment) => fragment.text).join("")) as string,
+      text: monitorDetail(text) as string,
       details: {
         grouping:
           "Approximate 12-second timeline window; not a conversational turn or playback confirmation.",
@@ -144,6 +160,7 @@ export class LiveMonitor extends RealtimeMonitor {
           seen: new Set(),
           characters: 0,
           truncated: false,
+          codeSensitive: false,
         };
       }
       const key = createHash("sha256")
@@ -161,6 +178,7 @@ export class LiveMonitor extends RealtimeMonitor {
         return;
       }
       const text = event.delta.slice(0, maxText - caption.characters);
+      caption.codeSensitive ||= speaker === "caller" && this.codeInput;
       caption.seen.add(key);
       caption.fragments.push({ startMs: start, endMs: end, text });
       caption.fragments.sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);

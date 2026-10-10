@@ -62,7 +62,7 @@ function harness(extra: Partial<LiveBridgeOptions> = {}) {
     live.receive({ type: "session.started", session: { model: "gpt-live-1" } });
     await settle();
   }
-  function call(id = "tool-1") {
+  function call(id = "tool-1", name = "lookup", args = "{}") {
     live.receive({
       type: "response.event",
       delegation_id: "d-1",
@@ -73,7 +73,7 @@ function harness(extra: Partial<LiveBridgeOptions> = {}) {
       delegation_id: "d-1",
       event: {
         type: "response.output_item.done",
-        item: { type: "function_call", call_id: id, name: "lookup", arguments: "{}" },
+        item: { type: "function_call", call_id: id, name, arguments: args },
       },
     });
     live.receive({
@@ -87,7 +87,7 @@ function harness(extra: Partial<LiveBridgeOptions> = {}) {
       event: "dtmf",
       streamSid: "MZsynthetic",
       sequenceNumber: sequence,
-      dtmf: { track: "inbound_track", digit },
+      dtmf: { track: "inbound", digit },
     });
   }
   return { phone, live, tools, digits, codes, captured, urls, controller, connect, call, digit };
@@ -200,6 +200,57 @@ test("emergency-contact keypad verification resumes location lookup without gran
   assert.doesNotMatch(result, /verified as patient/i);
   assert.ok(!JSON.stringify(h.live.sent).includes("12345678"));
   assert.ok(!JSON.stringify(h.captured).includes("12345678"));
+});
+
+test("spoken emergency verification clears partial keypad input and redacts streamed code digits", async (t) => {
+  const h = harness({
+    tools: ["lookup", "verify_emergency_contact_code"].map((name) => ({
+      type: "function",
+      name,
+      parameters: { type: "object", properties: {} },
+    })),
+    onTool: async (name) =>
+      name === "lookup"
+        ? { status: "authorization_required", scope: "emergency_contact" }
+        : { status: "verified", role: "emergency_contact" },
+  });
+  t.after(() => h.controller.close());
+  await h.connect();
+  h.call();
+  await settle();
+  await settle();
+  h.digit("1", "1");
+  h.live.receive({
+    type: "session.input_transcript.delta",
+    delta: "one two three four",
+    start_ms: 11900,
+    end_ms: 12000,
+  });
+  h.live.receive({
+    type: "session.input_transcript.delta",
+    delta: " five six seven eight",
+    start_ms: 12000,
+    end_ms: 12500,
+  });
+  h.call("spoken-code", "verify_emergency_contact_code", '{"code":"12345678"}');
+  await settle();
+  await settle();
+  for (const [i, digit] of [..."2345678"].entries()) h.digit(digit, String(i + 2));
+  await settle();
+  assert.equal(h.codes.length, 0, "keypad must stop collecting after spoken verification");
+  h.live.receive({
+    type: "session.input_transcript.delta",
+    delta: "one two three four five six seven eight",
+    start_ms: 26000,
+    end_ms: 27500,
+  });
+  h.controller.close();
+  await h.controller.finished;
+  const saved = JSON.stringify(h.captured);
+  assert.doesNotMatch(saved, /12345678|one two|three four|five six|seven eight/);
+  assert.match(saved, /code redacted/);
+  const reply = h.live.events("response.item.create").at(-1)!.item.output;
+  assert.match(reply, /emergency_contact/);
 });
 test("saves native caller and assistant transcript fragments, with backend events separate", async (t) => {
   const h = harness();

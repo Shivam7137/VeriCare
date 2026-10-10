@@ -1,6 +1,6 @@
 # Patient, professional and phone workspaces
 
-For the focused emergency-contact patient-location conversation, see [the emergency phone demo](emergency-contact-demo.md). `VOICE_SCENARIO=emergency_contact` uses an SMS verification code for the registered contact; it does not ask for portal or staff codes. The appointment and directory instructions below describe `VOICE_SCENARIO=coordination`.
+For the focused emergency-contact patient-location conversation, see [the emergency phone demo](emergency-contact-demo.md). `VOICE_SCENARIO=emergency_contact` accepts the registered contact's SMS code aloud or through the keypad; it does not ask for portal or staff codes. The appointment and directory instructions below describe `VOICE_SCENARIO=coordination`.
 
 The app automatically enters the fictional `/patient` and `/professional` workspaces with independent HttpOnly sessions; no web sign-in is required. Patients create requests, track proposals and manage phone access. Care-team staff propose/approve appointments and review handovers. `/desktop` is the department overview and `/professional/team` is the fictional care-team directory and transfer simulator. The homepage links to the three main workspaces. These remain synthetic demonstration identities and a mock appointment scheduler.
 
@@ -94,6 +94,6 @@ The outbox records `prepared`, `dispatching`, `accepted`, `sent`, `delivered`, `
 
 `npm test` exercises provider signatures/TwiML, configuration, portal boundaries, native Live sockets and the retained Realtime compatibility tests. `npm run test:backend` exercises guest sessions, protected agent actions, signed routes, SMS confirmation/delivery states and callback recovery against isolated PostgreSQL schemas. These use synthetic credentials and injected provider transports; no real calls or texts are sent. `npm run check` adds formatting, type checks and production builds.
 
-The current provider session check accepted the configured key with GPT-Live and Responses delegation. This confirms session startup only. Handset speech, interruption quality, end-to-end latency, forwarding and SMS delivery remain unvalidated. Production identity verification, hospital scheduling integration and production handling of patient information remain separate integrations.
+The current provider session check accepted the configured key with GPT-Live and Responses delegation. This confirms session startup only. A real emergency-contact demo call reported delivered SMS. The complete spoken or corrected keypad verification, interruption quality, end-to-end latency and forwarding still need caller-driven validation. Production identity verification, hospital scheduling integration and production handling of patient information remain separate integrations.
 
 Protocol references: [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams/websocket-messages), [Twilio signature validation](https://www.twilio.com/docs/usage/security#validating-requests), [GPT-Live session behavior](https://developers.openai.com/api/docs/guides/live-conversations), and [Live prompting](https://developers.openai.com/api/docs/guides/live-prompting).
