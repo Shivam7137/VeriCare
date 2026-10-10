@@ -98,6 +98,6 @@ export function buildApp(pool: Pool, demoEnabled = false) {
     });
   }
   registerBackendRoutes(app, pool);
-  registerVoiceRoutes(app, pool);
+  registerVoiceRoutes(app, pool, { demoEnabled });
   return app;
 }

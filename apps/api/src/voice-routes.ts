@@ -45,7 +45,12 @@ type CallParams = { Params: { id: string } };
 export function registerVoiceRoutes(
   app: FastifyInstance,
   pool: Pool,
-  options: { config?: VoiceConfig; now?: () => Date; transferProvider?: TransferProvider } = {},
+  options: {
+    config?: VoiceConfig;
+    now?: () => Date;
+    transferProvider?: TransferProvider;
+    demoEnabled?: boolean;
+  } = {},
 ) {
   const config = options.config ?? readVoiceConfig();
   const now = options.now ?? (() => new Date());
@@ -56,6 +61,7 @@ export function registerVoiceRoutes(
     ownNumber: config.phoneNumber,
     transferProvider: options.transferProvider ?? createTwilioTransferProvider(config),
     smsProvider: createTwilioSmsProvider(config),
+    demoEnabled: options.demoEnabled,
   });
   const connections = new Map<string, { close(reason?: string): void }>();
   const activeConnections = new Set<ReturnType<typeof bridgeLive>>();

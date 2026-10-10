@@ -128,11 +128,16 @@ export class VoiceAgent {
       ownNumber?: string | null;
       smsProvider?: SmsProvider;
       smsAppUrl?: string;
+      demoEnabled?: boolean;
     } = {},
   ) {
     this.now = options.now ?? (() => new Date());
     this.store = new VoiceStore(pool, { now: this.now });
-    this.emergency = new EmergencyLookup(pool, { now: this.now, provider: options.smsProvider });
+    this.emergency = new EmergencyLookup(pool, {
+      now: this.now,
+      provider: options.smsProvider,
+      demoEnabled: options.demoEnabled,
+    });
     this.sms = new VoiceSms(pool, {
       now: this.now,
       provider: options.smsProvider,

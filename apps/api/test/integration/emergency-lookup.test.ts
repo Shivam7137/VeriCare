@@ -12,7 +12,7 @@ const registeredPhone = "+15005550006";
 const rejects = (code: string) => (error: unknown) =>
   error instanceof BackendError && error.code === code;
 
-async function fixture(t: TestContext, provider?: SmsProvider) {
+async function fixture(t: TestContext, provider?: SmsProvider, demoEnabled = false) {
   assert.ok(
     voiceAgentTools.some((tool) => tool.name === "identify_emergency_patient"),
     "patient lookup tool must be available",
@@ -30,6 +30,7 @@ async function fixture(t: TestContext, provider?: SmsProvider) {
   const sent: { smsId: string; to: string; body: string }[] = [];
   const agent = new VoiceAgent(f.pool, {
     now: f.now,
+    demoEnabled,
     smsProvider: provider ?? {
       send: async (input) => {
         sent.push(input);
@@ -51,6 +52,81 @@ async function fixture(t: TestContext, provider?: SmsProvider) {
   const code = () => /\b\d{8}\b/.exec(sent.at(-1)!.body)![0];
   return { ...f, agent, call, sent, run, identify, send, code };
 }
+
+test("demo SMS code verifies keypad and spoken input without granting patient authority", async (t) => {
+  for (const spoken of [false, true]) {
+    const f = await fixture(t, undefined, true);
+    await f.identify();
+    await f.send();
+    const result = spoken
+      ? await f.run("verify_emergency_contact_code", {
+          code: "one two three four five six seven eight",
+        })
+      : await f.agent.verifyCode(f.call.id, "12345678");
+    assert.equal((result as any).status, "verified");
+    assert.equal((await f.run("get_emergency_patient_location")).status, "location_available");
+    assert.equal((await f.agent.store.sessionState(f.call.id)).verified, false);
+    const events = (
+      await f.pool.query(
+        "SELECT detail FROM voice_events WHERE call_id=$1 AND kind='emergency_contact_verified'",
+        [f.call.id],
+      )
+    ).rows;
+    assert.equal(events[0].detail.mode, "demo_override");
+    assert.equal(((await f.agent.verifyCode(f.call.id, "12345678")) as any).status, "verified");
+  }
+});
+
+test("fixed SMS demo code is rejected when synthetic demo mode is disabled", async (t) => {
+  const f = await fixture(t);
+  await f.identify();
+  await f.send();
+  const { hash } = await import("../../src/voice-store-support.js");
+  await f.pool.query("UPDATE voice_emergency_codes SET code_hash=$2 WHERE sms_id=$1", [
+    f.sent[0]!.smsId,
+    hash(`${f.sent[0]!.smsId}:87654321`),
+  ]);
+  assert.equal(
+    ((await f.agent.verifyCode(f.call.id, "12345678")) as any).status,
+    "verification_failed",
+  );
+  assert.equal((await f.run("get_emergency_patient_location")).status, "authorization_required");
+});
+
+test("demo code still needs a matched patient and registered contact on the current active call", async (t) => {
+  const f = await fixture(t, undefined, true);
+  assert.equal(
+    (await f.run("verify_emergency_contact_code", { code: "12345678" })).status,
+    "patient_details_required",
+  );
+  await f.identify();
+  await f.run("send_emergency_contact_code", { ...contact, contactName: "Someone Else" });
+  assert.equal(
+    ((await f.agent.verifyCode(f.call.id, "12345678")) as any).status,
+    "verification_failed",
+  );
+  await f.send();
+  await f.pool.query(
+    "UPDATE emergency_patient_records SET contact_name='Different Contact' WHERE patient_id=$1",
+    [f.patient.patientId],
+  );
+  assert.equal(
+    ((await f.agent.verifyCode(f.call.id, "12345678")) as any).status,
+    "verification_failed",
+  );
+  await f.agent.store.end(f.call.id, "hangup");
+  await assert.rejects(f.agent.verifyCode(f.call.id, "12345678"), rejects("call_ended"));
+});
+
+test("demo code remains usable after random SMS expiry and retry lockout", async (t) => {
+  const f = await fixture(t, undefined, true);
+  await f.identify();
+  await f.send();
+  for (let attempt = 0; attempt < 5; attempt++) await f.agent.verifyCode(f.call.id, "wrong");
+  f.setNow(new Date(f.now().getTime() + 300_000));
+  assert.equal(((await f.agent.verifyCode(f.call.id, "12345678")) as any).status, "verified");
+  assert.equal((await f.run("get_emergency_patient_location")).status, "location_available");
+});
 
 test("emergency lookup verifies the registered contact before revealing location without granting patient authority", async (t) => {
   const f = await fixture(t);

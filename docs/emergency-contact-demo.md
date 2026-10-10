@@ -18,10 +18,12 @@ The original appointment and forwarding phone scenario remains selectable with `
 
 Use **Maya Chen**, born **12 April 1990**, for the main demo. Her fictional record places her at **Halifax Infirmary, Emergency Department, Assessment area B**. The shared contact identity and real SMS destination are deliberately absent from committed documentation; use the values configured privately for this demo.
 
+With `ENABLE_SYNTHETIC_DEMO=true`, **12345678** is also accepted at the SMS verification step, either spoken one digit at a time or entered on the keypad. It works repeatedly, even after the random SMS code expires or its retry limit is reached. The patient and registered contact must still match on the current active call; changing those details invalidates the challenge. Successful use records `mode: demo_override` in the verification event and grants only this patient's fictional location access. This fixed code demonstrates the workflow; it does not prove possession of the registered phone. Disabling synthetic demo mode removes the fallback and retains ordinary SMS verification.
+
 ## Monitoring and failure behavior
 
 Open `/professional/monitor` to view the call's transcript and tool events. SMS delivery is recorded separately: accepted or queued is not yet delivered. The saved message body and verification tool arguments redact the code. After an emergency SMS challenge, caller digit words and numbers are masked in saved captions until hangup, including delayed fragments. Spoken codes pass through the voice provider and the verification tool; keypad digits are never forwarded to the model or monitor.
 
 An unmatched patient or contact prompts a correction without revealing expected answers. Incorrect codes allow five attempts. A requested resend invalidates the prior code, waits at least 60 seconds and respects send limits. Uncertain provider outcomes do not trigger automatic retries. A changed patient or contact requires fresh verification. If verification cannot finish, Alex directs the caller to hospital reception and does not claim a live handover.
 
-Automated validation uses isolated schemas and a fake SMS provider. A real demo call confirmed SMS delivery; a new caller-driven test must confirm spoken or corrected keypad verification through the location response. Both methods share the same expiry, single-use code and five-attempt limit.
+Automated validation uses isolated schemas and a fake SMS provider. A real demo call confirmed SMS delivery; a new caller-driven test must confirm spoken or corrected keypad verification through the location response. Ordinary SMS codes share the same expiry, single-use code and five-attempt limit; the fixed demo fallback is the explicit exception above.
