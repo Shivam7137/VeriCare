@@ -1,0 +1,1078 @@
+/* Pitch deck: a fixed 1600×900 stage scaled to the window. Everything is scoped under .pitch. */
+.pitch {
+  --navy: #0b1b2e;
+  --teal: #0b6b63;
+  --slate: #3d4f66;
+  --mute: #5b6b80;
+  --amber: #a35405;
+  --tint: #eaf0f6;
+  --paper: #f6f8fb;
+  --white: #fcfdfe;
+  --line: #cfd9e5;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --sans: var(--pitch-sans), "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --serif: var(--pitch-serif), "Source Serif 4", Georgia, serif;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  /* clip, not hidden: a hidden box can still be scrolled when the feeds auto-scroll. */
+  overflow: clip;
+  background: var(--paper);
+  color: var(--navy);
+  font-family: var(--sans);
+  font-variant-numeric: normal;
+  user-select: none;
+  cursor: default;
+  transition: background 0.5s ease;
+}
+.pitch[data-tone="tint"] {
+  background: var(--tint);
+}
+.pitch[data-tone="dark"] {
+  background: var(--navy);
+}
+.pitch :is(h1, h2, h3, p, ol, ul, li, dl, dd, dt) {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  list-style: none;
+  max-width: none;
+}
+.pitch h1 span {
+  display: inline-block;
+  color: inherit;
+  font: inherit;
+}
+.pitch button {
+  all: unset;
+  cursor: pointer;
+}
+
+/* Ambient circles that drift to a new place on every slide. */
+.pitch-orb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 62vmax;
+  height: 62vmax;
+  border-radius: 50%;
+  background: #e3ebf3;
+  transition:
+    transform 1.1s var(--ease),
+    background 0.5s ease,
+    opacity 0.5s ease;
+  will-change: transform;
+}
+.pitch-orb-b {
+  width: 34vmax;
+  height: 34vmax;
+  background: #d1e3e3;
+}
+.pitch-orb i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: inherit;
+  animation: pitchFloat 13s ease-in-out infinite alternate;
+}
+.pitch-orb-b i {
+  animation-duration: 9s;
+  animation-direction: alternate-reverse;
+}
+.pitch[data-tone="tint"] .pitch-orb-a {
+  background: #dfe8f1;
+}
+.pitch[data-tone="tint"] .pitch-orb-b {
+  background: #cfe1e2;
+}
+.pitch[data-tone="dark"] .pitch-orb-a {
+  background: #10263d;
+}
+.pitch[data-tone="dark"] .pitch-orb-b {
+  background: #0f3a45;
+}
+.pitch[data-slide="0"] .pitch-orb-a {
+  transform: translate(58vw, -24vh);
+}
+.pitch[data-slide="0"] .pitch-orb-b {
+  transform: translate(72vw, 46vh);
+}
+.pitch[data-slide="1"] .pitch-orb-a {
+  transform: translate(-34vmax, 58vh);
+}
+.pitch[data-slide="1"] .pitch-orb-b {
+  transform: translate(86vw, -22vmax);
+}
+.pitch[data-slide="2"] .pitch-orb-a {
+  transform: translate(72vw, 66vh);
+}
+.pitch[data-slide="2"] .pitch-orb-b {
+  transform: translate(-20vmax, -20vmax);
+}
+.pitch[data-slide="3"] .pitch-orb-a {
+  transform: translate(44vw, -44vmax);
+}
+.pitch[data-slide="3"] .pitch-orb-b {
+  transform: translate(-16vmax, 70vh);
+}
+.pitch[data-slide="4"] .pitch-orb-a {
+  transform: translate(-40vmax, -34vmax);
+}
+.pitch[data-slide="4"] .pitch-orb-b {
+  transform: translate(86vw, 72vh);
+}
+.pitch[data-slide="5"] .pitch-orb-a {
+  transform: translate(66vw, -46vmax);
+}
+.pitch[data-slide="5"] .pitch-orb-b {
+  transform: translate(-18vmax, 66vh);
+}
+.pitch[data-slide="6"] .pitch-orb-a {
+  transform: translate(-30vmax, 40vh);
+}
+.pitch[data-slide="6"] .pitch-orb-b {
+  transform: translate(80vw, -18vmax);
+}
+.pitch[data-slide="7"] .pitch-orb-a {
+  background: radial-gradient(circle, rgb(242 179 107 / 0.5), rgb(242 179 107 / 0) 68%);
+  transform: translate(46vw, 20vh);
+}
+.pitch[data-slide="7"] .pitch-orb-b {
+  background: radial-gradient(circle, rgb(11 107 99 / 0.16), rgb(11 107 99 / 0) 70%);
+  transform: translate(-12vmax, -16vmax);
+}
+.pitch[data-slide="7"] .pitch-orb i {
+  animation: pitchBreathe 5s ease-in-out infinite;
+}
+.pitch[data-slide="8"] .pitch-orb-a {
+  transform: translate(-26vmax, -30vmax);
+  opacity: 0.6;
+}
+.pitch[data-slide="8"] .pitch-orb-b {
+  transform: translate(84vw, 64vh);
+  opacity: 0.5;
+}
+
+.pitch-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1600px;
+  height: 900px;
+  margin: -450px 0 0 -800px;
+  transform: scale(var(--s, 1));
+}
+.pitch .slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.25s ease,
+    transform 0.4s var(--ease),
+    visibility 0s 0.25s;
+}
+.pitch .slide.before {
+  transform: translateX(-70px);
+}
+.pitch .slide.after {
+  transform: translateX(70px);
+}
+.pitch .slide.on {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.35s ease,
+    transform 0.5s var(--ease);
+}
+
+/* Entrance primitives: .r rises with a stagger, .pw reveals words, .seq is a slower sequence. */
+.pitch .r,
+.pitch .seq {
+  opacity: 0;
+}
+.pitch .slide.on .r {
+  animation: pitchRise 0.5s var(--ease) both;
+  animation-delay: calc(var(--d, 0) * 40ms + 80ms);
+}
+.pitch .slide.on .seq {
+  animation: pitchRise 0.5s var(--ease) both;
+  animation-delay: calc(var(--d, 0) * 110ms + 300ms);
+}
+.pitch .pw {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.pitch .pw > span {
+  display: inline-block;
+  transform: translateY(115%);
+}
+.pitch .slide.on .pw > span {
+  animation: pitchWord 0.55s var(--ease) both;
+  animation-delay: calc(var(--d, 0) * 18ms + 60ms);
+}
+.pitch .st {
+  opacity: 0;
+  transform: translateY(26px);
+  filter: blur(8px);
+  transition:
+    opacity 0.4s ease,
+    transform 0.5s var(--ease),
+    filter 0.4s ease;
+}
+.pitch .st.in {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Shared slide frame */
+.pitch .eyebrow {
+  position: absolute;
+  left: 107px;
+  top: 107px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--teal);
+}
+.pitch .aside {
+  position: absolute;
+  right: 107px;
+  top: 107px;
+  font-size: 20px;
+  color: var(--mute);
+}
+.pitch .title {
+  position: absolute;
+  left: 107px;
+  top: 150px;
+  width: 1400px;
+  font-family: var(--serif);
+  font-size: 47px;
+  line-height: 1.14;
+  letter-spacing: -0.005em;
+}
+.pitch .title.narrow {
+  width: 900px;
+}
+.pitch .foot,
+.pitch .page {
+  position: absolute;
+  top: 818px;
+  left: 107px;
+  font-size: 20px;
+  color: var(--mute);
+}
+.pitch .page {
+  left: auto;
+  right: 107px;
+}
+.pitch .label {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--teal);
+}
+.pitch .label.spaced {
+  letter-spacing: 0.09em;
+}
+.pitch .body {
+  font-size: 23px;
+  line-height: 1.42;
+  color: var(--slate);
+}
+.pitch .small {
+  font-size: 20px;
+  line-height: 1.42;
+  color: var(--slate);
+}
+.pitch .small.ink {
+  color: var(--navy);
+}
+.pitch .rule {
+  display: block;
+  height: 3px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.pitch .slide.on .rule {
+  animation: pitchDraw 0.45s var(--ease) both;
+  animation-delay: calc(var(--d, 0) * 110ms + 250ms);
+}
+
+/* 1 · cover */
+.pitch .cover .eyebrow {
+  top: 270px;
+}
+.pitch .wordmark {
+  position: absolute;
+  left: 100px;
+  top: 300px;
+  font-family: var(--serif);
+  font-size: 156px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.pitch .wordmark span {
+  display: inline-block;
+  opacity: 0;
+}
+.pitch .slide.on .wordmark span {
+  animation: pitchLetter 0.6s var(--ease) both;
+  animation-delay: calc(var(--d) * 30ms + 80ms);
+}
+.pitch .tagline {
+  position: absolute;
+  left: 107px;
+  top: 512px;
+  width: 1150px;
+  font-family: var(--serif);
+  font-size: 47px;
+  line-height: 1.22;
+  color: var(--slate);
+}
+.pitch .cover-foot {
+  position: absolute;
+  left: 107px;
+  top: 766px;
+  font-size: 20px;
+  color: var(--mute);
+}
+
+/* 2 and 3 · four columns */
+.pitch .columns {
+  position: absolute;
+  left: 107px;
+  top: 318px;
+  width: 1386px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 27px;
+}
+.pitch .columns.how {
+  top: 300px;
+}
+.pitch .column .label {
+  margin: 20px 0 12px;
+}
+.pitch .column.amber .label {
+  color: var(--amber);
+}
+.pitch .column.amber .rule {
+  background: var(--amber);
+}
+.pitch .column h3 {
+  margin-bottom: 10px;
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.pitch .pair {
+  position: absolute;
+  left: 107px;
+  top: 574px;
+  width: 1386px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1.28;
+}
+.pitch .pair.once {
+  top: 650px;
+  align-items: center;
+}
+.pitch .pair .body {
+  font-family: var(--sans);
+}
+
+/* 4 · proactive SMS */
+.pitch .event {
+  position: absolute;
+  left: 107px;
+  width: 980px;
+  transition-delay: 0s;
+}
+.pitch .event h3 {
+  margin: 6px 0 8px;
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1.2;
+}
+.pitch .event.amber .label {
+  color: var(--amber);
+}
+.pitch .wire {
+  position: absolute;
+  left: 667px;
+  top: 59px;
+  width: 284px;
+  height: 2px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s var(--ease) 0.2s;
+}
+.pitch .wire::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -5px;
+  border: 6px solid transparent;
+  border-left: 10px solid var(--teal);
+  border-right: 0;
+}
+.pitch .event.amber .wire {
+  background: var(--amber);
+}
+.pitch .event.amber .wire::after {
+  border-left-color: var(--amber);
+}
+.pitch .event.in .wire {
+  transform: scaleX(1);
+}
+.pitch .phone-wrap {
+  position: absolute;
+  left: 1074px;
+  top: 86px;
+}
+.pitch .phone {
+  width: 419px;
+  height: 708px;
+  padding: 16px;
+  border-radius: 62px;
+  background: var(--navy);
+  box-shadow:
+    0 30px 60px -20px rgb(11 27 46 / 0.45),
+    0 8px 18px rgb(11 27 46 / 0.18);
+  animation: 0.4s ease 0.5s both;
+}
+.pitch .phone-screen {
+  position: relative;
+  height: 100%;
+  border-radius: 48px;
+  background: var(--paper);
+  overflow: hidden;
+}
+.pitch .phone-notch {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 120px;
+  height: 24px;
+  margin-left: -60px;
+  border-radius: 12px;
+  background: var(--navy);
+}
+.pitch .phone-head {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 66px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--line);
+}
+.pitch .phone-head b {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: var(--paper);
+  font-size: 20px;
+}
+.pitch .phone-head strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 27px;
+}
+.pitch .phone-head span {
+  font-size: 16.5px;
+  color: var(--mute);
+}
+.pitch .sms {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  height: 126px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 10px 24px -10px rgb(11 27 46 / 0.3);
+  font-size: 18.5px;
+  line-height: 1.34;
+  transform: translateY(-34px) scale(0.94);
+  transition:
+    opacity 0.3s ease 0.4s,
+    transform 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) 0.4s,
+    filter 0.3s ease 0.4s;
+}
+.pitch .sms-top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+  font-size: 16.5px;
+}
+.pitch .sms-top i {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+.pitch .sms.amber .sms-top i {
+  background: var(--amber);
+}
+.pitch .sms-top time {
+  margin-left: auto;
+  color: var(--mute);
+}
+
+/* 5 · what comes next */
+.pitch .jobs {
+  position: absolute;
+  left: 107px;
+  top: 290px;
+  width: 1386px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 39px;
+}
+.pitch .job {
+  padding: 30px;
+  border-radius: 22px;
+  background: var(--tint);
+}
+.pitch .job h3 {
+  margin: 12px 0 24px;
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1.15;
+}
+.pitch .when,
+.pitch .does {
+  padding: 16px 22px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  font-size: 23px;
+  line-height: 1.4;
+  min-height: 122px;
+}
+.pitch .when span,
+.pitch .does span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--mute);
+}
+.pitch .does {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--paper);
+  box-shadow: 0 14px 26px -12px rgb(11 107 99 / 0.6);
+}
+.pitch .does span {
+  color: #cfe3e0;
+}
+.pitch .drop {
+  display: block;
+  width: 0;
+  margin: 8px auto;
+  border: 13px solid transparent;
+  border-top: 15px solid var(--teal);
+  border-bottom: 0;
+}
+.pitch .slide.on .drop {
+  animation: pitchNudge 1.8s ease-in-out 1.2s infinite;
+}
+.pitch .result {
+  margin-top: 24px;
+  font-size: 23px;
+  color: var(--slate);
+}
+
+/* 6 · big picture */
+.pitch .figures {
+  position: absolute;
+  left: 107px;
+  top: 290px;
+  width: 412px;
+}
+.pitch .stat {
+  font-family: var(--serif);
+  font-size: 47px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+}
+.pitch .figures > div {
+  margin-bottom: 26px;
+}
+.pitch .next-test .rule {
+  margin: 34px 0 16px;
+  --d: 2;
+}
+.pitch .layers {
+  position: absolute;
+  left: 560px;
+  top: 292px;
+  width: 933px;
+}
+.pitch .layer {
+  padding: 17px 20px 16px;
+  border-radius: 14px;
+  background: var(--tint);
+  font-size: 20px;
+  opacity: 0;
+}
+.pitch .layer > p {
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.pitch .slide.on .layer.top {
+  animation: pitchFromTop 0.5s var(--ease) 0.3s both;
+}
+.pitch .slide.on .layer.bottom {
+  animation: pitchRise 0.5s var(--ease) 0.3s both;
+}
+.pitch .layer.bridge {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  margin: 17px 0;
+  background: var(--teal);
+  color: var(--paper);
+  box-shadow: 0 18px 34px -14px rgb(11 107 99 / 0.65);
+}
+.pitch .slide.on .layer.bridge {
+  animation: pitchBridge 0.55s var(--ease) 0.65s both;
+}
+.pitch .layer.bridge strong {
+  font-family: var(--serif);
+  font-size: 37px;
+}
+.pitch .layer.bridge b {
+  font-size: 23px;
+}
+.pitch .layer.bridge p {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-weight: 400;
+  color: var(--paper);
+}
+.pitch .chips {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 11px;
+}
+.pitch .chips span {
+  padding: 13px 6px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--white);
+  text-align: center;
+  opacity: 0;
+}
+.pitch .layer.top .chips span {
+  padding: 26px 6px;
+}
+.pitch .slide.on .chips span {
+  animation: pitchRise 0.4s var(--ease) both;
+  animation-delay: calc(var(--d) * 50ms + 900ms);
+}
+
+/* 7 · impact */
+.pitch .impact {
+  position: absolute;
+  left: 107px;
+  top: 290px;
+  width: 1386px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.15fr;
+  gap: 30px;
+}
+.pitch .impact-card {
+  min-height: 468px;
+  padding: 30px;
+  border-radius: 22px;
+  background: var(--white);
+  box-shadow: 0 18px 40px -24px rgb(11 27 46 / 0.35);
+}
+.pitch .impact-card .stat {
+  margin-top: 14px;
+  font-size: 58px;
+}
+.pitch .impact-card .stat.second {
+  margin-top: 30px;
+}
+.pitch .impact-card.teal {
+  background: var(--teal);
+  box-shadow: 0 22px 44px -18px rgb(11 107 99 / 0.7);
+}
+.pitch .impact-card.teal :is(.stat, .small) {
+  color: var(--paper);
+}
+.pitch .impact-card.teal .label {
+  color: #cfe3e0;
+}
+.pitch .impact-card.teal .stat {
+  font-size: 76px;
+}
+.pitch .assume {
+  margin-top: 42px;
+  padding-top: 18px;
+  border-top: 1px solid rgb(255 255 255 / 0.3);
+  font-size: 19px;
+  line-height: 1.45;
+  color: #cfe3e0;
+}
+.pitch .reach {
+  margin: 18px 0 22px;
+}
+.pitch .reach p {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: max-content;
+  height: 86px;
+  margin-bottom: 10px;
+  padding: 0 18px;
+  border-radius: 10px;
+  background: var(--tint);
+  font-size: 18px;
+  color: var(--slate);
+  transform-origin: left;
+}
+.pitch .reach p:last-child {
+  background: var(--navy);
+  color: #c9d6e3;
+}
+.pitch .reach b {
+  font-family: var(--serif);
+  font-size: 32px;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+.pitch .reach p:last-child b {
+  color: var(--paper);
+}
+.pitch .slide.on .reach p {
+  animation: pitchGrow 0.5s var(--ease) both;
+}
+.pitch .slide.on .reach p:nth-child(1) {
+  animation-delay: 0.75s;
+}
+.pitch .slide.on .reach p:nth-child(2) {
+  animation-delay: 0.9s;
+}
+.pitch .slide.on .reach p:nth-child(3) {
+  animation-delay: 1.05s;
+}
+
+/* 8 · closing, and 9 · live intro */
+.pitch .live-intro {
+  color: var(--paper);
+}
+.pitch[data-tone="dark"] .eyebrow {
+  color: #7ccfc4;
+}
+.pitch .headline {
+  position: absolute;
+  left: 107px;
+  top: 168px;
+  width: 1260px;
+  font-family: var(--serif);
+  font-size: 78px;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+.pitch .closing-pair {
+  position: absolute;
+  left: 107px;
+  top: 420px;
+  width: 1300px;
+  display: grid;
+  grid-template-columns: 1fr 1.08fr;
+  gap: 56px;
+  font-size: 28px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+.pitch .closing .eyebrow {
+  color: var(--amber);
+}
+.pitch .closing-pair p {
+  padding: 28px 0;
+}
+/* CareBridge's answer arrives the way its texts do on the SMS slide: as a message. */
+.pitch .closing-pair .reply {
+  padding: 28px 34px;
+  border: 1px solid rgb(163 84 5 / 0.22);
+  border-radius: 8px 30px 30px 30px;
+  background: #fff8ee;
+  color: var(--navy);
+  box-shadow: 0 24px 60px -22px rgb(163 84 5 / 0.45);
+  transform: translateY(-28px) scale(0.95);
+  transition:
+    opacity 0.35s ease,
+    transform 0.6s cubic-bezier(0.2, 1.5, 0.4, 1),
+    filter 0.35s ease;
+}
+.pitch .closing-pair .reply.in {
+  transform: none;
+}
+.pitch .promise {
+  position: absolute;
+  left: 107px;
+  top: 676px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-family: var(--serif);
+  font-size: 50px;
+  color: var(--amber);
+}
+.pitch .promise i {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: pitchHeart 1.6s ease-out infinite;
+}
+.pitch .promise.st {
+  transform: translateY(-30px);
+  transition-duration: 0.6s;
+}
+.pitch .promise.st.in {
+  transform: none;
+}
+.pitch[data-tone="dark"] .foot,
+.pitch[data-tone="dark"] .page {
+  color: #8fa3b8;
+}
+
+/* Chrome */
+.pitch-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+}
+.pitch-progress i {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+  transform-origin: left;
+  transition: transform 0.4s var(--ease);
+}
+.pitch[data-tone="dark"] .pitch-progress i {
+  background: #7ccfc4;
+}
+.pitch-hud {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--mute);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.pitch-hud:hover {
+  opacity: 1;
+}
+.pitch .pitch-key,
+.pitch .pitch-key:hover:not(:disabled) {
+  padding: 4px 9px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+}
+.pitch-notes {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  width: min(1100px, 92vw);
+  max-height: 42vh;
+  overflow: auto;
+  padding: 16px 22px;
+  border-radius: 14px;
+  background: rgb(11 27 46 / 0.94);
+  color: #e6edf5;
+  font-size: 17px;
+  line-height: 1.5;
+  transform: translateX(-50%);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
+  user-select: text;
+}
+.pitch .pitch-notes p {
+  margin-top: 8px;
+}
+.pitch-notes-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #7ccfc4;
+  font-size: 14px;
+}
+
+@keyframes pitchFloat {
+  from {
+    transform: translate(-1.5vmax, -1vmax) scale(1);
+  }
+  to {
+    transform: translate(1.5vmax, 1.5vmax) scale(1.05);
+  }
+}
+@keyframes pitchRise {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes pitchFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes pitchBridge {
+  from {
+    opacity: 0;
+    transform: scaleX(0.3) scaleY(0.6);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes pitchBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.07);
+    opacity: 1;
+  }
+}
+@keyframes pitchHeart {
+  0% {
+    box-shadow: 0 0 0 0 rgb(163 84 5 / 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 22px rgb(163 84 5 / 0);
+  }
+}
+@keyframes pitchGrow {
+  from {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+}
+@keyframes pitchWord {
+  to {
+    transform: none;
+  }
+}
+@keyframes pitchLetter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35em) rotate(6deg);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes pitchDraw {
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes pitchNudge {
+  50% {
+    transform: translateY(5px);
+  }
+}
+@keyframes pitchBuzz0 {
+  20% {
+    transform: translateX(-5px) rotate(-0.8deg);
+  }
+  40% {
+    transform: translateX(5px) rotate(0.8deg);
+  }
+  60% {
+    transform: translateX(-3px) rotate(-0.4deg);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+@keyframes pitchBuzz1 {
+  20% {
+    transform: translateX(-5px) rotate(-0.8deg);
+  }
+  40% {
+    transform: translateX(5px) rotate(0.8deg);
+  }
+  60% {
+    transform: translateX(-3px) rotate(-0.4deg);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pitch *,
+  .pitch *::after {
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01s !important;
+    transition-delay: 0s !important;
+  }
+}
