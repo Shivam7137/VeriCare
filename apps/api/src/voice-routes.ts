@@ -1,3 +1,4 @@
+import type { Agent } from "./journey/intake.js";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import websocket from "@fastify/websocket";
@@ -50,6 +51,8 @@ export function registerVoiceRoutes(
     now?: () => Date;
     transferProvider?: TransferProvider;
     demoEnabled?: boolean;
+    autoPropose?: boolean;
+    agent?: Agent;
   } = {},
 ) {
   const config = options.config ?? readVoiceConfig();
@@ -62,6 +65,8 @@ export function registerVoiceRoutes(
     transferProvider: options.transferProvider ?? createTwilioTransferProvider(config),
     smsProvider: createTwilioSmsProvider(config),
     demoEnabled: options.demoEnabled,
+    autoPropose: options.autoPropose,
+    agent: options.agent,
   });
   const connections = new Map<string, { close(reason?: string): void }>();
   const activeConnections = new Set<ReturnType<typeof bridgeLive>>();

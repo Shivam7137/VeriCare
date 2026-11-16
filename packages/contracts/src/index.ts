@@ -294,3 +294,4 @@ export type VoiceTransfer = {
 };
 export * from "./voice-monitor.js";
 export * from "./emergency-contact.js";
+export * from "./ed-journey.js";

@@ -32,6 +32,7 @@ export default function PortalHeader({
               My requests
             </a>
             <a href="#phone">Phone assistance</a>
+            <Link href="/patient/visit">My ER visit</Link>
             <Link href={`/professional${query}`}>View with care team →</Link>
           </>
         ) : portal ? (
@@ -48,6 +49,7 @@ export default function PortalHeader({
             <Link href="/professional/monitor" aria-current={monitor ? "page" : undefined}>
               Call monitor
             </Link>
+            <Link href="/professional/ed">Emergency Desk</Link>
             {patientId === "synthetic-patient-001" && (
               <Link href={`/patient${query}`}>Patient view →</Link>
             )}

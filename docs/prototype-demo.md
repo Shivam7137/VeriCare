@@ -23,6 +23,12 @@ The [call monitor](call-monitor.md) is at http://127.0.0.1:3100/professional/mon
 
 Appointment displays use Halifax time with the year and ADT/AST. Callback inputs show the device's time zone; the backend retains exact instants.
 
+### Let the scheduling agent pick the time
+
+Set `AGENT_AUTO_PROPOSE=true` in `.env` and restart `npm run dev`. When a request is verified (in the patient workspace or by keypad approval on a call), the scheduling agent offers the earliest open slot inside the requested availability. The request arrives in the care-team workspace already at **Staff review**, the offer is labelled as the agent's choice, and the activity history shows **Scheduling agent** for that step. Step 2 above becomes a single **Approve proposal**; staff can still choose **Replace proposal** to pick a different time.
+
+The agent has no session and cannot approve, confirm or book. If no open slot fits, or the callback window has closed, the request waits at **Propose** for staff as before. The agent acts once, at verification: after a rejection, an expiry or a changed callback window, staff propose the next time. The flag is off by default and the demo dataset from `npm run demo:populate` is unaffected.
+
 ## Demonstrate forwarding without a phone call
 
 1. Open **Care team & phone**. Fictional members start with no phone destination. **Add phone destination** / **Edit phone destination** and **Save destination** can save or clear a destination; saving never calls it. A number is unnecessary for the simulator.

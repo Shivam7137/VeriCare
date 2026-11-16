@@ -3,8 +3,15 @@ import { proposalDraftSchema, taskEventSchema, taskSchema } from "@prc/contracts
 import type { Pool } from "pg";
 import { registerVoiceRoutes } from "./voice-routes.js";
 import { registerBackendRoutes } from "./backend-routes.js";
+import type { Agent } from "./journey/intake.js";
+import { registerJourneyRoutes } from "./journey/routes.js";
 
-export function buildApp(pool: Pool, demoEnabled = false) {
+export function buildApp(
+  pool: Pool,
+  demoEnabled = false,
+  autoPropose = false,
+  agent: Agent = null,
+) {
   const app = Fastify({ logger: false });
   app.get("/health", async () => ({
     status: "ok",
@@ -80,7 +87,7 @@ export function buildApp(pool: Pool, demoEnabled = false) {
           `SELECT e.id, t.id AS "taskId", e.actor_id AS "actorId", e.action,
                   e.occurred_at AS "occurredAt", e.evidence_ref AS "evidenceRef"
            FROM tasks t LEFT JOIN task_events e ON e.task_id = t.id
-           WHERE t.id = $1 ORDER BY e.occurred_at, e.id`,
+           WHERE t.id = $1 ORDER BY e.occurred_at, e.seq`,
           ["T001"],
         );
         if (!result.rows[0]) return reply.code(404).send({ error: "Run npm run db:seed first." });
@@ -97,7 +104,8 @@ export function buildApp(pool: Pool, demoEnabled = false) {
       }
     });
   }
-  registerBackendRoutes(app, pool);
-  registerVoiceRoutes(app, pool, { demoEnabled });
+  registerBackendRoutes(app, pool, { autoPropose });
+  registerJourneyRoutes(app, pool, { agent });
+  registerVoiceRoutes(app, pool, { demoEnabled, autoPropose, agent });
   return app;
 }

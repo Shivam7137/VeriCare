@@ -12,6 +12,25 @@ Alex uses GPT-Live 1 with Gleam for speech and GPT-6 Luna for delegated backend 
 - **Use SMS when asked.** Texts go to the current caller's number after approval. Templates cover the portal link, an authorized request's status, and the caller's current appointment. `get_sms_status` checks delivery without sending another text. Accepted, delivered, uncertain and simulated outcomes remain distinct.
 - **Make tuning observable.** Save native speaker captions, backend tool arguments/results, verification outcomes and SMS status. Captions are approximate, and generated words are not proof they were heard.
 
+## Personal connection
+
+Both phone scenarios share one `voiceCareStyle` block in `apps/api/src/voice-persona.ts`. It has not yet been heard on a real call.
+
+- **Names.** Alex uses the caller's first name once when they say it, then only before a hard step, with reassurance, with good news and at goodbye. In the appointment scenario Alex may ask once who is calling, after hearing the request. In the emergency scenario the name arrives during contact verification.
+- **The caller's words.** "Your mom", not "the patient"; the patient's first name once the caller has given it.
+- **Feelings before questions.** A shaky or rushed caller gets a slower pace and one line naming what Alex hears. A brisk caller gets speed.
+- **Reason before request, no pressure, presence, goodbye.** Alex says why a personal detail is needed, takes the blame off mismatches, stays present during waits, and closes with one sentence about the caller's situation.
+- **First real call (2026-11-15).** The full emergency-contact flow completed and name use landed as intended. Three prompt fixes followed: use details the caller already gave in one breath, say "checking" only alongside a real backend request and once per lookup, and on a misheard SMS code ask again without claiming to check.
+- **No change to access.** A spoken name is conversational only. Alex uses only names said in the call, never one from records, and using a name never signals that verification matched.
+
+## Languages
+
+Alex greets in English, invites the caller to use any language, then replies in whatever language the caller speaks and follows them if they switch. The shared `voiceLanguageStyle` block in `apps/api/src/voice-persona.ts` holds these rules; names and place names stay untranslated. GPT-Live has no language setting, so this is prompt behaviour only.
+
+- **Backend stays in English.** Tool arguments use fixed formats and tool results stay in English; Alex translates when speaking. The emergency relationship is passed as one English word (so "amiga" still matches "Friend"), and spoken code digits are passed as numerals, because the server only parses English digit words.
+- **Approval phrase stays in English.** The keypad readback gate in `live-bridge.ts` opens only after the exact English sentence "Press one to approve or two to cancel". Alex says it in English, then repeats the instruction in the caller's language. The gate is unchanged.
+- **Not localized yet.** The SMS texts are English, and Gleam is listed as an English voice, so other languages may carry an English accent. Neither has been heard on a non-English call.
+
 ## Evidence and remaining listening checks
 
 A synthetic caller generated locally asked the real GPT-Live service for an app-link text. The captured conversation introduced Alex briefly, called `prepare_sms` with `portal_link`, and asked for action approval without an access-code challenge. The final prompt produced “I can text the patient portal link to your number ending in zero one zero two,” followed by the approval prompt. The provider returned audio with no reported session error. No telephone call or actual SMS was sent in this test.

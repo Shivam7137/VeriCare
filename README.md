@@ -29,6 +29,8 @@ The patient portal also supports simulated incoming calls, scheduled callbacks a
 
 Open **Call monitor** at `/professional/monitor` to follow live caller/assistant transcripts, inspect tool inputs and results, and review timing, interruptions and errors. Captured transcripts and tool events are saved with each call and can be exported as JSON. See the [monitor guide](docs/call-monitor.md) for retention and interpretation limits.
 
+VeriCare Journey gives every emergency visit its own agent. `/patient/visit` is the patient's page, `/family/<link>` the page for people they approve, `/professional/ed` the staff Desk, `/professional/ed/accuracy` the estimate ledger and `/professional/ed/mission` mission control. See [the Visit Agent](docs/visit-agent.md) and [the system design](docs/vericare-journey-design.md).
+
 Open `/pitch` for the hackathon presentation: eight animated slides that each play on their own, then a live panel that follows the current phone call with its transcript, tool calls and texts from the same monitor feed. Arrow keys or a click advance, `N` shows speaker notes and `F` enters fullscreen.
 
 Choose **Open overview** on the homepage, or open `/desktop`, to see department requests, saved booking evidence, history, appointments, calls, handovers and phone readiness together. It reuses a valid department session or enters automatically; patient sessions remain separate. Search, status filters and request links help navigate the records. The view refreshes every five seconds and keeps the last successful snapshot with a warning if refresh fails. `/professional/team` contains the fictional directory and separate transfer simulator. Directory destinations start empty; saving one does not place a call.
@@ -53,6 +55,8 @@ The backend integration command loads `.env` and creates isolated test schemas; 
 | `apps/web`             | Next.js patient, staff and operator demo                    |
 | `apps/api`             | Authenticated Fastify API, workflow, worker, mock scheduler |
 | `packages/contracts`   | Shared task/event/proposal schemas and synthetic fixture    |
+| `ml`                   | Stage-time models: open data, simulator, training, card     |
+| `apps/api/src/agents`  | Visit Agent: planner, tools, knowledge-base retrieval       |
 | `docs/contracts.md`    | Implemented API, authority and agent tool contracts         |
 | `docs/architecture.md` | Component boundaries and workflow invariants                |
 | `docs/backlog.md`      | Packages A–H, dependencies and completion evidence          |

@@ -30,7 +30,9 @@
     "db:stop": "docker compose stop db",
     "db:migrate": "tsx --env-file=.env apps/api/src/migrate.ts",
     "db:seed": "tsx --env-file=.env apps/api/src/seed.ts",
-    "demo:gateway": "node scripts/demo-gateway.mjs"
+    "demo:gateway": "node scripts/demo-gateway.mjs",
+    "twin": "tsx --env-file=.env apps/api/src/twin/run.ts",
+    "twin:reset": "tsx --env-file=.env apps/api/src/twin/reset.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

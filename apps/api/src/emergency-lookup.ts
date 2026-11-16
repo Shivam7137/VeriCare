@@ -456,31 +456,54 @@ export class EmergencyLookup {
       };
     });
   }
+  /** The patient this call is verified for, or the step the caller still has to complete. */
+  private async authorized(db: Database, callId: string) {
+    const call = await this.active(db, callId),
+      session = await this.session(db, callId);
+    if (!session?.patient_id) return { gate: needPatient() };
+    const patient = await this.patient(db, session.patient_id, call.department_id!);
+    if (
+      !patient ||
+      !session.verified_until ||
+      session.verified_until <= this.now() ||
+      session.contact_fingerprint !== fingerprint(patient)
+    ) {
+      const challenge = await this.challenge(db, callId);
+      if (
+        patient &&
+        challenge &&
+        !challenge.invalidated_at &&
+        !challenge.consumed_at &&
+        challenge.patient_id === patient.patient_id &&
+        challenge.contact_fingerprint === fingerprint(patient) &&
+        session.verification_failures < 5
+      )
+        return { gate: this.codeResult(challenge) };
+      return { gate: needContact() };
+    }
+    return { patient };
+  }
+  /**
+   * For tools that unlock only after the one-time code: who the verified contact is and
+   * which patient they were verified for. Anything else returns the step still required.
+   */
+  async verifiedContact(callId: string) {
+    return transaction(this.pool, async (db) => {
+      const result = await this.authorized(db, callId);
+      if (!result.patient) return { gate: result.gate };
+      return {
+        patientId: result.patient.patient_id,
+        patientName: result.patient.display_name,
+        relationship: result.patient.contact_relationship,
+        contactNumber: result.patient.contact_number,
+      };
+    });
+  }
   async location(callId: string) {
     return transaction(this.pool, async (db) => {
-      const call = await this.active(db, callId),
-        session = await this.session(db, callId);
-      if (!session?.patient_id) return needPatient();
-      const patient = await this.patient(db, session.patient_id, call.department_id!);
-      if (
-        !patient ||
-        !session.verified_until ||
-        session.verified_until <= this.now() ||
-        session.contact_fingerprint !== fingerprint(patient)
-      ) {
-        const challenge = await this.challenge(db, callId);
-        if (
-          patient &&
-          challenge &&
-          !challenge.invalidated_at &&
-          !challenge.consumed_at &&
-          challenge.patient_id === patient.patient_id &&
-          challenge.contact_fingerprint === fingerprint(patient) &&
-          session.verification_failures < 5
-        )
-          return this.codeResult(challenge);
-        return needContact();
-      }
+      const result = await this.authorized(db, callId);
+      if (!result.patient) return result.gate;
+      const { patient } = result;
       if (!patient.location_shareable)
         return {
           status: "location_unavailable",

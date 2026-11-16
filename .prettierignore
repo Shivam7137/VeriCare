@@ -7,3 +7,5 @@ next-env.d.ts
 work/
 .superpowers/
 .vercel/
+ml/artifacts/
+ml/data/

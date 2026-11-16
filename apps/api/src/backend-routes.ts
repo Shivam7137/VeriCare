@@ -35,11 +35,11 @@ type TaskRoute = { Params: { id: string } };
 export function registerBackendRoutes(
   app: FastifyInstance,
   pool: Pool,
-  options: { scheduler?: Scheduler; now?: () => Date } = {},
+  options: { scheduler?: Scheduler; now?: () => Date; autoPropose?: boolean } = {},
 ): void {
   const now = options.now ?? (() => new Date());
   const scheduler = options.scheduler ?? new MockScheduler(pool, { now });
-  const service = new WorkflowService(pool, { scheduler, now });
+  const service = new WorkflowService(pool, { scheduler, now, autoPropose: options.autoPropose });
   const executor = new BookingExecutor(pool, { scheduler, now });
 
   // Encapsulation keeps authentication and safe errors local to backend routes.

@@ -146,6 +146,12 @@ export default function RequestDetail({ progress, actor, slots, busy, command }:
             <h3>{date(proposal.startsAt)}</h3>
             <p className="muted">Ends {date(proposal.endsAt)}</p>
             <p className="muted">Decision due {date(proposal.expiresAt)}</p>
+            {proposal.createdBy === "scheduling-agent" && (
+              <p className="muted">
+                Chosen by the scheduling agent: the earliest open time in the requested
+                availability.
+              </p>
+            )}
           </div>
           <div className="decision-list">
             {progress.actions

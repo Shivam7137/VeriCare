@@ -402,6 +402,32 @@ textarea {
   font-weight: 600;
   color: var(--hc-teal);
 }
+.home-journey {
+  margin-top: 40px;
+}
+.home-journey > h2 {
+  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.home-journey .home-workspaces {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.home-journey .home-workspaces h2 {
+  font-size: 21px;
+}
+@media (max-width: 960px) {
+  .home-journey .home-workspaces {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .home-journey .home-workspaces {
+    grid-template-columns: 1fr;
+  }
+}
 .home-demo-note {
   margin-top: 24px;
   max-width: 850px;

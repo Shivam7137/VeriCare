@@ -84,9 +84,8 @@ test("demo endpoints return persisted versions and ordered events after connecti
   const events = response.json().events.map((event: unknown) => taskEventSchema.parse(event));
   assert.deepEqual(
     events,
-    [first.event, second.event]
-      .map((event) => ({ ...event, occurredAt: seededTask.createdAt }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
+    // Events saved in the same instant come back in the order they were saved.
+    [first.event, second.event].map((event) => ({ ...event, occurredAt: seededTask.createdAt })),
   );
 });
 

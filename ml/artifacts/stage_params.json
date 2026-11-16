@@ -1,0 +1,163 @@
+{
+  "pool": {
+    "visits": 50258,
+    "from_visits": 86864,
+    "admit_share_weighted": 0.1223,
+    "post_median_min": 140.0,
+    "post_p90_min": 390.0
+  },
+  "arrival_hour_share": [
+    0.02528,
+    0.02163,
+    0.01776,
+    0.01663,
+    0.01397,
+    0.01482,
+    0.01779,
+    0.02663,
+    0.04093,
+    0.05278,
+    0.05984,
+    0.06117,
+    0.06034,
+    0.06187,
+    0.0566,
+    0.05627,
+    0.05824,
+    0.05769,
+    0.05612,
+    0.05651,
+    0.05257,
+    0.04485,
+    0.03993,
+    0.02976
+  ],
+  "arrival_weekday_factor": [
+    0.9085,
+    1.1468,
+    1.0727,
+    1.0101,
+    1.0061,
+    0.9631,
+    0.8927
+  ],
+  "ems_share_by_hour": [
+    0.24,
+    0.254,
+    0.249,
+    0.265,
+    0.266,
+    0.23,
+    0.216,
+    0.17,
+    0.139,
+    0.154,
+    0.144,
+    0.162,
+    0.156,
+    0.162,
+    0.173,
+    0.168,
+    0.165,
+    0.154,
+    0.156,
+    0.155,
+    0.161,
+    0.165,
+    0.172,
+    0.2
+  ],
+  "lab_turnaround": {
+    "stays_with_bloodwork": 200,
+    "hematology_test": {
+      "n": 4397,
+      "median": 33.0,
+      "sigma": 0.672,
+      "p90_observed": 77.0
+    },
+    "chemistry_test": {
+      "n": 3505,
+      "median": 62.0,
+      "sigma": 0.354,
+      "p90_observed": 122.0
+    },
+    "panel": {
+      "n": 200,
+      "median": 66.0,
+      "sigma": 0.409,
+      "p90_observed": 185.1
+    },
+    "troponin": {
+      "n": 72,
+      "median": 58.5,
+      "sigma": 0.557,
+      "p90_observed": 207.2
+    }
+  },
+  "crowding": {
+    "elasticity": -0.0651,
+    "n": 49773,
+    "baseline_wait_min": 24.6
+  },
+  "order_increments_home": {
+    "n": 20000,
+    "q50": {
+      "no_orders": 65.0,
+      "lab": 72.0,
+      "troponin": 19.0,
+      "xray": 30.0,
+      "ct": 67.0,
+      "us": 64.0,
+      "mri": 134.0,
+      "consult": 68.0
+    },
+    "q90": {
+      "no_orders": 180.0,
+      "lab": 165.0,
+      "troponin": 1.0,
+      "xray": 34.0,
+      "ct": 99.0,
+      "us": 63.0,
+      "mri": 404.0,
+      "consult": 269.0
+    }
+  },
+  "walkouts_us": {
+    "share": 0.0227,
+    "left_after_min": {
+      "median": 142.0,
+      "p90": 438.0
+    },
+    "by_hospital_wait": [
+      {
+        "mean_wait_min": 9.3,
+        "left_share": 0.0159,
+        "hospitals": 226
+      },
+      {
+        "mean_wait_min": 22.3,
+        "left_share": 0.0192,
+        "hospitals": 234
+      },
+      {
+        "mean_wait_min": 43.1,
+        "left_share": 0.0265,
+        "hospitals": 270
+      },
+      {
+        "mean_wait_min": 72.2,
+        "left_share": 0.0295,
+        "hospitals": 88
+      },
+      {
+        "mean_wait_min": 119.4,
+        "left_share": 0.046,
+        "hospitals": 48
+      }
+    ]
+  },
+  "boarding_us_min": {
+    "median": 109.0,
+    "p90": 720.0
+  }
+}

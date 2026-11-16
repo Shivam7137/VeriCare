@@ -1,0 +1,782 @@
+/* VeriCare Journey. Accessible-first: 16px+ text, 4.5:1 contrast, 44px targets,
+   visible focus, meaning never carried by colour alone, motion optional. */
+
+.vc {
+  --vc-bg: #f1f7f7;
+  --vc-surface: #ffffff;
+  --vc-sunken: #e6f0f1;
+  --vc-ink: #0c343d;
+  --vc-ink-soft: #3f5f66;
+  --vc-line: #c9dde0;
+  --vc-primary: #0b6e80;
+  --vc-primary-strong: #085564;
+  --vc-primary-soft: #dff1f4;
+  --vc-good: #046c4e;
+  --vc-good-soft: #dcf4ea;
+  --vc-warn-ink: #7a3d04;
+  --vc-warn-soft: #fdf0d3;
+  --vc-danger: #b3261e;
+  --vc-danger-soft: #fde9e7;
+  --vc-on-color: #ffffff;
+  --vc-radius: 18px;
+  --vc-radius-sm: 12px;
+  --vc-shadow: 0 1px 2px rgb(12 52 61 / 6%), 0 8px 24px rgb(12 52 61 / 7%);
+  --vc-font: var(--font-body), "Noto Sans", "Segoe UI", system-ui, sans-serif;
+  --vc-display: var(--font-display), "Figtree", "Segoe UI", system-ui, sans-serif;
+
+  min-height: 100dvh;
+  background: var(--vc-bg);
+  color: var(--vc-ink);
+  font-family: var(--vc-font);
+  font-size: 17px;
+  line-height: 1.55;
+}
+.vc :focus-visible {
+  outline: 3px solid var(--vc-primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.vc h1,
+.vc h2,
+.vc h3 {
+  margin: 0;
+  font-family: var(--vc-display);
+  font-weight: 600;
+  line-height: 1.2;
+}
+/* Tight tracking only where the type is large enough to take it. */
+.vc h1 {
+  letter-spacing: -0.01em;
+}
+.vc p {
+  margin: 0;
+}
+.vc-icon {
+  flex: none;
+}
+.vc-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Top bar */
+.vc-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--vc-surface);
+  border-bottom: 1px solid var(--vc-line);
+}
+.vc-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--vc-display);
+  font-weight: 600;
+  font-size: 18px;
+  text-decoration: none;
+  color: var(--vc-ink);
+}
+.vc-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--vc-primary);
+  color: var(--vc-on-color);
+}
+.vc-brand small {
+  display: block;
+  white-space: nowrap;
+  font-family: var(--vc-font);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--vc-ink-soft);
+}
+.vc-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--vc-good-soft);
+  color: var(--vc-good);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.vc-live[data-state="stale"] {
+  background: var(--vc-warn-soft);
+  color: var(--vc-warn-ink);
+}
+.vc-live i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.vc-live[data-state="live"] i {
+  animation: vc-pulse 2s ease-in-out infinite;
+}
+@keyframes vc-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Patient page: one phone-width column */
+.vc-visit {
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 20px 16px 132px;
+}
+.vc-card {
+  background: var(--vc-surface);
+  border: 1px solid var(--vc-line);
+  border-radius: var(--vc-radius);
+  padding: 20px;
+  box-shadow: var(--vc-shadow);
+}
+.vc-eyebrow {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vc-primary);
+}
+.vc-now {
+  display: grid;
+  gap: 10px;
+  border-top: 6px solid var(--vc-primary);
+}
+.vc-now h1 {
+  font-size: clamp(28px, 7.5vw, 36px);
+}
+.vc-now > p {
+  font-size: 18px;
+  color: var(--vc-ink-soft);
+}
+.vc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--vc-primary-soft);
+  color: var(--vc-primary-strong);
+  font-size: 14px;
+  font-weight: 600;
+}
+.vc-chip[data-tone="good"] {
+  background: var(--vc-good-soft);
+  color: var(--vc-good);
+}
+.vc-chip[data-tone="warn"] {
+  background: var(--vc-warn-soft);
+  color: var(--vc-warn-ink);
+}
+.vc-chip[data-tone="danger"] {
+  background: var(--vc-danger-soft);
+  color: var(--vc-danger);
+}
+.vc-chip[data-tone="plain"] {
+  background: var(--vc-sunken);
+  color: var(--vc-ink-soft);
+}
+
+/* The estimate */
+.vc-range {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 16px;
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-sunken);
+}
+.vc-range-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vc-ink-soft);
+}
+.vc-range strong {
+  font-family: var(--vc-display);
+  font-size: clamp(26px, 7vw, 32px);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.vc-range p {
+  font-size: 15px;
+  color: var(--vc-ink-soft);
+}
+/* Typical times for the steps still ahead */
+.vc-outlook {
+  display: grid;
+  gap: 12px;
+  margin: 6px 0 0;
+  padding: 16px;
+  border-radius: var(--vc-radius-sm);
+  border: 1px solid var(--vc-sunken);
+}
+.vc-outlook > div {
+  display: grid;
+  gap: 2px;
+}
+.vc-outlook dt {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vc-ink-soft);
+}
+.vc-outlook dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.vc-outlook dd strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.vc-outlook dd span,
+.vc-outlook > p {
+  font-size: 14px;
+  color: var(--vc-ink-soft);
+}
+.vc-stage-line {
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vc-stage-line span {
+  display: inline-block;
+  min-width: 62px;
+  color: var(--vc-ink-soft);
+}
+.vc-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-warn-soft);
+  color: var(--vc-warn-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Step tracker */
+.vc-steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+}
+.vc-steps li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  color: var(--vc-ink-soft);
+}
+.vc-steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 40px;
+  bottom: -8px;
+  width: 2px;
+  background: var(--vc-line);
+}
+.vc-steps li[data-state="done"]:not(:last-child)::after {
+  background: var(--vc-good);
+}
+.vc-dot {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--vc-line);
+  background: var(--vc-surface);
+  font-size: 14px;
+  font-weight: 600;
+}
+.vc-steps li[data-state="done"] .vc-dot {
+  border-color: var(--vc-good);
+  background: var(--vc-good);
+  color: var(--vc-on-color);
+}
+.vc-steps li[data-state="now"] {
+  color: var(--vc-ink);
+  font-weight: 600;
+}
+.vc-steps li[data-state="now"] .vc-dot {
+  border-color: var(--vc-primary);
+  background: var(--vc-primary);
+  color: var(--vc-on-color);
+  box-shadow: 0 0 0 5px var(--vc-primary-soft);
+}
+.vc-steps em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Buttons */
+.vc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 2px solid transparent;
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-primary);
+  color: var(--vc-on-color);
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition:
+    background 0.18s ease-out,
+    border-color 0.18s ease-out,
+    transform 0.12s ease-out;
+}
+.vc-btn:hover:not(:disabled) {
+  background: var(--vc-primary-strong);
+}
+.vc-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.vc-btn[data-kind="quiet"] {
+  background: var(--vc-surface);
+  border-color: var(--vc-line);
+  color: var(--vc-ink);
+}
+.vc-btn[data-kind="quiet"]:hover:not(:disabled) {
+  background: var(--vc-sunken);
+  border-color: var(--vc-primary);
+}
+.vc-btn[data-kind="danger"] {
+  background: var(--vc-danger);
+}
+.vc-btn[data-kind="danger"]:hover:not(:disabled) {
+  background: #8f1c16;
+}
+.vc-btn[data-kind="danger-quiet"] {
+  background: var(--vc-surface);
+  border-color: var(--vc-danger);
+  color: var(--vc-danger);
+}
+.vc-btn[data-kind="danger-quiet"]:hover:not(:disabled) {
+  background: var(--vc-danger-soft);
+}
+.vc-btn[data-size="sm"] {
+  white-space: nowrap;
+  min-height: 44px;
+  padding: 6px 14px;
+  font-size: 15px;
+}
+
+/* Check-in */
+.vc-checkin h2,
+.vc-section h2 {
+  font-size: 20px;
+}
+.vc-checkin .vc-trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.vc-section {
+  display: grid;
+  gap: 14px;
+}
+.vc-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--vc-primary);
+}
+.vc-section-head h2 {
+  color: var(--vc-ink);
+}
+.vc-muted {
+  color: var(--vc-ink-soft);
+  font-size: 15px;
+}
+
+/* Contacts */
+.vc-contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--vc-line);
+}
+.vc-contact strong {
+  display: block;
+}
+.vc-form {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--vc-line);
+}
+.vc-field {
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.vc-field input[type="text"],
+.vc-field input[type="tel"],
+.vc-ask input {
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 2px solid var(--vc-line);
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-surface);
+  color: var(--vc-ink);
+  font-size: 16px;
+  width: 100%;
+}
+.vc-field input:hover,
+.vc-ask input:hover {
+  border-color: var(--vc-primary);
+}
+.vc-field small {
+  font-weight: 400;
+  color: var(--vc-ink-soft);
+}
+.vc-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 16px;
+}
+.vc-check input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--vc-primary);
+}
+.vc-error {
+  color: var(--vc-danger);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Updates thread */
+.vc-thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.vc-thread li {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 16px 16px 16px 4px;
+  background: var(--vc-sunken);
+  font-size: 16px;
+}
+.vc-thread li[data-from="in"] {
+  justify-self: end;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--vc-primary);
+  color: var(--vc-on-color);
+}
+.vc-thread time {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+.vc-ask {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+/* Fixed help bar: the same two actions, in the same place, on every state */
+.vc-help {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--vc-surface);
+  border-top: 1px solid var(--vc-line);
+  box-shadow: 0 -6px 20px rgb(12 52 61 / 8%);
+}
+.vc-help > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-width: 488px;
+  margin: 0 auto;
+}
+.vc-help p {
+  max-width: 488px;
+  margin: 8px auto 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--vc-ink-soft);
+}
+.vc-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 148px;
+  z-index: 30;
+  max-width: 488px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-ink);
+  color: var(--vc-on-color);
+  font-size: 16px;
+  box-shadow: var(--vc-shadow);
+  animation: vc-rise 0.22s ease-out;
+}
+@keyframes vc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+/* Key facts move slightly when they change but never fade: they must stay readable
+   even if an animation is paused, as it is in a background tab. */
+.vc-fade {
+  animation: vc-shift 0.25s ease-out;
+}
+@keyframes vc-shift {
+  from {
+    transform: translateY(6px);
+  }
+}
+.vc-skeleton {
+  height: 220px;
+  border-radius: var(--vc-radius);
+  /* A still placeholder: nothing on the page loops unless it is live. */
+  background: var(--vc-sunken);
+}
+.vc-demo-note {
+  font-size: 13px;
+  text-align: center;
+  color: var(--vc-ink-soft);
+}
+
+/* Desk */
+.vc-desk {
+  display: grid;
+  gap: 20px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+  font-size: 16px;
+}
+.vc-desk-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.vc-desk-head h1 {
+  font-size: 30px;
+}
+.vc-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.vc-stat {
+  display: grid;
+  gap: 2px;
+  padding: 16px 18px;
+}
+.vc-stat span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vc-ink-soft);
+}
+.vc-stat strong {
+  font-family: var(--vc-display);
+  font-size: 32px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.vc-stat small {
+  font-size: 13px;
+  color: var(--vc-ink-soft);
+}
+.vc-desk-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 5fr) minmax(0, 8fr);
+  gap: 20px;
+  align-items: start;
+}
+.vc-queue {
+  display: grid;
+  gap: 12px;
+}
+.vc-task {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-left: 6px solid var(--vc-line);
+}
+.vc-task[data-priority="1"] {
+  border-left-color: var(--vc-danger);
+}
+.vc-task[data-priority="2"] {
+  border-left-color: #b86e00;
+}
+.vc-task-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vc-task-top strong {
+  font-size: 17px;
+}
+.vc-task p {
+  color: var(--vc-ink-soft);
+  font-size: 15px;
+}
+.vc-task-actions {
+  display: flex;
+  gap: 8px;
+}
+.vc-empty {
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--vc-ink-soft);
+}
+.vc-table-wrap {
+  overflow-x: auto;
+}
+.vc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.vc-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vc-ink-soft);
+  border-bottom: 2px solid var(--vc-line);
+  white-space: nowrap;
+}
+.vc-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vc-line);
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.vc-table tr[data-silenced="true"] td {
+  background: var(--vc-danger-soft);
+}
+.vc-level {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--vc-sunken);
+  font-weight: 600;
+}
+.vc-level[data-level="1"],
+.vc-level[data-level="2"] {
+  background: var(--vc-danger);
+  color: var(--vc-on-color);
+}
+.vc-level[data-level="3"] {
+  background: var(--vc-warn-soft);
+  color: var(--vc-warn-ink);
+}
+.vc-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+.vc-ledger li {
+  display: grid;
+  grid-template-columns: 76px 130px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--vc-line);
+}
+.vc-ledger code {
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  font-size: 13px;
+}
+.vc-meter {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--vc-sunken);
+  overflow: hidden;
+}
+.vc-meter i {
+  display: block;
+  height: 100%;
+  background: var(--vc-good);
+}
+
+@media (max-width: 980px) {
+  .vc-desk {
+    padding: 16px;
+  }
+  .vc-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .vc-desk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 340px) {
+  .vc-help > div {
+    grid-template-columns: 1fr;
+  }
+  .vc-visit {
+    padding-bottom: 196px;
+  }
+  .vc-toast {
+    bottom: 212px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc *,
+  .vc *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

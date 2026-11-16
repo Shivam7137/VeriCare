@@ -46,6 +46,43 @@ export default function Home() {
           </Link>
         </div>
       </section>
+      <section className="home-journey" aria-labelledby="home-journey-title">
+        <h2 id="home-journey-title">VeriCare Journey: an agent for every emergency visit</h2>
+        <div className="home-workspaces">
+          <Link href="/patient/visit">
+            <span className="home-entry-label">
+              Patient <span aria-hidden="true">↗</span>
+            </span>
+            <h2>My ER visit</h2>
+            <p>Your step, a personal wait range, check-ins and a way to ask questions.</p>
+            <span className="home-entry-action">Open the visit page →</span>
+          </Link>
+          <Link href="/professional/ed">
+            <span className="home-entry-label">
+              Triage and waiting room <span aria-hidden="true">↗</span>
+            </span>
+            <h2>Emergency Desk</h2>
+            <p>Who needs a person now, what the agent decided, and the audit ledger.</p>
+            <span className="home-entry-action">Open the Desk →</span>
+          </Link>
+          <Link href="/professional/ed/accuracy">
+            <span className="home-entry-label">
+              Charge nurse <span aria-hidden="true">↗</span>
+            </span>
+            <h2>Estimate accuracy</h2>
+            <p>Every estimate scored against what happened, step by step.</p>
+            <span className="home-entry-action">Open the ledger →</span>
+          </Link>
+          <Link href="/professional/ed/mission">
+            <span className="home-entry-label">
+              Demo <span aria-hidden="true">↗</span>
+            </span>
+            <h2>Mission control</h2>
+            <p>The hospital feed, agent decisions and messages on one screen.</p>
+            <span className="home-entry-action">Open mission control →</span>
+          </Link>
+        </div>
+      </section>
       <p className="home-demo-note">
         Fictional clinic demonstration. Appointment changes and follow-up updates use demo records.
         The phone simulator is clearly separated from the real phone line.

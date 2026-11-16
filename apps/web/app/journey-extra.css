@@ -1,0 +1,399 @@
+/* VeriCare Journey: family page, accuracy ledger, mission control and the agent log.
+   Same tokens and rules as journey.css. */
+
+.vc-lede {
+  max-width: 78ch;
+}
+.vc-family .vc-ask + .vc-muted {
+  font-size: 14px;
+}
+.vc-link {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-good-soft);
+  font-size: 15px;
+}
+.vc-link code {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  font-size: 13px;
+}
+.vc-link div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Desk shortcuts and the agent log */
+.vc-desk-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vc-split {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.vc-split > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vc-toggle {
+  display: flex;
+  gap: 6px;
+}
+.vc-runs,
+.vc-feed,
+.vc-wire,
+.vc-texts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vc-runs > li {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--vc-line);
+  font-size: 15px;
+}
+.vc-run-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.vc-run-top time {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--vc-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.vc-run-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vc-run-by .vc-chip {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+.vc-runs ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.vc-runs ol li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: start;
+  color: var(--vc-ink-soft);
+}
+.vc-runs ol li .vc-icon {
+  margin-top: 4px;
+  color: var(--vc-good);
+}
+.vc-runs ol li b {
+  color: var(--vc-ink);
+  font-weight: 600;
+}
+.vc-runs ol li[data-verdict="denied"] .vc-icon,
+.vc-runs ol li[data-verdict="denied"] b {
+  color: var(--vc-danger);
+}
+
+/* Accuracy ledger */
+.vc-cover {
+  display: grid;
+  grid-template-columns: 44px minmax(88px, 1fr);
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.vc-meter[data-target] {
+  position: relative;
+  overflow: visible;
+}
+.vc-meter[data-target] i {
+  border-radius: 999px;
+}
+.vc-meter b {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 18px;
+  background: var(--vc-ink);
+}
+.vc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  color: var(--vc-ink-soft);
+}
+.vc-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.vc-legend i {
+  display: inline-block;
+  flex: none;
+}
+.vc-legend i[data-mark="range"] {
+  width: 22px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--vc-range);
+}
+.vc-legend i[data-mark="typical"] {
+  width: 2px;
+  height: 12px;
+  background: var(--vc-ink);
+}
+.vc-legend i[data-mark="inside"],
+.vc-legend i[data-mark="under"] {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--vc-good);
+}
+.vc-legend i[data-mark="under"] {
+  background: var(--vc-surface);
+  box-shadow: inset 0 0 0 2px var(--vc-ink-soft);
+}
+.vc-legend i[data-mark="over"] {
+  width: 9px;
+  height: 9px;
+  background: var(--vc-danger);
+  transform: rotate(45deg);
+}
+.vc-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px 28px;
+  /* A step with few visits keeps its own height instead of stretching to its neighbour's. */
+  align-items: start;
+}
+.vc-multiple {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.vc-multiple figcaption {
+  display: grid;
+}
+.vc-multiple svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.vc {
+  --vc-range: #8fc3cd;
+}
+.vc-grid {
+  stroke: var(--vc-line);
+  stroke-width: 1;
+}
+.vc-tick {
+  fill: var(--vc-ink-soft);
+  font-size: 11px;
+  font-family: var(--vc-font);
+}
+.vc-hit {
+  fill: transparent;
+}
+.vc-multiple g[data-active="true"] .vc-hit {
+  fill: var(--vc-sunken);
+}
+.vc-multiple g:focus {
+  outline: none;
+}
+.vc-multiple g:focus-visible .vc-hit {
+  fill: var(--vc-primary-soft);
+}
+.vc-span {
+  fill: var(--vc-range);
+}
+.vc-central {
+  fill: var(--vc-ink);
+}
+.vc-actual {
+  stroke: var(--vc-surface);
+  stroke-width: 2;
+}
+.vc-actual[data-result="inside"] {
+  fill: var(--vc-good);
+}
+.vc-actual[data-result="over"] {
+  fill: var(--vc-danger);
+}
+.vc-actual[data-result="under"] {
+  fill: var(--vc-surface);
+  stroke: var(--vc-ink-soft);
+}
+.vc-readout {
+  min-height: 24px;
+  font-size: 14px;
+  color: var(--vc-ink-soft);
+}
+.vc-readout strong {
+  color: var(--vc-ink);
+}
+
+/* Mission control: built for a projector, so it runs dark and dense */
+/* Near-neutral graphite with only a trace of the brand teal: the content carries the colour. */
+.vc.vc-dark {
+  --vc-bg: #121516;
+  --vc-surface: #1a1e1f;
+  --vc-sunken: #22282a;
+  --vc-ink: #eef1f1;
+  --vc-ink-soft: #a8b1b3;
+  --vc-line: rgb(238 241 241 / 10%);
+  --vc-primary: #5cc4d6;
+  --vc-primary-strong: #a5e2ec;
+  --vc-primary-soft: #16434f;
+  --vc-good: #63d9a7;
+  --vc-good-soft: #103c30;
+  --vc-warn-ink: #f5c26b;
+  --vc-warn-soft: #40300f;
+  --vc-danger: #ff9a8f;
+  --vc-danger-soft: #4a1f1c;
+  --vc-on-color: #06222a;
+  --vc-shadow: none;
+}
+.vc-mission {
+  display: grid;
+  gap: 16px;
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 20px 24px 32px;
+  font-size: 15px;
+}
+.vc-stats-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.vc-mission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 5fr) minmax(0, 5fr);
+  gap: 16px;
+  align-items: start;
+}
+.vc-col {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  max-height: calc(100dvh - 250px);
+  min-height: 420px;
+  overflow-y: auto;
+}
+.vc-col h3 {
+  margin-top: 8px;
+  font-size: 15px;
+}
+.vc-feed li {
+  border-top: 1px solid var(--vc-line);
+}
+.vc-feed button {
+  display: grid;
+  grid-template-columns: 70px 76px 1fr;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 0;
+  align-items: center;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.vc-feed time,
+.vc-wire small,
+.vc-texts small {
+  color: var(--vc-ink-soft);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.vc-feed code {
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  font-size: 12px;
+  color: var(--vc-primary-strong);
+}
+.vc-feed pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--vc-sunken);
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vc-wire {
+  display: grid;
+  gap: 8px;
+}
+.vc-wire li {
+  display: grid;
+  gap: 2px;
+  max-width: 92%;
+  padding: 9px 13px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--vc-sunken);
+}
+.vc-wire li[data-from="in"] {
+  justify-self: end;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--vc-primary-soft);
+}
+.vc-texts {
+  display: grid;
+  gap: 8px;
+}
+.vc-texts li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 14px;
+}
+.vc-texts li > span:last-child {
+  display: grid;
+}
+.vc-texts .vc-chip {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .vc-mission-grid {
+    grid-template-columns: 1fr;
+  }
+  .vc-col {
+    max-height: none;
+    min-height: 0;
+  }
+  .vc-stats-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Five figures in two columns: the last one takes the full row instead of sitting alone. */
+  .vc-stats-5 > :last-child {
+    grid-column: 1 / -1;
+  }
+}

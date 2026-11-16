@@ -28,7 +28,9 @@ import { getPrincipal, requirePatientAccess, requireStaff, type Principal } from
 import { cancelPendingCommunications, enqueueCommunication } from "./delivery.js";
 import type { Scheduler } from "./scheduler.js";
 
-export type BackendOptions = { scheduler: Scheduler; now?: () => Date };
+export type BackendOptions = { scheduler: Scheduler; now?: () => Date; autoPropose?: boolean };
+// Not a principal: the scheduling agent has no session, so it can never approve or confirm.
+export const SCHEDULING_AGENT_ID = "scheduling-agent";
 const mutableStates = new Set([
   "awaiting_proposal",
   "awaiting_staff_approval",
@@ -55,11 +57,13 @@ export async function cancelActions(db: Database, taskId: string, invalidateAppr
 
 export class WorkflowService {
   readonly now: () => Date;
+  readonly autoPropose: boolean;
   constructor(
     readonly pool: Pool,
     readonly options: BackendOptions,
   ) {
     this.now = options.now ?? (() => new Date());
+    this.autoPropose = options.autoPropose ?? false;
   }
 
   private async requester(db: Database, actor: Principal, task: Task) {
@@ -153,7 +157,7 @@ export class WorkflowService {
         booking.departmentId !== task.departmentId
       )
         throw new BackendError("not_found", 404);
-      return saveTaskEvent(
+      const verified = await saveTaskEvent(
         db,
         {
           ...task,
@@ -165,7 +169,33 @@ export class WorkflowService {
         `identity:${actor.id}`,
         now,
       );
+      return this.autoPropose ? this.agentPropose(db, verified, workflow, now) : verified;
     });
+  }
+
+  // The agent may only offer the earliest open slot inside the requested availability.
+  // Staff approval and requester confirmation are still required before any booking change.
+  private async agentPropose(db: Database, task: Task, workflow: WorkflowRecord, now: Date) {
+    if (Date.parse(workflow.callbackWindow.endsAt) <= now.getTime() + 1000) return task;
+    const slot = (await this.options.scheduler.listSlots(task.departmentId)).find(
+      (item) =>
+        item.available &&
+        Date.parse(item.startsAt) >= Date.parse(workflow.availability.startsAt) &&
+        Date.parse(item.endsAt) <= Date.parse(workflow.availability.endsAt),
+    );
+    if (!slot) return task;
+    try {
+      // One millisecond later keeps the agent's event after access_verified in the history.
+      return await this.activate(db, task, workflow, new Date(now.getTime() + 1), {
+        actorId: SCHEDULING_AGENT_ID,
+        slotId: slot.id,
+        expiresAt: workflow.callbackWindow.endsAt,
+      });
+    } catch (error) {
+      // activate() rejects before it writes, so staff can still propose by hand.
+      if (error instanceof BackendError) return task;
+      throw error;
+    }
   }
 
   async propose(actor: Principal, taskId: string, raw: ProposeInput) {
@@ -173,6 +203,22 @@ export class WorkflowService {
     return this.mutate(actor, taskId, input.expectedRevision, async (db, task, workflow, now) => {
       await requireStaff(db, actor, task.departmentId);
       if (!mutableStates.has(task.state)) throw new BackendError("invalid_transition");
+      return this.activate(db, task, workflow, now, {
+        actorId: actor.id,
+        slotId: input.slotId,
+        expiresAt: input.expiresAt,
+      });
+    });
+  }
+
+  private async activate(
+    db: Database,
+    task: Task,
+    workflow: WorkflowRecord,
+    now: Date,
+    input: { actorId: string; slotId: string; expiresAt: string },
+  ) {
+    {
       const slot = await this.options.scheduler.getSlot(input.slotId, db);
       const booking = await this.options.scheduler.getBooking(workflow.appointmentId, db);
       if (
@@ -212,7 +258,7 @@ export class WorkflowService {
         endsAt: slot.endsAt,
         expiresAt: input.expiresAt,
         createdAt: now.toISOString(),
-        createdBy: actor.id,
+        createdBy: input.actorId,
       });
       await cancelActions(db, task.id);
       await db.query(
@@ -243,12 +289,12 @@ export class WorkflowService {
           state: "awaiting_staff_approval",
           nextAction: `Staff must approve proposal version ${version}.`,
         },
-        actor.id,
+        input.actorId,
         "proposal_activated",
         `proposal:${proposal.id}:v${version}`,
         now,
       );
-    });
+    }
   }
 
   async decide(
@@ -458,10 +504,11 @@ export class WorkflowService {
       ).rows;
       const events = (
         await db.query(
-          `SELECT e.id,e.actor_id AS "actorId",p.display_name AS "actorDisplayName",e.action,
+          `SELECT e.id,e.actor_id AS "actorId",
+           COALESCE(p.display_name, CASE WHEN e.actor_id='${SCHEDULING_AGENT_ID}' THEN 'Scheduling agent' END) AS "actorDisplayName",e.action,
            e.occurred_at AS "occurredAt",e.evidence_ref AS "evidenceRef"
            FROM task_events e LEFT JOIN principals p ON p.id=e.actor_id
-           WHERE e.task_id=$1 ORDER BY e.occurred_at,e.id`,
+           WHERE e.task_id=$1 ORDER BY e.occurred_at,e.seq`,
           [taskId],
         )
       ).rows;

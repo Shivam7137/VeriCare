@@ -1,0 +1,105 @@
+{
+  "provider": {
+    "train_rows": 900000,
+    "test_rows": 274998,
+    "boosted_trees_shipped": {
+      "pinball": 15.44,
+      "median_error_min": 48.51,
+      "coverage": 0.8081,
+      "median_width_min": 140.8,
+      "train_seconds": 0
+    },
+    "linear_minutes": {
+      "pinball": 23.735,
+      "median_error_min": 73.85,
+      "coverage": 0.8085,
+      "median_width_min": 241.3,
+      "train_seconds": 7
+    },
+    "neural_net_minutes": {
+      "pinball": 14.583,
+      "median_error_min": 45.85,
+      "coverage": 0.8252,
+      "median_width_min": 140.0,
+      "train_seconds": 156
+    },
+    "neural_net_log_minutes": {
+      "pinball": 14.765,
+      "median_error_min": 46.4,
+      "coverage": 0.8183,
+      "median_width_min": 136.0,
+      "train_seconds": 155
+    },
+    "boosted_trees_larger": {
+      "pinball": 14.563,
+      "median_error_min": 45.54,
+      "coverage": 0.8184,
+      "median_width_min": 131.6,
+      "train_seconds": 193
+    }
+  },
+  "results": {
+    "train_rows": 435045,
+    "test_rows": 118101,
+    "boosted_trees_shipped": {
+      "pinball": 11.984,
+      "median_error_min": 36.98,
+      "coverage": 0.8072,
+      "median_width_min": 114.6,
+      "train_seconds": 0
+    },
+    "linear_minutes": {
+      "pinball": 12.34,
+      "median_error_min": 37.93,
+      "coverage": 0.8055,
+      "median_width_min": 117.0,
+      "train_seconds": 4
+    },
+    "neural_net_minutes": {
+      "pinball": 12.073,
+      "median_error_min": 37.17,
+      "coverage": 0.8039,
+      "median_width_min": 111.6,
+      "train_seconds": 78
+    },
+    "neural_net_log_minutes": {
+      "pinball": 12.066,
+      "median_error_min": 37.15,
+      "coverage": 0.805,
+      "median_width_min": 113.3,
+      "train_seconds": 77
+    }
+  },
+  "decision": {
+    "train_rows": 900000,
+    "test_rows": 488236,
+    "boosted_trees_shipped": {
+      "pinball": 45.667,
+      "median_error_min": 135.31,
+      "coverage": 0.8073,
+      "median_width_min": 356.5,
+      "train_seconds": 0
+    },
+    "linear_minutes": {
+      "pinball": 50.035,
+      "median_error_min": 147.36,
+      "coverage": 0.8037,
+      "median_width_min": 448.1,
+      "train_seconds": 7
+    },
+    "neural_net_minutes": {
+      "pinball": 45.663,
+      "median_error_min": 134.89,
+      "coverage": 0.8101,
+      "median_width_min": 357.9,
+      "train_seconds": 154
+    },
+    "neural_net_log_minutes": {
+      "pinball": 45.55,
+      "median_error_min": 134.59,
+      "coverage": 0.8051,
+      "median_width_min": 356.5,
+      "train_seconds": 154
+    }
+  }
+}

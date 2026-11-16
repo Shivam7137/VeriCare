@@ -35,10 +35,23 @@ test("migration upgrades a foundation database without changing saved tasks or e
       "009_voice_guest.sql",
       "010_voice_sms_status_evidence.sql",
       "011_emergency_contact.sql",
+      "012_ed_journey.sql",
+      "013_stage_estimates.sql",
+      "014_visit_agent.sql",
+      "015_task_event_order.sql",
     ],
   );
   assert.deepEqual((await pool.query("SELECT * FROM tasks")).rows, tasks);
-  assert.deepEqual((await pool.query("SELECT * FROM task_events")).rows, events);
+  // Saved events keep every original value; migration 015 only adds an insertion order.
+  const upgraded = (await pool.query("SELECT * FROM task_events")).rows;
+  assert.deepEqual(
+    upgraded.map(({ seq: _seq, ...row }) => row),
+    events,
+  );
+  assert.equal(
+    upgraded.every((row) => /^\d+$/.test(row.seq)),
+    true,
+  );
   assert.equal((await pool.query("SELECT * FROM proposal_drafts")).rowCount, 0);
   const directory = await pool.query("SELECT id,phone_number FROM care_team_directory");
   assert.equal(directory.rowCount, 4);
