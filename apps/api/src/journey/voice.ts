@@ -1,7 +1,7 @@
 import type { ConsentScope } from "@prc/contracts";
 import type { Pool } from "pg";
 import { z } from "zod";
-import { BackendError, transaction } from "../domain.js";
+import { BackendError } from "../domain.js";
 import type { EmergencyLookup } from "../emergency-lookup.js";
 import { decideDisclosure } from "./guardian.js";
 import { visitMessage, type Agent } from "./intake.js";
@@ -18,6 +18,7 @@ import {
   feedStatus,
   latestEncounterForPatient,
   recordMessage,
+  journeyTransaction,
 } from "./records.js";
 import { openTask, triageText, waitedText, worseWords } from "./tasks.js";
 
@@ -81,7 +82,7 @@ export class JourneyVoice {
       decision.outcome === "allow"
         ? `${statusSentence(encounter.state, "contact", firstName)}${range}`
         : HANDOFF_REPLY;
-    await transaction(this.pool, async (db) => {
+    await journeyTransaction(this.pool, async (db) => {
       await audit(db, {
         at: now,
         actor: "guardian",
@@ -134,7 +135,7 @@ export class JourneyVoice {
     } else {
       const worse = worseWords.test(question);
       reply = worse ? CONTACT_WORSE_REPLY : QUESTION_REPLY;
-      await transaction(this.pool, async (db) => {
+      await journeyTransaction(this.pool, async (db) => {
         const feed = await feedStatus(db, encounter.site);
         if (encounter.state.sensitivity.length > 0 || encounter.state.unmapped) {
           reply = HANDOFF_REPLY;

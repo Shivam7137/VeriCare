@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Ctas, EdEvent, VisitState } from "@prc/contracts";
 import type { Pool } from "pg";
-import { transaction, type Database } from "../domain.js";
+import type { Database } from "../domain.js";
 import { field, parseHl7, segment, component } from "../opor/hl7.js";
 import { halifaxTwinSite, mapHl7, type SiteConfig } from "../opor/hl7v2-mapper.js";
 import {
@@ -34,6 +34,7 @@ import {
   projectState,
   type Encounter,
   type PublishedRange,
+  journeyTransaction,
 } from "./records.js";
 import { recordStageEstimates, siteStages, type SiteStages } from "./stage-estimates.js";
 
@@ -67,7 +68,7 @@ export async function ingestHl7(
   const visitNumber = component(field(segment(message, "PV1"), 19), 1);
   if (!controlId || !visitNumber) throw new Error("hl7_missing_identifiers");
 
-  return transaction(pool, async (db) => {
+  return journeyTransaction(pool, async (db) => {
     const fresh = await db.query(
       `INSERT INTO opor_messages (site, control_id, received_at, outcome, raw)
        VALUES ($1,$2,$3,'accepted',$4) ON CONFLICT DO NOTHING RETURNING control_id`,
@@ -148,7 +149,7 @@ export async function ingestHl7(
 export async function tickFeed(pool: Pool, options: JourneyOptions = {}) {
   const now = (options.now ?? (() => new Date()))();
   const siteId = options.siteId ?? "qeii-hi";
-  return transaction(pool, async (db) => {
+  return journeyTransaction(pool, async (db) => {
     const feed = await db.query<{ lastMessageAt: Date; tickedAt: Date | null }>(
       `SELECT last_message_at AS "lastMessageAt", ticked_at AS "tickedAt"
        FROM opor_feed WHERE site = $1 FOR UPDATE`,

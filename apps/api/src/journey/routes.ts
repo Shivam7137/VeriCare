@@ -12,6 +12,7 @@ import { BackendError } from "../domain.js";
 import { authenticate, type Principal } from "../identity.js";
 import { validateTwilioWebhook } from "../twilio-provider.js";
 import { readVoiceConfig, type VoiceConfig } from "../voice-config.js";
+import { encounterDetail } from "./detail.js";
 import { accuracyView, contactByLink, familyView, missionView } from "./insight.js";
 import {
   addContact,
@@ -203,6 +204,9 @@ export function registerJourneyRoutes(
     );
     journey.get("/journey/desk/mission", async (request) =>
       missionView(pool, staff(request).departmentId, siteId, now()),
+    );
+    journey.get<IdRoute>("/journey/desk/encounters/:id", async (request) =>
+      encounterDetail(pool, staff(request).departmentId, request.params.id, now()),
     );
     journey.post<IdRoute>("/journey/desk/encounters/:id/flags", async (request) => {
       const input = staffFlagInputSchema.parse(request.body);

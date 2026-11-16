@@ -321,6 +321,16 @@
   font-size: 14px;
   text-align: left;
   cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 150ms ease;
+}
+.vc-feed button:focus-visible {
+  outline-offset: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .vc-feed button:hover {
+    background: var(--vc-sunken);
+  }
 }
 .vc-feed time,
 .vc-wire small,
@@ -395,5 +405,209 @@
   /* Five figures in two columns: the last one takes the full row instead of sitting alone. */
   .vc-stats-5 > :last-child {
     grid-column: 1 / -1;
+  }
+}
+
+/* Patient names on the Desk open the visit drawer */
+.vc-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vc-ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--vc-line);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: text-decoration-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .vc-name:hover {
+    text-decoration-color: var(--vc-primary);
+  }
+}
+
+/* Visit drawer: a native modal dialog that slides in from the right edge */
+.vc-drawer {
+  --vc-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(560px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--vc-line);
+  background: var(--vc-bg);
+  color: var(--vc-ink);
+  transition: transform 320ms var(--vc-ease-drawer);
+}
+.vc-drawer[open] {
+  @starting-style {
+    transform: translateX(100%);
+  }
+}
+.vc-drawer::backdrop {
+  background: rgb(12 52 61 / 28%);
+  transition: opacity 240ms ease;
+}
+.vc-drawer[open]::backdrop {
+  @starting-style {
+    opacity: 0;
+  }
+}
+.vc-drawer-panel {
+  display: grid;
+  gap: 16px;
+  min-height: 100%;
+  padding: 20px 24px 32px;
+}
+.vc-drawer-head {
+  position: sticky;
+  top: -20px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -20px -24px 0;
+  padding: 20px 24px 12px;
+  background: var(--vc-bg);
+  border-bottom: 1px solid var(--vc-line);
+}
+.vc-drawer-head h2 {
+  font-size: 24px;
+}
+.vc-drawer-body {
+  display: grid;
+  gap: 24px;
+  font-size: 15px;
+}
+.vc-drawer-body h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+.vc-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.vc-facts > div {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--vc-line);
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-surface);
+}
+.vc-facts dt {
+  font-size: 13px;
+  color: var(--vc-ink-soft);
+}
+.vc-facts dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.vc-steps-compact li {
+  min-height: 40px;
+  font-size: 15px;
+}
+.vc-steps-compact em {
+  font-variant-numeric: tabular-nums;
+}
+.vc-est,
+.vc-told,
+.vc-timeline,
+.vc-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vc-est li,
+.vc-told li {
+  display: grid;
+  grid-template-columns: 96px auto 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--vc-line);
+  font-variant-numeric: tabular-nums;
+}
+.vc-timeline {
+  position: relative;
+  display: grid;
+  gap: 0;
+}
+.vc-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 12px;
+  padding: 6px 0 6px 16px;
+}
+/* A thin rail with a dot per event, the same shape as the patient's step list. */
+.vc-timeline li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--vc-line);
+}
+.vc-timeline li::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 13px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vc-primary);
+}
+.vc-timeline li[data-kind="flag_set"]::after,
+.vc-timeline li[data-kind="left_without_being_seen"]::after,
+.vc-timeline li[data-kind="cancelled"]::after,
+.vc-timeline li[data-kind="unmapped"]::after {
+  background: var(--vc-danger);
+}
+.vc-timeline time {
+  color: var(--vc-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.vc-people {
+  display: grid;
+  gap: 8px;
+}
+.vc-people li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--vc-line);
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-surface);
+}
+@media (max-width: 560px) {
+  .vc-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .vc-drawer-panel {
+    padding: 16px 16px 32px;
+  }
+  .vc-drawer-head {
+    margin: -16px -16px 0;
+    padding: 16px 16px 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-drawer,
+  .vc-drawer::backdrop {
+    transition: none;
   }
 }

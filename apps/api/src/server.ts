@@ -45,6 +45,7 @@ const feed = await startMllpListener({
     void agent.drain();
     return outcome;
   },
+  onError: quiet("OPOR feed message refused"),
 });
 console.log(`OPOR feed listener on 127.0.0.1:${feedPort}`);
 

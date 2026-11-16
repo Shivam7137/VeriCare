@@ -3,7 +3,7 @@ import { sendMllp } from "../opor/mllp.js";
 import { buildDemoScenario } from "./scenario.js";
 
 // Plays the demo scenario into the API's feed listener over MLLP.
-// Usage: npm run twin -- [--speed 60] [--port 2575] [--until 180]
+// Usage: npm run twin -- [--speed 60] [--port 2575] [--until 180] [--phone +1...] [--core]
 // Speed is simulated minutes per real minute: 60 plays three hours in three minutes.
 
 const arg = (name: string, fallback: number) => {
@@ -22,8 +22,13 @@ const phoneAt = process.argv.indexOf("--phone");
 const phone = phoneAt >= 0 ? process.argv[phoneAt + 1] : process.env.TWIN_PATIENT_PHONE;
 if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error("--phone must be an E.164 number");
 
+// --core plays only Maya's story and the background queue, without the eight featured visits.
+const featured = !process.argv.includes("--core");
+
 const start = new Date();
-const scenario = buildDemoScenario(start, phone).filter((message) => message.atMinute <= until);
+const scenario = buildDemoScenario(start, phone, { featured }).filter(
+  (message) => message.atMinute <= until,
+);
 // Everything dated before "now" is history: send it at once to fill the department.
 const history = scenario.filter((message) => message.atMinute < 0);
 const live = scenario.filter((message) => message.atMinute >= 0);

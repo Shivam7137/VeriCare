@@ -31,6 +31,8 @@ export function startMllpListener(options: {
   host: string;
   port: number;
   onMessage: (raw: string) => Promise<unknown>;
+  /** Told why a message was refused. Receives the error, never the message itself. */
+  onError?: (error: unknown) => void;
   now?: () => Date;
 }): Promise<Server> {
   const now = options.now ?? (() => new Date());
@@ -43,9 +45,10 @@ export function startMllpListener(options: {
           let code: "AA" | "AE" = "AA";
           try {
             await options.onMessage(raw);
-          } catch {
+          } catch (error) {
             // AE asks the sender to hold and resend; nothing was applied.
             code = "AE";
+            options.onError?.(error);
           }
           if (!socket.destroyed) socket.write(frame(buildAck(raw, code, now())));
         });

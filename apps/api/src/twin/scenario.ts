@@ -1,4 +1,5 @@
 import { buildHl7, toHl7Time } from "../opor/hl7.js";
+import { addFeaturedVisits } from "./featured.js";
 
 // The OPOR Twin: a scripted emergency department that speaks HL7 v2.5.1 the
 // way a hospital interface engine does. Every person here is fictional.
@@ -80,7 +81,11 @@ export function createTwin(start: Date) {
     note: string,
     patient: TwinPatient,
     room: string,
-    options: Parameters<typeof pv1>[2] & { ctas?: number; confidential?: boolean } = {},
+    options: Parameters<typeof pv1>[2] & {
+      ctas?: number;
+      confidential?: boolean;
+      security?: boolean;
+    } = {},
   ) => {
     const rows = [
       header(`ADT^${trigger}`, minute),
@@ -99,7 +104,32 @@ export function createTwin(start: Date) {
         "",
         `${options.ctas}`,
       ]);
+    if (options.security !== undefined)
+      rows.push(["OBX", "2", "CWE", "SECALERT^Security alert^L", "", options.security ? "Y" : "N"]);
     push(minute, note, rows);
+  };
+  const orderMessage = (
+    minute: number,
+    note: string,
+    patient: TwinPatient,
+    room: string,
+    control: string,
+    orderId: string,
+    section: string,
+  ) => {
+    const obr = Array.from({ length: 25 }, () => "");
+    obr[0] = "OBR";
+    obr[1] = "1";
+    obr[2] = orderId;
+    obr[4] = section === "LAB" ? "CBC^Blood count^L" : `${section}^Order^L`;
+    obr[24] = section;
+    push(minute, note, [
+      header("ORM^O01", minute),
+      pid(patient),
+      pv1(patient, room),
+      ["ORC", control, orderId],
+      obr,
+    ]);
   };
 
   return {
@@ -126,27 +156,41 @@ export function createTwin(start: Date) {
       adt("A08", minute, `${patient.given} confidential=${value}`, patient, room, {
         confidential: value,
       }),
-    order: (
+    security: (minute: number, patient: TwinPatient, room: string, value: boolean) =>
+      adt("A08", minute, `${patient.given} security alert=${value}`, patient, room, {
+        security: value,
+      }),
+    requestBed: (minute: number, patient: TwinPatient, room: string) =>
+      adt("A14", minute, `${patient.given}: inpatient bed requested`, patient, room, { cls: "I" }),
+    cancelVisit: (minute: number, patient: TwinPatient, room: string) =>
+      adt("A11", minute, `${patient.given}: registration cancelled`, patient, room),
+    // Sections: LAB, RAD/XR (X-ray), CT, US, MR, and CON for a specialist consult.
+    order: (minute: number, patient: TwinPatient, room: string, orderId: string, section: string) =>
+      orderMessage(
+        minute,
+        `${patient.given}: ${section} ordered`,
+        patient,
+        room,
+        "NW",
+        orderId,
+        section,
+      ),
+    cancelOrder: (
       minute: number,
       patient: TwinPatient,
       room: string,
       orderId: string,
       section: string,
-    ) => {
-      const obr = Array.from({ length: 25 }, () => "");
-      obr[0] = "OBR";
-      obr[1] = "1";
-      obr[2] = orderId;
-      obr[4] = section === "LAB" ? "CBC^Blood count^L" : "IMG^Imaging^L";
-      obr[24] = section;
-      push(minute, `${patient.given}: ${section} ordered`, [
-        header("ORM^O01", minute),
-        pid(patient),
-        pv1(patient, room),
-        ["ORC", "NW", orderId],
-        obr,
-      ]);
-    },
+    ) =>
+      orderMessage(
+        minute,
+        `${patient.given}: ${section} cancelled`,
+        patient,
+        room,
+        "CA",
+        orderId,
+        section,
+      ),
     result: (minute: number, patient: TwinPatient, room: string, orderId: string) => {
       const obr = Array.from({ length: 26 }, () => "");
       obr[0] = "OBR";
@@ -202,8 +246,14 @@ const mayaRecord: TwinPatient = {
  * A visit of just over three hours for Maya Chen inside a working department: a queue ahead
  * of her, steady assessments, a surge of urgent arrivals, tests, and discharge.
  */
-export function buildDemoScenario(start: Date, mayaPhone?: string): TwinMessage[] {
+export function buildDemoScenario(
+  start: Date,
+  mayaPhone?: string,
+  options: { featured?: boolean } = {},
+): TwinMessage[] {
   const twin = createTwin(start);
+  // Eight extra visits, each taking a different path. Off by default so the core story stays fixed.
+  if (options.featured) addFeaturedVisits(twin);
   const maya: TwinPatient = { ...mayaRecord, phone: mayaPhone };
   const people: TwinPatient[] = background.map(([family, given, dateOfBirth], index) => ({
     mrn: `71${String(index).padStart(5, "0")}`,

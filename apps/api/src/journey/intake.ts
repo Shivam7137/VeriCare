@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 import { wakeAgent } from "../agents/settle.js";
 import type { VisitAgent } from "../agents/visit-agent.js";
 import type { Candidate, InboundMessage } from "../agents/wake.js";
-import { BackendError, transaction, type Database } from "../domain.js";
+import { BackendError, type Database } from "../domain.js";
 import { decideDisclosure } from "./guardian.js";
 import { react, refreshEstimates } from "./ingest.js";
 import {
@@ -29,6 +29,7 @@ import {
   saveAgentMemory,
   type Contact,
   type Encounter,
+  journeyTransaction,
 } from "./records.js";
 import {
   leavingWords,
@@ -116,7 +117,7 @@ async function inbound(
   now: Date,
   agent: Agent,
 ): Promise<Reply> {
-  const first = await transaction(pool, async (db) => {
+  const first = await journeyTransaction(pool, async (db) => {
     const { encounter, contact } = await find(db);
     const feed = await feedStatus(db, encounter.site);
     const audience = contact ? "contact" : "patient";
@@ -292,7 +293,7 @@ export async function checkIn(
   answer: "same" | "better" | "worse",
   now: Date,
 ) {
-  return transaction(pool, async (db) =>
+  return journeyTransaction(pool, async (db) =>
     answerCheckIn(db, await ownVisit(db, patientId), answer, "web", now),
   );
 }
@@ -304,7 +305,7 @@ export async function checkInByText(
   answer: "same" | "better" | "worse",
   now: Date,
 ) {
-  return transaction(pool, async (db) =>
+  return journeyTransaction(pool, async (db) =>
     answerCheckIn(db, await openVisit(db, encounterId), answer, "sms", now),
   );
 }
@@ -324,7 +325,7 @@ export async function addContact(
   input: { name: string; relationship: string; phone: string; scopes: ConsentScope[] },
   now: Date,
 ) {
-  return transaction(pool, async (db) => {
+  return journeyTransaction(pool, async (db) => {
     const encounter = await ownVisit(db, patientId);
     const id = randomUUID();
     // The link is the contact's key to the family page. Only its hash is kept.
@@ -365,7 +366,7 @@ export async function addContact(
 }
 
 export async function withdrawContact(pool: Pool, patientId: string, contactId: string, now: Date) {
-  return transaction(pool, async (db) => {
+  return journeyTransaction(pool, async (db) => {
     const encounter = await latestEncounterForPatient(db, patientId, true);
     if (!encounter) throw new BackendError("not_found", 404);
     const result = await db.query(
@@ -403,7 +404,7 @@ export async function staffSetFlag(
   agent: Agent = null,
 ) {
   const defer = agent?.defer ?? false;
-  return transaction(pool, async (db) => {
+  return journeyTransaction(pool, async (db) => {
     const encounter = await staffEncounter(db, encounterId, staff.departmentId);
     if (encounter.state.sensitivity.includes(flag) === active)
       return { flags: encounter.state.sensitivity };
@@ -448,7 +449,7 @@ export async function staffCloseTask(
   outcome: "done" | "not_needed",
   now: Date,
 ) {
-  return transaction(pool, async (db) => {
+  return journeyTransaction(pool, async (db) => {
     const task = await db.query<{
       encounterId: string;
       kind: StaffTaskKind;

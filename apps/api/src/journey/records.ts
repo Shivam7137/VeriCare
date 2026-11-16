@@ -6,7 +6,8 @@ import {
   type EdEvent,
   type VisitState,
 } from "@prc/contracts";
-import type { Database } from "../domain.js";
+import type { Pool, PoolClient } from "pg";
+import { transaction, type Database } from "../domain.js";
 import type { VisitFacts } from "../opor/hl7v2-mapper.js";
 import type { EstimateBasis, Published } from "./estimate.js";
 import { deriveVisitState } from "./visit-state.js";
@@ -190,6 +191,23 @@ export function canonicalJson(value: unknown): string {
   );
 }
 
+export const LEDGER_LOCK = 731712;
+
+/**
+ * A transaction for any write to the emergency journey. It takes the ledger lock before
+ * anything else, so every journey writer locks in the same order: ledger, then visit rows.
+ * Without that, a feed message holding the ledger and waiting for a visit row could deadlock
+ * with a Visit Agent plan holding the row and waiting for the ledger. One emergency
+ * department's writes are short and few, so running them one at a time costs nothing that
+ * matters; a provincial deployment would take this lock per site instead.
+ */
+export function journeyTransaction<T>(pool: Pool, work: (db: PoolClient) => Promise<T>) {
+  return transaction(pool, async (db) => {
+    await db.query("SELECT pg_advisory_xact_lock($1)", [LEDGER_LOCK]);
+    return work(db);
+  });
+}
+
 /** Appends to the tamper-evident ledger. Each hash covers the row before it. */
 export async function audit(
   db: Database,
@@ -201,8 +219,9 @@ export async function audit(
     detail?: Record<string, unknown>;
   },
 ) {
-  // One writer at a time, or two rows could chain from the same predecessor.
-  await db.query("SELECT pg_advisory_xact_lock(731712)");
+  // One writer at a time, or two rows could chain from the same predecessor. Journey writes
+  // already hold this lock from journeyTransaction; taking it again is a no-op.
+  await db.query("SELECT pg_advisory_xact_lock($1)", [LEDGER_LOCK]);
   const last = await db.query<{ hash: string }>(
     "SELECT hash FROM ed_audit ORDER BY seq DESC LIMIT 1",
   );

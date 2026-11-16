@@ -18,6 +18,7 @@
   --vc-danger: #b3261e;
   --vc-danger-soft: #fde9e7;
   --vc-on-color: #ffffff;
+  --vc-ease: cubic-bezier(0.23, 1, 0.32, 1);
   --vc-radius: 18px;
   --vc-radius-sm: 12px;
   --vc-shadow: 0 1px 2px rgb(12 52 61 / 6%), 0 8px 24px rgb(12 52 61 / 7%);
@@ -354,39 +355,44 @@
   font-size: 16px;
   text-decoration: none;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition:
-    background 0.18s ease-out,
-    border-color 0.18s ease-out,
-    transform 0.12s ease-out;
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 160ms var(--vc-ease);
 }
-.vc-btn:hover:not(:disabled) {
-  background: var(--vc-primary-strong);
-}
+/* Press feedback everywhere; it is how a tap on a phone feels heard. */
 .vc-btn:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .vc-btn[data-kind="quiet"] {
   background: var(--vc-surface);
   border-color: var(--vc-line);
   color: var(--vc-ink);
 }
-.vc-btn[data-kind="quiet"]:hover:not(:disabled) {
-  background: var(--vc-sunken);
-  border-color: var(--vc-primary);
-}
 .vc-btn[data-kind="danger"] {
   background: var(--vc-danger);
-}
-.vc-btn[data-kind="danger"]:hover:not(:disabled) {
-  background: #8f1c16;
 }
 .vc-btn[data-kind="danger-quiet"] {
   background: var(--vc-surface);
   border-color: var(--vc-danger);
   color: var(--vc-danger);
 }
-.vc-btn[data-kind="danger-quiet"]:hover:not(:disabled) {
-  background: var(--vc-danger-soft);
+/* Hover only where there is a mouse: on a phone it would stick after the tap. */
+@media (hover: hover) and (pointer: fine) {
+  .vc-btn:hover:not(:disabled) {
+    background: var(--vc-primary-strong);
+  }
+  .vc-btn[data-kind="quiet"]:hover:not(:disabled) {
+    background: var(--vc-sunken);
+    border-color: var(--vc-primary);
+  }
+  .vc-btn[data-kind="danger"]:hover:not(:disabled) {
+    background: #8f1c16;
+  }
+  .vc-btn[data-kind="danger-quiet"]:hover:not(:disabled) {
+    background: var(--vc-danger-soft);
+  }
 }
 .vc-btn[data-size="sm"] {
   white-space: nowrap;
@@ -459,10 +465,13 @@
   color: var(--vc-ink);
   font-size: 16px;
   width: 100%;
+  transition: border-color 180ms ease;
 }
-.vc-field input:hover,
-.vc-ask input:hover {
-  border-color: var(--vc-primary);
+@media (hover: hover) and (pointer: fine) {
+  .vc-field input:hover,
+  .vc-ask input:hover {
+    border-color: var(--vc-primary);
+  }
 }
 .vc-field small {
   font-weight: 400;
@@ -557,10 +566,11 @@
   color: var(--vc-on-color);
   font-size: 16px;
   box-shadow: var(--vc-shadow);
-  animation: vc-rise 0.22s ease-out;
-}
-@keyframes vc-rise {
-  from {
+  /* A transition, not a keyframe, so a reply that replaces another retargets smoothly. */
+  transition:
+    opacity 240ms var(--vc-ease),
+    transform 240ms var(--vc-ease);
+  @starting-style {
     opacity: 0;
     transform: translateY(8px);
   }
@@ -568,7 +578,7 @@
 /* Key facts move slightly when they change but never fade: they must stay readable
    even if an animation is paused, as it is in a background tab. */
 .vc-fade {
-  animation: vc-shift 0.25s ease-out;
+  animation: vc-shift 240ms var(--vc-ease);
 }
 @keyframes vc-shift {
   from {
@@ -633,7 +643,7 @@
 }
 .vc-desk-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 5fr) minmax(0, 8fr);
+  grid-template-columns: minmax(300px, 4fr) minmax(0, 9fr);
   gap: 20px;
   align-items: start;
 }
@@ -773,10 +783,14 @@
     bottom: 212px;
   }
 }
+/* Reduced motion keeps colour and opacity changes, which explain state, and drops movement. */
 @media (prefers-reduced-motion: reduce) {
   .vc *,
   .vc *::after {
     animation: none !important;
-    transition: none !important;
+    transition-property: background-color, border-color, color, opacity !important;
+  }
+  .vc-btn:active:not(:disabled) {
+    transform: none;
   }
 }

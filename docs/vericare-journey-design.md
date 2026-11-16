@@ -437,3 +437,22 @@ npm run twin           # plays Maya Chen's three-hour visit in three minutes
 ```
 
 Open `/patient/visit` (phone width), `/professional/ed`, `/professional/ed/accuracy` and `/professional/ed/mission`. Set `VISIT_AGENT_ENABLED=true` in `.env` to let the language model plan; add a contact on the visit page to get a family link. Use `npm run twin -- --speed 600 --until 40` to jump to the surge, and `npm run twin:reset` before playing the scenario again. If the pages report that the demo account is unavailable, move `.env.sessions.json` aside and run `npm run demo:credentials`.
+
+On the Desk, click any patient's name to open their visit: the five steps with times, every event from the hospital record in plain words, what the model expects next, the ranges they were told and whether each held, who gets updates, Desk tasks, the Visit Agent's decisions and every message.
+
+#### Featured visits
+
+Besides Maya's story and the background queue, `npm run twin` plays eight visits that each take a different path, so every step and edge case appears at least once (`apps/api/src/twin/featured.ts`; `--core` leaves them out). Every person is fictional.
+
+| Patient             | Minutes    | What the visit shows                                                                                |
+| ------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| Priya Natarajan, 34 | 4 to 92    | Rapid assessment stream with an X-ray; registration phone gets one opt-in invitation                |
+| Walter Hughes, 79   | −40 to 205 | Bloodwork from the waiting room, CT, specialist consult, admitted, bed requested, moves to ward 6.1 |
+| Jordan Pike, 23     | 15 to 150  | Low-acuity wait that ends with leaving before being seen (estimates scored as a lower bound)        |
+| Fatima Aziz, 41     | 50 to 170  | Marked confidential by the hospital record mid-visit; nothing more is sent                          |
+| Robert Leger, 56    | 60 to 205  | CT ordered, cancelled and replaced by an ultrasound                                                 |
+| Grace Liu, 8        | 70 to 160  | Child seen in the paediatric area with bloodwork                                                    |
+| Ahmed Karim, 31     | 85 to 92   | Registered in error and cancelled                                                                   |
+| Sam Ortiz, 38       | 100 to 200 | Security alert on the record; silenced like a confidential visit                                    |
+
+Ages are at the demo date. `apps/api/test/integration/featured.test.ts` plays all eight and checks each ends where it should.

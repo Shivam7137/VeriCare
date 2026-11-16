@@ -9,3 +9,4 @@ work/
 .vercel/
 ml/artifacts/
 ml/data/
+.impeccable/

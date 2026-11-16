@@ -206,6 +206,56 @@ export type Mission = {
   };
 };
 
+export type PatientDetail = {
+  id: string;
+  name: string;
+  visitNumber: string;
+  age: number | null;
+  step: string;
+  friendlyStep: number;
+  ctas: number | null;
+  stream: string;
+  area: string | null;
+  flags: string[];
+  unmapped: boolean;
+  ended: boolean;
+  testsInProgress: boolean;
+  consultRequested: boolean;
+  bedRequested: boolean;
+  minutesInDepartment: number | null;
+  minutesWaiting: number | null;
+  steps: { label: string; at: string | null; state: "done" | "now" | "next" }[];
+  testsStartedWaiting: string | null;
+  timeline: { at: string; kind: string; source: string; label: string }[];
+  estimates: DeskStage[];
+  published: {
+    at: string;
+    low: number | null;
+    high: number | null;
+    abstain: string | null;
+    reason: string | null;
+    actual: number | null;
+  }[];
+  contacts: {
+    id: string;
+    name: string;
+    relationship: string;
+    scopes: VisitContact["scopes"];
+    texts: boolean;
+  }[];
+  tasks: {
+    id: string;
+    kind: DeskTask["kind"];
+    priority: 1 | 2 | 3;
+    summary: string;
+    state: "open" | "done" | "not_needed";
+    createdAt: string;
+    closedAt: string | null;
+  }[];
+  messages: Omit<Mission["thread"][number], "patientName">[];
+  runs: Omit<AgentRun, "patientName">[];
+};
+
 const base = "/api/backend/journey";
 async function family<T>(token: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api/family/${token}`, {
@@ -234,6 +284,8 @@ export const journey = {
   desk: () => api<Desk>(`${base}/desk`, undefined, "GET", "professional"),
   accuracy: () => api<Accuracy>(`${base}/desk/accuracy`, undefined, "GET", "professional"),
   mission: () => api<Mission>(`${base}/desk/mission`, undefined, "GET", "professional"),
+  patient: (id: string) =>
+    api<PatientDetail>(`${base}/desk/encounters/${id}`, undefined, "GET", "professional"),
   family: (token: string) => family<FamilyVisit>(token),
   familyAsk: (token: string, text: string) =>
     family<{ kind: string; reply: string }>(token, { text }),

@@ -12,6 +12,7 @@ import {
   type DeskTask,
 } from "../lib/journey";
 import { enterWorkspace } from "../lib/workspace";
+import PatientDrawer from "./ed-patient";
 import { Icon, type IconName } from "./journey-icons";
 
 const REFRESH_MS = 2000;
@@ -68,6 +69,7 @@ export default function EdDesk() {
   const [desk, setDesk] = useState<Desk | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
   const ready = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -247,7 +249,13 @@ export default function EdDesk() {
                     {clock(task.createdAt)}
                   </time>
                 </div>
-                <strong>{task.patientName}</strong>
+                <button
+                  className="vc-name"
+                  onClick={() => setOpenId(task.encounterId)}
+                  aria-haspopup="dialog"
+                >
+                  {task.patientName}
+                </button>
                 <p>{task.summary}</p>
                 <div className="vc-task-actions">
                   <button
@@ -296,6 +304,7 @@ export default function EdDesk() {
                     <PatientRow
                       key={patient.id}
                       patient={patient}
+                      open={() => setOpenId(patient.id)}
                       busy={busy === patient.id}
                       toggle={(active) =>
                         run(patient.id, () => journey.setFlag(patient.id, "confidential", active))
@@ -370,16 +379,19 @@ export default function EdDesk() {
           </ul>
         </section>
       </main>
+      <PatientDrawer encounterId={openId} onClose={() => setOpenId(null)} />
     </div>
   );
 }
 
 function PatientRow({
   patient,
+  open,
   busy,
   toggle,
 }: {
   patient: DeskPatient;
+  open: () => void;
   busy: boolean;
   toggle: (active: boolean) => void;
 }) {
@@ -388,7 +400,9 @@ function PatientRow({
   return (
     <tr data-silenced={silenced}>
       <td>
-        <strong>{patient.name}</strong>
+        <button className="vc-name" onClick={open} aria-haspopup="dialog">
+          {patient.name}
+        </button>
         {patient.stream === "rapid_assessment" && <div className="vc-muted">Rapid assessment</div>}
       </td>
       <td>
@@ -437,7 +451,8 @@ function PatientRow({
           aria-pressed={confidential}
           onClick={() => toggle(!confidential)}
         >
-          {confidential ? "Clear confidential" : "Mark confidential"}
+          {/* A toggle: aria-pressed and the red outline carry the state, so the label stays short. */}
+          Confidential
         </button>
       </td>
     </tr>
