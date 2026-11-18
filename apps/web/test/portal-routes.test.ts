@@ -270,6 +270,50 @@ test("proxy uses the selected cookie and permits only the documented voice route
   assert.equal(requests.at(-1)?.token, "Bearer fixture-staff");
 });
 
+test("the demo control bar reaches exactly its two journey routes, as staff or as the patient", async () => {
+  for (const portal of ["professional", "patient"] as const) {
+    const state = await proxy.GET(
+      request("/api/backend/journey/demo/state?visit=abc", {
+        portal,
+        cookie: bothCookies,
+      }),
+      { params: Promise.resolve({ path: ["journey", "demo", "state"] }) },
+    );
+    assert.equal(state.status, 200, portal);
+    assert.equal(requests.at(-1)?.url.endsWith("/journey/demo/state?visit=abc"), true);
+    const act = await proxy.POST(
+      request("/api/backend/journey/demo/act", {
+        method: "POST",
+        portal,
+        cookie: bothCookies,
+        body: { type: "pause" },
+      }),
+      { params: Promise.resolve({ path: ["journey", "demo", "act"] }) },
+    );
+    assert.equal(act.status, 200, portal);
+    assert.equal(requests.at(-1)?.url.endsWith("/journey/demo/act"), true);
+  }
+  // Nothing else under demo is reachable, and the state route cannot be posted to.
+  for (const [method, path] of [
+    ["GET", "journey/demo/act"],
+    ["GET", "journey/demo"],
+    ["GET", "journey/demo/state/extra"],
+    ["POST", "journey/demo/state"],
+    ["POST", "journey/demo/reset"],
+  ] as const) {
+    const response = await proxy[method](
+      request(`/api/backend/${path}`, {
+        method,
+        portal: "professional",
+        cookie: bothCookies,
+        ...(method === "POST" ? { body: {} } : {}),
+      }),
+      { params: Promise.resolve({ path: path.split("/") }) },
+    );
+    assert.equal(response.status, 404, `${method} ${path}`);
+  }
+});
+
 test("directory PATCH forwards its method and body and rejects provider callbacks and other PATCH routes", async () => {
   const path = "voice/directory/synthetic-staff-001";
   const body = { phoneNumber: null, expectedRevision: 1 };

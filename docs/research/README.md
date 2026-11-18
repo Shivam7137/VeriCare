@@ -1,6 +1,6 @@
 # VeriCare Journey research
 
-Public-web research collected 2026-11-11 for the master design in [../vericare-journey-design.md](../vericare-journey-design.md) and the OPOR interface mapping in [../opor-patient-tracking.md](../opor-patient-tracking.md). No internal NS Health or OPOR Hub material was used. Every report tags claims CONFIRMED / INFERRED / UNCERTAIN with source URLs, and several relied on search summaries rather than full pages, so re-check anything you put on a slide.
+Public-web research collected 2026-11-11 for the master design in [../vericare-journey-design.md](../design/vericare-journey-design.md) and the OPOR interface mapping in [../opor-patient-tracking.md](../design/opor-patient-tracking.md). No internal NS Health or OPOR Hub material was used. Every report tags claims CONFIRMED / INFERRED / UNCERTAIN with source URLs, and several relied on search summaries rather than full pages, so re-check anything you put on a slide.
 
 | File                                                                 | Covers                                                            | Read it for                                                     |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------- |

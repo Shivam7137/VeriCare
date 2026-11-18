@@ -23,7 +23,7 @@ export default function PortalHeader({
         <span className="brand-mark" aria-hidden="true">
           +
         </span>
-        careBridge
+        VeriCare
       </Link>
       <nav className="portal-nav" aria-label="Workspace navigation">
         {portal === "patient" ? (

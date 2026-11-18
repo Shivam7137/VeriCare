@@ -273,10 +273,15 @@ export class RealtimeMonitor {
           "error",
           "Voice provider error",
           {
-            code:
+            // Not "code": that key is reserved for access codes and is redacted.
+            errorCode:
               record(event.error) && typeof event.error.code === "string"
                 ? cleanText(event.error.code)
                 : "upstream_error",
+            errorType:
+              record(event.error) && typeof event.error.type === "string"
+                ? cleanText(event.error.type)
+                : undefined,
           },
           "failed",
         );

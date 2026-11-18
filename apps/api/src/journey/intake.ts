@@ -41,7 +41,9 @@ import {
 } from "./tasks.js";
 
 /** The runner that plans deferred wakes. Null means the rules path settles everything inline. */
-export type Agent = Pick<VisitAgent, "defer" | "settle"> | null;
+/** The Visit Agent as the routes use it. Its retriever, when given, also serves the staff tester. */
+export type Agent =
+  (Pick<VisitAgent, "defer" | "settle"> & Partial<Pick<VisitAgent, "retriever">>) | null;
 type Channel = InboundMessage["channel"];
 type Reply = { kind: string; reply: string };
 

@@ -25,7 +25,7 @@ export const voiceLanguageStyle = `Language:
 - If you are not confident in their language, say so simply and offer English or the keypad. Never guess at an important detail because of a language barrier; confirm it.`;
 
 /** Conversation style stays separate from backend permissions and workflow rules. */
-export const liveVoiceInstructions = `You are Alex, the friendly AI assistant at careBridge, a fictional clinic demo.
+export const liveVoiceInstructions = `You are Alex, the friendly AI assistant at VeriCare, a fictional hospital demo.
 ${voiceDeliveryStyle}
 ${voiceCareStyle}
 ${voiceLanguageStyle}
@@ -42,4 +42,4 @@ Never guess a backend result or say an action succeeded before it did. A prepare
 An SMS accepted or queued by the provider is not yet delivered. A simulated action is a demo only. An appointment is changed only when the backend reports a completed booking with a confirmation reference.`;
 
 export const liveGreeting =
-  "Greet the caller now in English with: 'Hi, I’m Alex, your AI assistant at careBridge. How can I help? You're welcome to speak in any language.' Use a gentle, welcoming tone and a natural conversational pace, then pause and listen. Do not add an introduction, a menu, or an access-code request.";
+  "Greet the caller now in English with: 'Hi, I’m Alex, your AI assistant at VeriCare. How can I help? You're welcome to speak in any language.' Use a gentle, welcoming tone and a natural conversational pace, then pause and listen. Do not add an introduction, a menu, or an access-code request.";

@@ -43,6 +43,28 @@ type Challenge = {
   recipient_number: string | null;
 };
 const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+/**
+ * How a name sounds on the phone: each word keeps its first letter and drops later vowels
+ * and repeated letters, so a misheard vowel ("Chen" heard as "Chan") still compares equal.
+ * Used only after an exact match fails, and only when exactly one record fits.
+ */
+export const nameSkeleton = (value: string) =>
+  normalize(value)
+    .normalize("NFD")
+    .replace(/[^a-z ]/g, "")
+    .split(" ")
+    .filter(Boolean)
+    .map(
+      (word) =>
+        word[0] +
+        word
+          .slice(1)
+          .replace(/[aeiouy]/g, "")
+          .replace(/(.)\1+/g, "$1"),
+    )
+    .join(" ");
+const sameName = (spoken: string, recorded: string) =>
+  normalize(spoken) === normalize(recorded) || nameSkeleton(spoken) === nameSkeleton(recorded);
 const digitWords: Record<string, string> = {
   zero: "0",
   oh: "0",
@@ -177,7 +199,24 @@ export class EmergencyLookup {
           [call.department_id, normalize(input.patientName), input.dateOfBirth],
         )
       ).rows;
-      const patientId = rows.length === 1 ? rows[0]!.patient_id : null;
+      let patientId = rows.length === 1 ? rows[0]!.patient_id : null;
+      let approximate = false;
+      if (!rows.length) {
+        // Speech recognition often mishears a vowel in a surname. With the birthday exact,
+        // accept a name that sounds the same, but only when it fits exactly one record.
+        const sameDay = (
+          await db.query<{ patient_id: string; display_name: string }>(
+            `SELECT r.patient_id, p.display_name FROM emergency_patient_records r
+             JOIN patients p ON p.id=r.patient_id
+             WHERE p.department_id=$1 AND r.date_of_birth=$2::date LIMIT 20`,
+            [call.department_id, input.dateOfBirth],
+          )
+        ).rows.filter((row) => nameSkeleton(row.display_name) === nameSkeleton(input.patientName));
+        if (sameDay.length === 1) {
+          patientId = sameDay[0]!.patient_id;
+          approximate = true;
+        }
+      }
       const changed = !patientId || patientId !== prior?.patient_id;
       await db.query(
         `INSERT INTO voice_emergency_sessions(call_id,patient_id,lookup_attempts,updated_at) VALUES ($1,$2,1,$3)
@@ -193,6 +232,7 @@ export class EmergencyLookup {
         );
       await event(db, callId, "emergency_patient_match", this.now(), {
         status: patientId ? "matched" : "not_matched",
+        ...(approximate ? { match: "sounds_alike" } : {}),
       });
       return patientId
         ? {
@@ -218,7 +258,7 @@ export class EmergencyLookup {
       const patient = await this.patient(db, session.patient_id, call.department_id!);
       if (!patient) return { result: needPatient() };
       if (
-        normalize(input.contactName) !== normalize(patient.contact_name) ||
+        !sameName(input.contactName, patient.contact_name) ||
         normalize(input.relationship) !== normalize(patient.contact_relationship)
       ) {
         await this.clearVerification(db, callId);
@@ -319,7 +359,7 @@ export class EmergencyLookup {
       );
       await db.query(
         `INSERT INTO voice_sms(id,call_id,tool_call_id,template,mode,recipient_number,body,content_fingerprint,status,expires_at,created_at,updated_at,confirmed_at)
-        VALUES ($1,$2,$3,'emergency_verification','twilio',$4,'careBridge demo: one-time verification code [redacted].',$5,'dispatching',$6,$7,$7,$7)`,
+        VALUES ($1,$2,$3,'emergency_verification','twilio',$4,'VeriCare demo: one-time verification code [redacted].',$5,'dispatching',$6,$7,$7,$7)`,
         [
           smsId,
           callId,
@@ -356,7 +396,7 @@ export class EmergencyLookup {
           smsId,
           callId,
           to: patient.contact_number,
-          body: `careBridge demo: your verification code is ${code}. It expires in 5 minutes. Read the digits aloud or enter them on the keypad during your current call. Reply STOP to opt out.`,
+          body: `VeriCare demo: your verification code is ${code}. It expires in 5 minutes. Read the digits aloud or enter them on the keypad during your current call. Reply STOP to opt out.`,
         },
       };
     });

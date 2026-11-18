@@ -7,7 +7,8 @@ import { kbArticles, type KbArticle } from "./kb.js";
 // choice: the answer a person reads is still an article's text, word for word.
 
 export type Retrieved = { article: KbArticle; score: number; via: "lexical" | "hybrid" };
-export type Embedder = (texts: readonly string[]) => Promise<number[][]>;
+/** Turns texts into vectors. `model` names what made them, so stored vectors can be checked. */
+export type Embedder = ((texts: readonly string[]) => Promise<number[][]>) & { model?: string };
 
 const stop = new Set(
   "a an and are as at be but by can do for from has have how i if in is it me my of on or our so that the their them there they this to was we what when where which who why will with you your".split(
@@ -60,7 +61,7 @@ export function tokens(text: string): string[] {
     .map((word) => synonyms[word] ?? word);
 }
 
-type Index = {
+export type Index = {
   docs: { article: KbArticle; counts: Map<string, number>; length: number }[];
   idf: Map<string, number>;
   averageLength: number;
@@ -107,7 +108,7 @@ export function lexicalRank(index: Index, query: string): Retrieved[] {
     .sort((a, b) => b.score - a.score);
 }
 
-const cosine = (a: readonly number[], b: readonly number[]) => {
+export const cosine = (a: readonly number[], b: readonly number[]) => {
   let dot = 0;
   let left = 0;
   let right = 0;
@@ -119,58 +120,89 @@ const cosine = (a: readonly number[], b: readonly number[]) => {
   return left && right ? dot / Math.sqrt(left * right) : 0;
 };
 
+/** A semantic match weaker than this is noise and gets no vote. */
+const SEMANTIC_FLOOR = 0.25;
+
+/**
+ * Ranks articles for a question. BM25 always runs. With a question vector and article
+ * vectors (null where an article has none yet), the two rankings are fused by reciprocal
+ * rank, so an article ranked well by either method rises.
+ */
+export function rankArticles(
+  index: Index,
+  query: string,
+  semantic: { question: readonly number[]; vectors: readonly (readonly number[] | null)[] } | null,
+  top = 3,
+): Retrieved[] {
+  const lexical = lexicalRank(index, query);
+  if (!semantic) return lexical.slice(0, top);
+  const articles = index.docs.map((doc) => doc.article);
+  const close = articles
+    .map((article, i) => {
+      const vector = semantic.vectors[i];
+      return { article, score: vector ? cosine(semantic.question, vector) : 0 };
+    })
+    .filter((item) => item.score >= SEMANTIC_FLOOR)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+  const fused = new Map<string, number>();
+  const add = (list: { article: KbArticle }[]) =>
+    list.forEach((item, rank) =>
+      fused.set(item.article.id, (fused.get(item.article.id) ?? 0) + 1 / (60 + rank)),
+    );
+  add(lexical);
+  add(close);
+  return [...fused]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, top)
+    .map(([id, score]) => ({
+      article: articles.find((item) => item.id === id)!,
+      score,
+      via: "hybrid" as const,
+    }));
+}
+
+/** The retriever the Visit Agent uses. A department's own library when it has one. */
+export type Retriever = {
+  hybrid: boolean;
+  /** The best matches for a question. Never throws: a failed embedder leaves the lexical ranking. */
+  search(query: string, departmentId?: string): Promise<Retrieved[]>;
+};
+
+/** An in-memory retriever over a fixed list of articles (the curated starters by default). */
 export function createRetriever(
   options: { articles?: readonly KbArticle[]; embed?: Embedder | null; top?: number } = {},
-) {
+): Retriever {
   const articles = options.articles ?? kbArticles;
   const index = buildIndex(articles);
   const top = options.top ?? 3;
   let vectors: Promise<number[][]> | null = null;
   return {
     hybrid: Boolean(options.embed),
-    /** The best matches for a question. Never throws: a failed embedder leaves the lexical ranking. */
-    async search(query: string): Promise<Retrieved[]> {
-      const lexical = lexicalRank(index, query);
-      if (!options.embed) return lexical.slice(0, top);
+    async search(query) {
+      if (!options.embed) return rankArticles(index, query, null, top);
       try {
-        vectors ??= options.embed(articles.map((item) => `${item.title}. ${item.body}`));
+        vectors ??= options.embed(articles.map(embeddingText));
         const [docs, [question]] = await Promise.all([vectors, options.embed([query])]);
         if (!question || docs.length !== articles.length) throw new Error("embedding_shape");
-        const semantic = articles
-          .map((article, i) => ({ article, score: cosine(question, docs[i]!) }))
-          .sort((a, b) => b.score - a.score);
-        // Reciprocal rank fusion: an article ranked well by either method rises.
-        const fused = new Map<string, number>();
-        const add = (list: { article: KbArticle }[]) =>
-          list.forEach((item, rank) =>
-            fused.set(item.article.id, (fused.get(item.article.id) ?? 0) + 1 / (60 + rank)),
-          );
-        add(lexical);
-        // A weak semantic match is noise, so only the closest few vote.
-        add(semantic.filter((item) => item.score >= 0.25).slice(0, 5));
-        return [...fused]
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, top)
-          .map(([id, score]) => ({
-            article: articles.find((item) => item.id === id)!,
-            score,
-            via: "hybrid" as const,
-          }));
+        return rankArticles(index, query, { question, vectors: docs }, top);
       } catch {
         vectors = null;
-        return lexical.slice(0, top);
+        return rankArticles(index, query, null, top);
       }
     },
   };
 }
-export type Retriever = ReturnType<typeof createRetriever>;
+
+/** What an article's embedding is made from. */
+export const embeddingText = (article: KbArticle) => `${article.title}. ${article.body}`;
 
 /** Embeddings through the same provider as the planner. Off unless KB_EMBEDDINGS is "true". */
 export function readEmbedder(env: NodeJS.ProcessEnv = process.env): Embedder | null {
   const apiKey = env.VISIT_AGENT_OPENAI_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
   if (env.KB_EMBEDDINGS !== "true" || !apiKey) return null;
   const model = env.KB_EMBEDDING_MODEL?.trim() || "text-embedding-3-small";
-  return async (texts) => {
+  const embed: Embedder = async (texts) => {
     const response = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
@@ -183,4 +215,6 @@ export function readEmbedder(env: NodeJS.ProcessEnv = process.env): Embedder | n
       throw new Error("embeddings_malformed");
     return [...reply.data].sort((a, b) => a.index - b.index).map((item) => item.embedding);
   };
+  embed.model = model;
+  return embed;
 }

@@ -58,7 +58,7 @@ function target(step: AgentStep) {
 }
 
 /** Mission control: the hospital feed, the agent's decisions and what people received, live. */
-export default function EdMission() {
+export default function EdMission({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<Mission | null>(null);
   const [error, setError] = useState("");
   const [raw, setRaw] = useState<string | null>(null);
@@ -94,33 +94,48 @@ export default function EdMission() {
 
   const totals = data?.totals;
   const shown = raw ? data?.hl7.find((message) => message.id === raw) : null;
+  const Main = embedded ? "div" : "main";
   return (
-    <div className="vc vc-dark">
-      <header className="vc-bar">
-        <Link href="/professional/ed" className="vc-brand">
-          <span className="vc-brand-mark">
-            <Icon name="heart" size={20} />
-          </span>
-          <span>
-            VeriCare Mission Control
-            <small>One agent for every emergency visit</small>
-          </span>
-        </Link>
-        {data?.feed ? (
-          <span className="vc-live" data-state={data.feed.stale ? "stale" : "live"}>
-            <i aria-hidden="true" />
-            {data.feed.stale ? "OPOR feed stale" : "OPOR feed live"} · department clock{" "}
-            {clock(data.feed.feedTime)}
-          </span>
-        ) : (
-          <span className="vc-live" data-state="stale">
-            <i aria-hidden="true" />
-            Waiting for the OPOR feed
-          </span>
-        )}
-      </header>
+    <div className={embedded ? "vca-embed" : "vc vc-dark"}>
+      {!embedded && (
+        <header className="vc-bar">
+          <Link href="/professional/ed" className="vc-brand">
+            <span className="vc-brand-mark">
+              <Icon name="heart" size={20} />
+            </span>
+            <span>
+              VeriCare Mission Control
+              <small>One agent for every emergency visit</small>
+            </span>
+          </Link>
+          {data?.feed ? (
+            <span className="vc-live" data-state={data.feed.stale ? "stale" : "live"}>
+              <i aria-hidden="true" />
+              {data.feed.stale ? "OPOR feed stale" : "OPOR feed live"} · department clock{" "}
+              {clock(data.feed.feedTime)}
+            </span>
+          ) : (
+            <span className="vc-live" data-state="stale">
+              <i aria-hidden="true" />
+              Waiting for the OPOR feed
+            </span>
+          )}
+        </header>
+      )}
 
-      <main className="vc-mission" id="workspace-main">
+      <Main className="vc-mission" id={embedded ? undefined : "workspace-main"}>
+        {embedded && (
+          <div className="vca-head">
+            <div>
+              <p className="vc-eyebrow">Oversight</p>
+              <h1>Live feed</h1>
+              <p className="vca-lede">
+                The hospital feed as it arrives, what each Visit Agent decided, and what patients
+                and families received, side by side.
+              </p>
+            </div>
+          </div>
+        )}
         {error && (
           <p className="vc-note" role="alert">
             <Icon name="alert" size={20} />
@@ -250,7 +265,7 @@ export default function EdMission() {
             )}
           </section>
         </div>
-      </main>
+      </Main>
     </div>
   );
 }

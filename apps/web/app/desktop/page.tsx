@@ -6,7 +6,7 @@ import "./responsive.css";
 import "./polish.css";
 import "../phone.css";
 
-export const metadata: Metadata = { title: "Desktop overview · careBridge" };
+export const metadata: Metadata = { title: "Desktop overview · VeriCare" };
 
 export default function DesktopPage() {
   return <DesktopOverview />;

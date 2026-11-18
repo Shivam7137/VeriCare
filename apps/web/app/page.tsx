@@ -88,7 +88,7 @@ export default function Home() {
         The phone simulator is clearly separated from the real phone line.
       </p>
       <footer>
-        <span>careBridge</span>
+        <span>VeriCare</span>
         <span>Patient · Care team · Department</span>
       </footer>
     </main>

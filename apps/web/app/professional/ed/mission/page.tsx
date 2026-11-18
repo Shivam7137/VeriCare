@@ -1,15 +1,8 @@
 import type { Metadata } from "next";
 import EdMission from "../../../../components/ed-mission";
-import { journeyFonts } from "../../../../lib/journey-fonts";
-import "../../../journey.css";
-import "../../../journey-extra.css";
 
-export const metadata: Metadata = { title: "Mission control · VeriCare" };
+export const metadata: Metadata = { title: "Live feed" };
 
 export default function Page() {
-  return (
-    <div className={journeyFonts}>
-      <EdMission />
-    </div>
-  );
+  return <EdMission embedded />;
 }

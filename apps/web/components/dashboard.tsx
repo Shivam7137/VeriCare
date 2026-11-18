@@ -384,7 +384,7 @@ export default function Dashboard({ portal }: { portal: Portal }) {
         </>
       )}
       <footer>
-        <span>careBridge</span>
+        <span>VeriCare</span>
         <span>Fictional demo · Appointment times in Halifax time</span>
       </footer>
     </main>

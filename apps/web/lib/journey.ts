@@ -78,7 +78,8 @@ export type DeskPatient = {
   unmapped: boolean;
   testsInProgress: boolean;
   waitingMinutes: number | null;
-  range: { lowMinutes: number; highMinutes: number } | null;
+  minutesInDepartment?: number | null;
+  range: { lowMinutes: number; highMinutes: number; toldAt?: string } | null;
   stages: DeskStage[];
 };
 export type StageName = "triage" | "provider" | "results" | "decision" | "bed";
@@ -267,6 +268,60 @@ async function family<T>(token: string, body?: unknown): Promise<T> {
   if (!response.ok) throw new Error("unavailable");
   return (await response.json()) as T;
 }
+export type KnowledgeArticle = {
+  id: string;
+  title: string;
+  body: string;
+  state: "draft" | "published" | "retired";
+  version: number;
+  source: "starter" | "staff";
+  gapId: string | null;
+  updatedAt: string;
+  publishedAt: string | null;
+  embedded: boolean;
+};
+export type KnowledgeGap = {
+  id: string;
+  topic: string;
+  examples: string[];
+  asked: number;
+  firstAskedAt: string;
+  lastAskedAt: string;
+  draftId: string | null;
+  suggestion: { id: string; title: string } | null;
+};
+export type Knowledge = {
+  retrieval: "hybrid" | "lexical";
+  articles: KnowledgeArticle[];
+  gaps: KnowledgeGap[];
+  stats: {
+    published: number;
+    drafts: number;
+    openGaps: number;
+    askedOpen: number;
+    answeredGaps: number;
+    kbReplies: number;
+  };
+};
+export type KnowledgeTry = {
+  floor: "recheck" | "leaving" | null;
+  retrieval: "hybrid" | "lexical";
+  matches: {
+    id: string;
+    title: string;
+    body: string;
+    score: number;
+    via: "lexical" | "hybrid";
+  }[];
+};
+export type ArticleInput = {
+  id?: string;
+  title: string;
+  body: string;
+  gapId?: string;
+  publish: boolean;
+};
+
 export const journey = {
   visit: () => api<Visit>(`${base}/visit`, undefined, "GET", "patient"),
   say: (text: string) =>
@@ -293,6 +348,20 @@ export const journey = {
     api(`${base}/desk/encounters/${encounterId}/flags`, { flag, active }, "POST", "professional"),
   closeTask: (id: string, outcome: "done" | "not_needed") =>
     api(`${base}/desk/tasks/${id}/close`, { outcome }, "POST", "professional"),
+  knowledge: () => api<Knowledge>(`${base}/desk/knowledge`, undefined, "GET", "professional"),
+  saveArticle: (input: ArticleInput) =>
+    api<{ id: string; state: string; version: number }>(
+      `${base}/desk/knowledge/articles`,
+      input,
+      "POST",
+      "professional",
+    ),
+  retireArticle: (id: string) =>
+    api(`${base}/desk/knowledge/articles/${id}/retire`, {}, "POST", "professional"),
+  dismissGap: (id: string) =>
+    api(`${base}/desk/knowledge/gaps/${id}/dismiss`, {}, "POST", "professional"),
+  tryQuestion: (question: string) =>
+    api<KnowledgeTry>(`${base}/desk/knowledge/search`, { question }, "POST", "professional"),
 };
 
 export const stageNames: Record<StageName, string> = {

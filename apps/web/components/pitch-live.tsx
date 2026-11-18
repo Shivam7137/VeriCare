@@ -239,7 +239,7 @@ export default function PitchLive(props: {
     <div className={`live${props.open ? " open" : ""}`} data-hold data-state={state}>
       <div className="live-top">
         <div className="live-brand">
-          <strong>CareBridge</strong>
+          <strong>VeriCare</strong>
           <span>Live call</span>
         </div>
         <div className="live-status">
@@ -285,7 +285,7 @@ export default function PitchLive(props: {
           <h3>{error ? "Can't reach the call service" : "Waiting for a call"}</h3>
           <p>
             {error ||
-              "Dial the demo line. The conversation and every step CareBridge takes will appear here as it happens."}
+              "Dial the demo line. The conversation and every step VeriCare takes will appear here as it happens."}
           </p>
           {!error && config?.phoneNumber && config.liveReady && (
             <a className="live-dial" href={`tel:${config.phoneNumber}`}>
@@ -323,7 +323,7 @@ export default function PitchLive(props: {
           </section>
           <section className="live-col">
             <h3>
-              What CareBridge is doing <span>{tools.length} tool calls</span>
+              What VeriCare is doing <span>{tools.length} tool calls</span>
             </h3>
             <ol className="live-scroll live-work" ref={work}>
               {activity.map((entry) => (

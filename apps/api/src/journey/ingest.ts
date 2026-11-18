@@ -50,6 +50,8 @@ export type JourneyOptions = {
    * False (the default) settles each wake at once with the rules planner.
    */
   defer?: boolean;
+  /** The caller recomputes estimates itself, once per batch (the demo control bar does). */
+  deferEstimates?: boolean;
 };
 
 export type IngestOutcome = "accepted" | "duplicate" | "ignored";
@@ -136,7 +138,7 @@ export async function ingestHl7(
     const current = (await encounterByVisit(db, siteId, visitNumber))!;
     const defer = options.defer ?? false;
     await react(db, current, before, state, mapped.events, now, defer);
-    await refreshEstimates(db, siteId, now, defer);
+    if (!options.deferEstimates) await refreshEstimates(db, siteId, now, defer);
     return "accepted";
   });
 }

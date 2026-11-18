@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { registerVoiceRoutes } from "./voice-routes.js";
 import { registerBackendRoutes } from "./backend-routes.js";
 import type { Agent } from "./journey/intake.js";
+import { registerDemoRoutes } from "./journey/demo/routes.js";
 import { registerJourneyRoutes } from "./journey/routes.js";
 
 export function buildApp(
@@ -106,6 +107,8 @@ export function buildApp(
   }
   registerBackendRoutes(app, pool, { autoPropose });
   registerJourneyRoutes(app, pool, { agent });
+  // The demo control bar moves fictional visits and the department clock. Demo mode only.
+  if (demoEnabled) registerDemoRoutes(app, pool, { agent });
   registerVoiceRoutes(app, pool, { demoEnabled, autoPropose, agent });
   return app;
 }

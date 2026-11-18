@@ -1,0 +1,366 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import Fastify from "fastify";
+import { buildApp } from "../../src/app.js";
+import { createSession } from "../../src/identity.js";
+import { createDemoDirector, type DemoState } from "../../src/journey/demo/director.js";
+import { registerDemoRoutes } from "../../src/journey/demo/routes.js";
+import { workflowFixture } from "./workflow-fixture.js";
+
+const MIN = 60_000;
+type Live = Extract<DemoState, { active: true }>;
+const live = (state: DemoState): Live => {
+  assert.equal(state.active, true);
+  return state as Live;
+};
+
+test("the demo director runs a department a judge can steer", async (t) => {
+  const f = await workflowFixture(t);
+  // Maya's emergency record lets her visit link to the patient session.
+  await f.pool.query("UPDATE patients SET display_name='Maya Chen' WHERE id=$1", [
+    f.patient.patientId,
+  ]);
+  await f.pool.query(
+    `INSERT INTO emergency_patient_records
+    (patient_id,date_of_birth,contact_name,contact_relationship,contact_number,facility,department,area,visitor_instructions)
+    VALUES ($1,'1990-04-12','Jamie Singh','Friend','+15005550006','Fictional Halifax hospital','Emergency department','Assessment area B','Check in at reception.')`,
+    [f.patient.patientId],
+  );
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const now = () => new Date(wall);
+  const director = createDemoDirector(f.pool, { now, seed: 5 });
+
+  // Nothing exists yet, so the bar offers to start the demo.
+  assert.deepEqual(await director.state(), { active: false });
+  await assert.rejects(director.act({ type: "play" }), { code: "demo_not_started" });
+
+  // Starting seeds the department, paused, with Maya at the front desk.
+  wall += 5_000;
+  const started = live((await director.act({ type: "reset" })).state);
+  assert.equal(started.running, false);
+  assert.equal(started.counts.waiting >= 5, true);
+  const maya = started.patients.find((patient) => patient.name === "Maya Chen")!;
+  assert.equal(maya.step, "arrived");
+  assert.equal(maya.next, "Triage assessment");
+  // Staff land on the demo patient's visit, and the patient's own app finds their visit as "mine".
+  assert.equal(started.focus?.name, "Maya Chen");
+  assert.equal(started.focus?.mine, false);
+  const asPatient = live(await director.state({ patientId: f.patient.patientId }));
+  assert.equal(asPatient.focus?.name, "Maya Chen");
+  assert.equal(asPatient.focus?.mine, true);
+  assert.equal(asPatient.patients[0]?.mine, true);
+  // The eight edge-case visits follow their own script and cannot be nudged.
+  assert.equal(
+    started.patients.filter((patient) => patient.scripted).every((p) => p.next === null),
+    true,
+  );
+  assert.ok(started.model.waiting >= 5);
+  assert.equal(typeof started.model.medianMinutes, "number");
+
+  // Adding patients fills the waiting room, and the model moves with it.
+  wall += 5_000;
+  const beforeAdd = started.model.medianMinutes!;
+  const added = live((await director.act({ type: "add", count: 5 })).state);
+  assert.equal(added.counts.waiting, started.counts.waiting + 5);
+  assert.ok(added.model.medianMinutes! >= beforeAdd);
+  wall += 5_000;
+  const surged = live((await director.act({ type: "surge" })).state);
+  assert.equal(surged.counts.waiting, added.counts.waiting + 5);
+  assert.ok(surged.patients.filter((patient) => patient.ctas === 2).length >= 4);
+  assert.ok(surged.recent.length > 0);
+
+  // "Next step" walks one visit all the way home, one honest step at a time.
+  const path: string[] = [];
+  wall += 5_000;
+  for (let index = 0; index < 8; index += 1) {
+    const current = live(await director.state({ encounterId: maya.id }));
+    if (!current.focus) break;
+    path.push(current.focus.step);
+    assert.ok(current.focus.next);
+    wall += 1_000;
+    await director.act({ type: "next", patientId: maya.id });
+  }
+  assert.deepEqual(path, ["arrived", "waiting", "being_seen", "being_seen", "deciding"]);
+  const gone = live(await director.state({ encounterId: maya.id }));
+  assert.equal(gone.focus, null);
+  const ended = await f.pool.query(
+    "SELECT state->>'step' AS step FROM ed_encounters WHERE visit_number = 'FIN5500001'",
+  );
+  assert.equal(ended.rows[0].step, "discharged");
+
+  // Time passes on its own. Two simulated hours later people have been seen and sent home.
+  wall += 5_000;
+  const before = live(await director.state());
+  await director.act({ type: "skip", minutes: 120 });
+  for (let guard = 0; guard < 80; guard += 1) {
+    wall += 1_000;
+    await director.tick();
+    if (live(await director.state()).skipping === null) break;
+  }
+  const after = live(await director.state());
+  assert.equal(after.skipping, null);
+  assert.equal(Date.parse(after.clock) - Date.parse(before.clock), 120 * MIN);
+  assert.ok(after.counts.finished > before.counts.finished);
+  assert.ok(after.counts.beingSeen > 0 || after.counts.boarding > 0);
+
+  // The estimates the model made along the way were logged and scored against what happened.
+  const logged = await f.pool.query(
+    "SELECT count(*)::int AS n, count(actual_minutes)::int AS scored FROM ed_stage_estimates",
+  );
+  assert.ok(logged.rows[0].n > 20);
+  assert.ok(logged.rows[0].scored > 0);
+
+  // Speed, pause and the two levers are plain settings.
+  const fast = live((await director.act({ type: "speed", value: 300 })).state);
+  assert.equal(fast.speed, 300);
+  assert.equal(fast.running, true);
+  assert.equal(live((await director.act({ type: "pause" })).state).running, false);
+  assert.equal(
+    live((await director.act({ type: "arrivals", value: "busy" })).state).arrivals,
+    "busy",
+  );
+  assert.equal(
+    live((await director.act({ type: "staffing", value: "high" })).state).staffing,
+    "high",
+  );
+
+  // A department that was running keeps its clock moving: with arrivals off it empties out.
+  await director.act({ type: "arrivals", value: "off" });
+  await director.runTo(director.clock() + 12 * 60 * MIN);
+  const quiet = live(await director.state());
+  assert.equal(quiet.counts.waiting, 0);
+  assert.equal(quiet.counts.arrived, 0);
+});
+
+test("only signed-in staff and patients reach the control bar, and bad input is refused", async (t) => {
+  const f = await workflowFixture(t);
+  const director = createDemoDirector(f.pool, { now: f.now, seed: 1 });
+  const app = Fastify({ logger: false });
+  registerDemoRoutes(app, f.pool, { now: f.now, director });
+  await app.ready();
+  t.after(() => app.close());
+  const expires = new Date(f.now().getTime() + 86_400_000);
+  const token = async (id: string) => (await createSession(f.pool, id, expires, f.now())).token;
+  const staff = await token("synthetic-staff-001");
+  const operator = await token("synthetic-operator-001");
+
+  const anonymous = await app.inject({ method: "GET", url: "/journey/demo/state" });
+  assert.equal(anonymous.statusCode, 401);
+  const refused = await app.inject({
+    method: "GET",
+    url: "/journey/demo/state",
+    headers: { authorization: `Bearer ${operator}` },
+  });
+  assert.equal(refused.statusCode, 404);
+
+  const idle = await app.inject({
+    method: "GET",
+    url: "/journey/demo/state",
+    headers: { authorization: `Bearer ${staff}` },
+  });
+  assert.equal(idle.statusCode, 200);
+  assert.deepEqual(idle.json(), { active: false });
+
+  const bad = await app.inject({
+    method: "POST",
+    url: "/journey/demo/act",
+    headers: { authorization: `Bearer ${staff}` },
+    payload: { type: "speed", value: 9000 },
+  });
+  assert.equal(bad.statusCode, 400);
+  assert.deepEqual(bad.json(), { error: "invalid_input" });
+
+  const early = await app.inject({
+    method: "POST",
+    url: "/journey/demo/act",
+    headers: { authorization: `Bearer ${staff}` },
+    payload: { type: "play" },
+  });
+  assert.equal(early.statusCode, 409);
+  assert.deepEqual(early.json(), { error: "demo_not_started" });
+
+  // A body that isn't JSON is the caller's mistake, not a storage failure.
+  const garbled = await app.inject({
+    method: "POST",
+    url: "/journey/demo/act",
+    headers: { authorization: `Bearer ${staff}`, "content-type": "application/json" },
+    payload: "{not json",
+  });
+  assert.equal(garbled.statusCode, 400);
+  assert.deepEqual(garbled.json(), { error: "invalid_input" });
+});
+
+test("the control bar's routes exist only when the synthetic demo is enabled", async (t) => {
+  const f = await workflowFixture(t);
+  const expires = new Date(f.now().getTime() + 86_400_000);
+  const staff = (await createSession(f.pool, "synthetic-staff-001", expires, f.now())).token;
+  const ask = async (demoEnabled: boolean) => {
+    const app = buildApp(f.pool, demoEnabled);
+    await app.ready();
+    try {
+      return (
+        await app.inject({
+          method: "GET",
+          url: "/journey/demo/state",
+          headers: { authorization: `Bearer ${staff}` },
+        })
+      ).statusCode;
+    } finally {
+      await app.close();
+    }
+  };
+  assert.equal(await ask(true), 200);
+  assert.equal(await ask(false), 404);
+});
+
+test("the demo starts over by itself 30 minutes after it was last used, and only if it was used", async (t) => {
+  const f = await workflowFixture(t);
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const now = () => new Date(wall);
+  const director = createDemoDirector(f.pool, { now, seed: 3, idleResetMinutes: 30 });
+  wall += 5_000;
+  const opening = live((await director.act({ type: "reset" })).state);
+  assert.equal(opening.idleReset.minutes, 30);
+  assert.equal(opening.idleReset.inMinutes, null);
+
+  // Nobody has touched it, so waiting around never wipes it.
+  wall += 45 * MIN;
+  await director.tick();
+  assert.equal(live(await director.state()).idleReset.lastAutoReset, null);
+
+  // Someone uses it: speed and staffing changed, patients added.
+  await director.act({ type: "staffing", value: "low" });
+  await director.act({ type: "speed", value: 300 });
+  const used = live((await director.act({ type: "add", count: 5 })).state);
+  assert.equal(used.counts.waiting, opening.counts.waiting + 5);
+  assert.equal(used.idleReset.inMinutes, 30);
+
+  // Watching without pressing anything counts down, and nothing happens early.
+  wall += 26 * MIN;
+  assert.equal(live(await director.state()).idleReset.inMinutes, 4);
+  await director.tick();
+  assert.equal(live(await director.state()).idleReset.lastAutoReset, null);
+
+  // Past the limit the next tick puts the original demo back, settings included.
+  wall += 5 * MIN;
+  await director.tick();
+  const again = live(await director.state());
+  assert.ok(again.idleReset.lastAutoReset);
+  assert.equal(again.idleReset.inMinutes, null);
+  assert.equal(again.counts.waiting, opening.counts.waiting);
+  assert.equal(again.running, false);
+  assert.equal(again.speed, 60);
+  assert.equal(again.staffing, "normal");
+  assert.equal(again.arrivals, "normal");
+  // The opening scene is back: Maya freshly checked in, none of the added patients.
+  assert.equal(again.patients.find((patient) => patient.name === "Maya Chen")?.step, "arrived");
+
+  // A fresh demo that nobody touches stays as it is, however long it sits.
+  wall += 90 * MIN;
+  await director.tick();
+  assert.equal(live(await director.state()).counts.waiting, opening.counts.waiting);
+});
+
+test("the automatic restart can be turned off", async (t) => {
+  const f = await workflowFixture(t);
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const director = createDemoDirector(f.pool, {
+    now: () => new Date(wall),
+    seed: 3,
+    idleResetMinutes: 0,
+  });
+  wall += 5_000;
+  await director.act({ type: "reset" });
+  const used = live((await director.act({ type: "add", count: 3 })).state);
+  assert.equal(used.idleReset.minutes, 0);
+  assert.equal(used.idleReset.inMinutes, null);
+  wall += 600 * MIN;
+  await director.tick();
+  const later = live(await director.state());
+  assert.equal(later.idleReset.lastAutoReset, null);
+  assert.equal(later.counts.waiting, used.counts.waiting);
+});
+
+test("a patient's bar keeps private visits private and always follows their own visit", async (t) => {
+  const f = await workflowFixture(t);
+  await f.pool.query("UPDATE patients SET display_name='Maya Chen' WHERE id=$1", [
+    f.patient.patientId,
+  ]);
+  await f.pool.query(
+    `INSERT INTO emergency_patient_records
+    (patient_id,date_of_birth,contact_name,contact_relationship,contact_number,facility,department,area,visitor_instructions)
+    VALUES ($1,'1990-04-12','Jamie Singh','Friend','+15005550006','F','E','A','x')`,
+    [f.patient.patientId],
+  );
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const now = () => new Date(wall);
+  const director = createDemoDirector(f.pool, { now, seed: 7 });
+  const app = Fastify({ logger: false });
+  registerDemoRoutes(app, f.pool, { now, director });
+  await app.ready();
+  t.after(() => app.close());
+  const expires = new Date(wall + 86_400_000);
+  const token = async (id: string) => (await createSession(f.pool, id, expires, now())).token;
+  const patient = await token("synthetic-patient-001");
+  const staff = await token("synthetic-staff-001");
+  wall += 5_000;
+  await director.act({ type: "reset" });
+  // Play far enough for the confidential featured visit (Fatima) to arrive and be flagged.
+  await director.runTo(director.clock() + 90 * MIN);
+
+  const read = async (who: string, visit?: string) =>
+    live(
+      (
+        await app.inject({
+          method: "GET",
+          url: `/journey/demo/state${visit ? `?visit=${visit}` : ""}`,
+          headers: { authorization: `Bearer ${who}` },
+        })
+      ).json(),
+    );
+  const asStaff = await read(staff);
+  const fatima = asStaff.patients.find((item) => item.name.startsWith("Fatima"));
+  assert.ok(fatima, "the confidential visit is on the staff list");
+  const other = asStaff.patients.find((item) => item.name !== "Maya Chen" && !item.scripted)!;
+
+  const asPatient = await read(patient, other.id);
+  // The patient asked about someone else; the bar ignores that and never shows their visit.
+  assert.notEqual(asPatient.focus?.id, other.id);
+  assert.equal(
+    asPatient.patients.some((item) => item.name.startsWith("Fatima")),
+    false,
+  );
+  assert.equal(asPatient.patients.find((item) => item.id === fatima.id)?.name, "Private visit");
+  assert.equal(
+    asPatient.recent.some((item) => item.text.startsWith("Fatima")),
+    false,
+  );
+  // Staff may still look at any visit.
+  assert.equal((await read(staff, other.id)).focus?.id, other.id);
+});
+
+test("pressing Reset twice in a row gives one reset, and a restarted API keeps the scripts", async (t) => {
+  const f = await workflowFixture(t);
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const now = () => new Date(wall);
+  const first = createDemoDirector(f.pool, { now, seed: 9 });
+  wall += 5_000;
+  await first.act({ type: "reset" });
+  const again = await first.act({ type: "reset" });
+  assert.equal(again.note, "Already a fresh demo.");
+
+  // Play past Fatima's triage (+57 min), then "restart the API" with a new director.
+  await first.runTo(first.clock() + 60 * MIN);
+  const fatima = async () =>
+    (
+      await f.pool.query(
+        "SELECT state->>'step' AS step FROM ed_encounters WHERE display_name LIKE 'Fatima%'",
+      )
+    ).rows[0]?.step as string | undefined;
+  assert.equal(await fatima(), "waiting");
+  const second = createDemoDirector(f.pool, { now, seed: 9 });
+  assert.equal(live(await second.state()).running, false);
+  // Fatima's script says she is seen at +75 min. The adopted director still plays it.
+  await second.runTo(second.clock() + 20 * MIN);
+  assert.equal(await fatima(), "being_seen");
+});

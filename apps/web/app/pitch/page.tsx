@@ -9,7 +9,7 @@ const sans = IBM_Plex_Sans({
 });
 const serif = Source_Serif_4({ subsets: ["latin"], variable: "--pitch-serif" });
 
-export const metadata: Metadata = { title: "CareBridge · Pitch" };
+export const metadata: Metadata = { title: "VeriCare · Pitch" };
 
 export default function PitchPage() {
   return <PitchDeck fonts={`${sans.variable} ${serif.variable}`} />;

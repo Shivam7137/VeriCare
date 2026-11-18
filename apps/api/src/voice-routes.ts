@@ -303,7 +303,7 @@ export function registerVoiceRoutes(
             .send(
               terminalCalls.has(current.status)
                 ? hangupTwiml(
-                    "Verification was not completed. Please obtain a new code in your careBridge workspace.",
+                    "Verification was not completed. Please obtain a new code in your VeriCare workspace.",
                   )
                 : retryTwiml(config),
             );

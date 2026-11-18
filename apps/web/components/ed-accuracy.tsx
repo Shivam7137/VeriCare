@@ -32,7 +32,7 @@ const outcomeWord = {
 };
 
 /** Predicted against actual, by step. The page staff use to decide how far to trust a range. */
-export default function EdAccuracy() {
+export default function EdAccuracy({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<Accuracy | null>(null);
   const [error, setError] = useState("");
   const [view, setView] = useState<"chart" | "table">("chart");
@@ -81,34 +81,42 @@ export default function EdAccuracy() {
   );
   const told = data?.published;
 
+  const Main = embedded ? "div" : "main";
   return (
-    <div className="vc">
-      <header className="vc-bar">
-        <Link href="/professional/ed" className="vc-brand">
-          <span className="vc-brand-mark">
-            <Icon name="heart" size={20} />
+    <div className={embedded ? "vca-embed" : "vc"}>
+      {!embedded && (
+        <header className="vc-bar">
+          <Link href="/professional/ed" className="vc-brand">
+            <span className="vc-brand-mark">
+              <Icon name="heart" size={20} />
+            </span>
+            <span>
+              VeriCare Desk
+              <small>Estimate accuracy</small>
+            </span>
+          </Link>
+          <span className="vc-live" data-state={data?.model ? "live" : "stale"}>
+            <i aria-hidden="true" />
+            {data?.model ? `Model ${data.model}` : "No estimates scored yet"}
           </span>
-          <span>
-            VeriCare Desk
-            <small>Estimate accuracy</small>
-          </span>
-        </Link>
-        <span className="vc-live" data-state={data?.model ? "live" : "stale"}>
-          <i aria-hidden="true" />
-          {data?.model ? `Model ${data.model}` : "No estimates scored yet"}
-        </span>
-      </header>
+        </header>
+      )}
 
-      <main className="vc-desk" id="workspace-main">
+      <Main
+        className={embedded ? undefined : "vc-desk"}
+        id={embedded ? undefined : "workspace-main"}
+      >
         <div className="vc-desk-head">
           <div>
             <p className="vc-eyebrow">Emergency department</p>
             <h1>How often the estimates held</h1>
           </div>
-          <Link href="/professional/ed" className="vc-btn" data-kind="quiet" data-size="sm">
-            Back to the Desk
-            <Icon name="arrow" size={18} />
-          </Link>
+          {!embedded && (
+            <Link href="/professional/ed" className="vc-btn" data-kind="quiet" data-size="sm">
+              Back to the Desk
+              <Icon name="arrow" size={18} />
+            </Link>
+          )}
         </div>
         {error && (
           <p className="vc-note" role="alert">
@@ -318,7 +326,7 @@ export default function EdAccuracy() {
             </div>
           )}
         </section>
-      </main>
+      </Main>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # 02. How a Nova Scotia ED actually runs, and numbers for a simulator
 
-Research date 2026-11-11. Public web only; no logins; novascotia.sharepoint.com and the OPOR Hub were not accessed. Builds on `docs/opor-patient-tracking.md` and does not repeat its OPOR findings.
+Research date 2026-11-11. Public web only; no logins; novascotia.sharepoint.com and the OPOR Hub were not accessed. Builds on `docs/design/opor-patient-tracking.md` and does not repeat its OPOR findings.
 
 Tags: **CONFIRMED** = I read it in the source (or extracted the PDF text myself). **SECONDARY** = a search-engine summary of the source, not read in full. **INFERRED** = my reasoning or assumption, not stated by a source. **UNCERTAIN** = sources conflict or are unclear.
 

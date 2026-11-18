@@ -1,6 +1,6 @@
 # 03. Individual ED wait and next-step estimation, and how to communicate it safely
 
-Research date 2026-11-11. Public web only; no logins. Builds on `docs/opor-patient-tracking.md` (not re-researched: QRF > rolling average, Pak 42%, NS LWBS 10.02%).
+Research date 2026-11-11. Public web only; no logins. Builds on `docs/design/opor-patient-tracking.md` (not re-researched: QRF > rolling average, Pak 42%, NS LWBS 10.02%).
 
 Tags: **CONFIRMED** = read in the source named (full text, abstract, or a search-result excerpt of it; "excerpt" means I did not open the full paper). **INFERRED** = my reasoning from confirmed facts. **UNCERTAIN** = could not verify, or sources conflict.
 

@@ -114,7 +114,7 @@ function pendingFor(row: SmsRow): SmsPendingAction {
   // The immutable SMS body remains available in the tool result and monitor.
   // Spoken confirmation identifies its purpose and appointment facts, not its URL or footer.
   const summary = row.body
-    .replace(/^(?:careBridge|Health Coordinator) demo: /, "")
+    .replace(/^(?:VeriCare|careBridge|Health Coordinator) demo: /, "")
     .replace(/ https:\/\/\S+\/patient\. Reply STOP to opt out\.$/, "")
     .replace(/ This text does not confirm an appointment change\.$/, "")
     .replace(/ This is the current booking, not a proposed change\.$/, "")
@@ -202,7 +202,7 @@ export class VoiceSms {
       }
     }
     if (!this.appUrl) throw new BackendError("sms_portal_unconfigured", 503);
-    const body = `careBridge demo: ${text} ${this.appUrl}/patient. Reply STOP to opt out.`;
+    const body = `VeriCare demo: ${text} ${this.appUrl}/patient. Reply STOP to opt out.`;
     if (body.length > 1000) throw new BackendError("sms_content_invalid", 409);
     return {
       body,

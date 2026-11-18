@@ -92,7 +92,7 @@ const errors: Record<string, string> = {
   code_unavailable: "A phone access code could not be created. Please retry.",
   live_keypad_required:
     "Approve this action on the phone after the readback. Press 1 to approve or 2 to cancel.",
-  transfer_loop: "Choose a destination other than the careBridge phone line.",
+  transfer_loop: "Choose a destination other than the VeriCare phone line.",
   transfer_destination_unavailable:
     "This teammate needs a valid phone destination for a live transfer.",
   transfer_in_progress: "The transfer is in progress. Wait for the call result.",

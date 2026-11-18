@@ -155,3 +155,19 @@ export const staffFlagInputSchema = z.strictObject({
 export const staffTaskCloseSchema = z.strictObject({
   outcome: z.enum(["done", "not_needed"]),
 });
+
+/** A knowledge-base article as staff write it. `publish` is the approval to send it. */
+export const kbArticleInputSchema = z.strictObject({
+  id: z
+    .string()
+    .regex(/^[a-z0-9_]{2,48}$/)
+    .optional(),
+  title: z.string().trim().min(3).max(80),
+  body: z.string().trim().min(20).max(600),
+  gapId: z.uuid().optional(),
+  publish: z.boolean(),
+});
+
+export const kbQuestionInputSchema = z.strictObject({
+  question: z.string().trim().min(2).max(500),
+});

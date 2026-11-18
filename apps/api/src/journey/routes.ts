@@ -1,6 +1,8 @@
 import {
   checkInAnswerSchema,
   contactInputSchema,
+  kbArticleInputSchema,
+  kbQuestionInputSchema,
   patientMessageInputSchema,
   staffFlagInputSchema,
   staffTaskCloseSchema,
@@ -8,6 +10,14 @@ import {
 import formbody from "@fastify/formbody";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import {
+  dismissGap,
+  knowledgeView,
+  retireArticle,
+  saveArticle,
+  tryQuestion,
+} from "../agents/knowledge-desk.js";
+import { createKnowledgeRetriever } from "../agents/knowledge.js";
 import { BackendError } from "../domain.js";
 import { authenticate, type Principal } from "../identity.js";
 import { validateTwilioWebhook } from "../twilio-provider.js";
@@ -44,6 +54,8 @@ export function registerJourneyRoutes(
   const now = options.now ?? (() => new Date());
   const siteId = options.siteId ?? "qeii-hi";
   const agent = options.agent ?? null;
+  // The library staff edit is the one the agent reads, so the tester shows what it would see.
+  const retriever = agent?.retriever ?? createKnowledgeRetriever(pool, { now });
   const safeErrors = (scope: FastifyInstance) =>
     scope.setErrorHandler((error, _request, reply) => {
       if (error instanceof BackendError)
@@ -220,6 +232,30 @@ export function registerJourneyRoutes(
         agent,
       );
     });
+    journey.get("/journey/desk/knowledge", async (request) =>
+      knowledgeView(
+        pool,
+        staff(request).departmentId,
+        now(),
+        retriever.hybrid ? "hybrid" : "lexical",
+      ),
+    );
+    journey.post("/journey/desk/knowledge/articles", async (request) =>
+      saveArticle(pool, staff(request), kbArticleInputSchema.parse(request.body), now()),
+    );
+    journey.post<IdRoute>("/journey/desk/knowledge/articles/:id/retire", async (request) =>
+      retireArticle(pool, staff(request), request.params.id, now()),
+    );
+    journey.post<IdRoute>("/journey/desk/knowledge/gaps/:id/dismiss", async (request) =>
+      dismissGap(pool, staff(request), request.params.id, now()),
+    );
+    journey.post("/journey/desk/knowledge/search", async (request) =>
+      tryQuestion(
+        retriever,
+        staff(request).departmentId,
+        kbQuestionInputSchema.parse(request.body).question,
+      ),
+    );
     journey.post<IdRoute>("/journey/desk/tasks/:id/close", async (request) =>
       staffCloseTask(
         pool,

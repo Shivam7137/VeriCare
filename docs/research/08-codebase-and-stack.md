@@ -40,7 +40,7 @@ Date: 2026-11-11. Sources: repo source read-only (no .env or secrets read); web 
 5. **No inbound SMS** and **no per-recipient opt-out store**: STOP is enforced by Twilio's carrier-level block only (error 21610 on later sends). Record STOP/UNSTOP via the inbound webhook `OptOutType` if Advanced Opt-Out is used.
 6. **Provider gating**: real SMS requires `VOICE_MODE=twilio` + `VOICE_LIVE_ENABLED=true` + allowlisted numbers; in simulated mode OTP `sendCode` returns `code_unavailable` (requires `call.mode === 'twilio'`). Journey demo calls must be real Twilio calls, or add a simulated provider path.
 7. **File size**: `realtime-bridge.ts` 622, `emergency-lookup.ts` 506, `live-bridge.ts` 564 already near the 600 flag; do not grow them, add new files.
-8. **Docs claim** (`docs/emergency-contact-demo.md`): full spoken/keypad verification through to location has not been validated on a real caller-driven call; only SMS delivery was observed.
+8. **Docs claim** (`docs/demo/emergency-contact-demo.md`): full spoken/keypad verification through to location has not been validated on a real caller-driven call; only SMS delivery was observed.
 9. **Residency**: GPT-Live data residency is US/EU only, no Canada (B1). The repo does `store:false`; PHIA/NS residency claims in the pitch must say "synthetic data only" for the MVP.
 
 ### A4. Existing tests for the emergency scenario and how to run
@@ -53,7 +53,7 @@ Date: 2026-11-11. Sources: repo source read-only (no .env or secrets read); web 
   - all backend integration: `npm run test:backend` (loads `.env`, isolated schemas)
   - one file: `node --env-file=.env --import tsx --test apps/api/test/integration/emergency-lookup.test.ts`
   - types/format: `npm run typecheck`, `npm run format:check`; everything: `npm run check`.
-    Source: docs/setup.md, root package.json. Web tests: `apps/web/test/*.test.ts` (call-monitor, pitch-live, portal-routes) run under `npm test`.
+    Source: docs/setup/setup.md, root package.json. Web tests: `apps/web/test/*.test.ts` (call-monitor, pitch-live, portal-routes) run under `npm test`.
 
 ## Part B - Stack research
 
@@ -101,7 +101,7 @@ Pitch-safe wording: synthetic data only; `store:false`; production would need ZD
 | Quantiles              | `simple-statistics` 8.0.0 ISC (`quantile`, `quantileSorted`); `d3-array` 3.2.5 ISC (`quantile`)       |                                              | Either works; or 10 lines of linear-interpolation quantile in `ed-estimate.ts` (zero dependency, easier gate tests). Quantile regression forests: no mature TS library, keep for pilot        | CONFIRMED (registry)                                               |
 | Charts (staff console) | `recharts` 3.10.1 MIT, peer React 16-19 OK with repo's React 19.3.0; `chart.js` 4.6.1; `uplot` 1.6.32 |                                              | Recharts for predicted-vs-actual and coverage bars in a Next client component; or hand-rolled SVG (repo has no UI libs and pitch uses custom SVG/CSS) to keep bundle and install risk at zero | CONFIRMED (registry)                                               |
 
-Cerner/Oracle open FHIR sandbox base URL is already documented in `docs/opor-patient-tracking.md` (tested 2026-11-11 per that doc; not re-tested here).
+Cerner/Oracle open FHIR sandbox base URL is already documented in `docs/design/opor-patient-tracking.md` (tested 2026-11-11 per that doc; not re-tested here).
 
 ## Implementation plan - 4-day MVP (file by file)
 
@@ -118,6 +118,6 @@ Day 3 (Nov 13) - estimates, voice, SMS 7. `apps/api/src/ed-estimate.ts`: patient
 
 Day 3-4 (Nov 13-14) - web 11. `apps/api/src/journey-routes.ts` (bearer auth; staff: advance event, set flag, list encounters, predictions vs actuals, alerts; patient: own visit timeline) registered in `app.ts`; add paths to `readPaths`/`writePaths` in `apps/web/app/api/backend/[...path]/route.ts`; test `integration/journey-routes.test.ts`. 12. `apps/web/app/patient/visit/page.tsx` + `components/visit-timeline.tsx`; `apps/web/app/professional/ed/page.tsx` + `components/ed-console.tsx`, `ed-chart.tsx` (SVG or recharts); link from `portal-header.tsx`. Add a web test in `apps/web/test/portal-routes.test.ts` style if time. 13. `apps/web/components/pitch-slides.tsx`: replace/add slides (problem: 10.02% LWBS, gap, demo flow, objections), extend `pitch-live.tsx` panel if tool names are filtered there.
 
-Day 4-5 (Nov 14-15) - verify and record 14. `npm run typecheck && npm test && npm run test:backend && npm run format:check`; update `docs/opor-patient-tracking.md` status, `docs/contracts.md` (new tools/routes), `docs/phone-setup.md` (inbound SMS webhook, scenario `journey`). 15. Real-call rehearsal (needs `VOICE_MODE=twilio`, tunnel, allowlisted numbers) for: verified daughter call, impostor call, LEAVING text, confidential flag. Record demo; keep fallback screenshots since real-call verification flow is not yet validated end to end.
+Day 4-5 (Nov 14-15) - verify and record 14. `npm run typecheck && npm test && npm run test:backend && npm run format:check`; update `docs/design/opor-patient-tracking.md` status, `docs/design/contracts.md` (new tools/routes), `docs/setup/phone-setup.md` (inbound SMS webhook, scenario `journey`). 15. Real-call rehearsal (needs `VOICE_MODE=twilio`, tunnel, allowlisted numbers) for: verified daughter call, impostor call, LEAVING text, confidential flag. Record demo; keep fallback screenshots since real-call verification flow is not yet validated end to end.
 
 Cut list if time slips: FHIR mapper (keep HL7 only), recharts (use plain bars), per-patient alert threshold, nurse-alert transfer. Never cut: disclosure gate tests, audit rows, LEAVING flow, suppression for CTAS 1-2.

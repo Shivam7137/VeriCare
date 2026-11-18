@@ -1,6 +1,6 @@
 # 05 Security threat model: voice/SMS agent that discloses ED status
 
-Research date 2026-11-11. Public web only; nothing logged into. Tags: CONFIRMED = read on the cited page; INFERRED/UNCERTAIN = my reasoning, a secondary/vendor source, or search-snippet only. Repo facts come from `docs/opor-patient-tracking.md` and `docs/emergency-contact-demo.md`.
+Research date 2026-11-11. Public web only; nothing logged into. Tags: CONFIRMED = read on the cited page; INFERRED/UNCERTAIN = my reasoning, a secondary/vendor source, or search-snippet only. Repo facts come from `docs/design/opor-patient-tracking.md` and `docs/demo/emergency-contact-demo.md`.
 
 ## 1. Findings
 

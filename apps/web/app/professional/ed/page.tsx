@@ -1,15 +1,8 @@
 import type { Metadata } from "next";
-import EdDesk from "../../../components/ed-desk";
-import { journeyFonts } from "../../../lib/journey-fonts";
-import "../../journey.css";
-import "../../journey-extra.css";
+import NowView from "../../../components/vc/now-view";
 
-export const metadata: Metadata = { title: "Emergency Desk · VeriCare" };
+export const metadata: Metadata = { title: "Now" };
 
-export default function EmergencyDesk() {
-  return (
-    <div className={journeyFonts}>
-      <EdDesk />
-    </div>
-  );
+export default function Page() {
+  return <NowView />;
 }

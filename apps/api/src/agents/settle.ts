@@ -28,7 +28,7 @@ import {
   triageText,
   waitedText,
 } from "../journey/tasks.js";
-import { kbArticle } from "./kb.js";
+import { cleanTopic, publishedArticle, recordGap } from "./knowledge.js";
 import type { ToolCall } from "./llm.js";
 import { toolsFor, type Candidate, type Wake, type WakePayload, type WakeReason } from "./wake.js";
 
@@ -269,10 +269,33 @@ export async function settleWake(
         return raise(args.kind as StaffTaskKind, Number(args.priority) || 3, summary, why, args);
       }
       case "answer_from_kb": {
-        const article = typeof args.article_id === "string" ? kbArticle(args.article_id) : null;
+        const article =
+          message && typeof args.article_id === "string"
+            ? await publishedArticle(db, encounter.departmentId, args.article_id, now)
+            : null;
         if (!message || !article) return deny("unknown_article");
         answer(article.body, "kb");
         return steps.push({ tool: call.name, args, verdict: "done", why });
+      }
+      case "report_knowledge_gap": {
+        // Staff will see the topic and the question with numbers and links removed. The
+        // person still needs a reply from another tool; this one only teaches the library.
+        const topic = cleanTopic(args.topic);
+        if (!message) return deny("no_message");
+        if (!topic) return deny("topic_rejected");
+        const gap = await recordGap(db, {
+          departmentId: encounter.departmentId,
+          encounterId: encounter.id,
+          topic,
+          question: message.text,
+          now,
+        });
+        return steps.push({
+          tool: call.name,
+          args: { ...args, gap: gap.gapId },
+          verdict: "done",
+          why,
+        });
       }
       case "handoff":
         answer(HANDOFF_REPLY, "handoff");

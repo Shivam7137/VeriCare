@@ -23,6 +23,7 @@ export async function migrate(pool: Pool) {
       "013_stage_estimates.sql",
       "014_visit_agent.sql",
       "015_task_event_order.sql",
+      "016_knowledge_base.sql",
     ]) {
       const existing = await client.query("SELECT name FROM schema_migrations WHERE name = $1", [
         name,

@@ -2,7 +2,7 @@
 
 Estimates how long each remaining step of an emergency visit will take: triage, the wait to be seen, test results, the decision on next steps, and an inpatient bed. Each estimate is a calibrated low / typical / high range in minutes.
 
-Results, data sources and limits are in the generated [model card](artifacts/MODEL_CARD.md). The full build record, with every experiment and decision, is in [docs/stage-time-model.md](../docs/stage-time-model.md). Read its last section before quoting any number: the models are trained on real open patient records placed in a simulated department, and have never seen Nova Scotia data.
+Results, data sources and limits are in the generated [model card](artifacts/MODEL_CARD.md). The full build record, with every experiment and decision, is in [docs/design/stage-time-model.md](../docs/design/stage-time-model.md). Read its last section before quoting any number: the models are trained on real open patient records placed in a simulated department, and have never seen Nova Scotia data.
 
 ## How it fits together
 

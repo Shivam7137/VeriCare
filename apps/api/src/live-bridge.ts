@@ -53,6 +53,11 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
     { jobs: Promise<void>[]; complete: boolean; continued: boolean }
   >();
   let actionQueue = Promise.resolve();
+  // Live reports recoverable problems (a response request that collided with one already
+  // playing, say) as error events while the session carries on. A fatal failure closes
+  // the socket, which ends the call below; only a run of errors ends it here.
+  let providerErrors = 0;
+  const MAX_PROVIDER_ERRORS = 3;
   let finish!: () => void;
   const finished = new Promise<void>((resolve) => {
     finish = resolve;
@@ -347,8 +352,10 @@ export function bridgeLive(phone: BridgeSocket, options: LiveBridgeOptions) {
           pending.quietBytes = 0;
         }
       } else if (event.type === "response.event") delegation(event);
-      else if (event.type === "error") close("live_provider_error");
-      else if (event.type === "session.closed") close("live_session_closed");
+      else if (event.type === "error") {
+        // The monitor has already recorded the error; keep talking unless errors pile up.
+        if (++providerErrors > MAX_PROVIDER_ERRORS) close("live_provider_error");
+      } else if (event.type === "session.closed") close("live_session_closed");
     } catch {
       close("invalid_live_frame");
     }

@@ -1,5 +1,6 @@
 import { readPlanner } from "./agents/llm.js";
-import { createRetriever, readEmbedder } from "./agents/retrieval.js";
+import { createKnowledgeRetriever, refreshKnowledge } from "./agents/knowledge.js";
+import { readEmbedder } from "./agents/retrieval.js";
 import { createVisitAgent } from "./agents/visit-agent.js";
 import { buildApp } from "./app.js";
 import { createPool } from "./db.js";
@@ -19,9 +20,11 @@ const quiet = (label: string) => (error: unknown) =>
 
 // The Visit Agent. With VISIT_AGENT_ENABLED=true and a key, a language model plans each
 // wake; otherwise the rules path does, and the pages behave the same.
+const embed = readEmbedder();
 const agent = createVisitAgent(pool, {
   planner: readPlanner(),
-  retriever: createRetriever({ embed: readEmbedder() }),
+  // Each department's own library in Postgres, with stored embeddings when KB_EMBEDDINGS=true.
+  retriever: createKnowledgeRetriever(pool, { embed }),
   onError: quiet("Visit Agent"),
 });
 // Opt-in: the scheduling agent offers the earliest open slot when a request is verified.
@@ -55,6 +58,7 @@ const sender = createJourneySmsSender(readVoiceConfig());
 console.log(`Journey texts: ${sender ? "live" : "simulated on screen"}`);
 let busy = false;
 let lastTimers = 0;
+let lastKnowledge = 0;
 const worker = setInterval(async () => {
   if (busy) return;
   busy = true;
@@ -65,6 +69,11 @@ const worker = setInterval(async () => {
     }
     await agent.drain();
     await dispatchJourneySms(pool, sender, new Date());
+    // Embed new articles and gaps, and fold gaps that ask the same thing.
+    if (embed && Date.now() - lastKnowledge >= 60_000) {
+      lastKnowledge = Date.now();
+      await refreshKnowledge(pool, embed).catch(quiet("Knowledge base"));
+    }
   } catch (error) {
     quiet("Journey worker")(error);
   } finally {

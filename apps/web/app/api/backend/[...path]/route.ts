@@ -10,10 +10,10 @@ import {
 
 const uuid = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const readPaths = new RegExp(
-  `^(journey/(visit|desk(?:/(?:accuracy|mission|encounters/${uuid}))?)|tasks(?:/[A-Za-z0-9-]+)?|slots|bookings/[A-Za-z0-9-]+|operator/queue|voice/(config|directory|calls(?:/${uuid}(?:/(?:transfers|monitor))?)?))$`,
+  `^(journey/(visit|demo/state|desk(?:/(?:accuracy|mission|knowledge|encounters/${uuid}))?)|tasks(?:/[A-Za-z0-9-]+)?|slots|bookings/[A-Za-z0-9-]+|operator/queue|voice/(config|directory|calls(?:/${uuid}(?:/(?:transfers|monitor))?)?))$`,
 );
 const writePaths = new RegExp(
-  `^(journey/(visit/(messages|check-in|contacts(?:/${uuid}/withdraw)?)|desk/(encounters/${uuid}/flags|tasks/${uuid}/close))|tasks(?:/[A-Za-z0-9-]+/(verify|proposals|staff-approval|confirmation|callback|withdraw|takeover))?|voice/(access-codes|simulate|callbacks|calls/${uuid}/(tool|confirm|end|verify|cancel|transfers)|transfers/${uuid}/simulate-result))$`,
+  `^(journey/(visit/(messages|check-in|contacts(?:/${uuid}/withdraw)?)|demo/act|desk/(encounters/${uuid}/flags|tasks/${uuid}/close|knowledge/(?:articles(?:/[a-z0-9_]{2,48}/retire)?|search|gaps/${uuid}/dismiss)))|tasks(?:/[A-Za-z0-9-]+/(verify|proposals|staff-approval|confirmation|callback|withdraw|takeover))?|voice/(access-codes|simulate|callbacks|calls/${uuid}/(tool|confirm|end|verify|cancel|transfers)|transfers/${uuid}/simulate-result))$`,
 );
 const patchPaths = /^voice\/directory\/[A-Za-z0-9-]+$/;
 

@@ -241,7 +241,7 @@ export default function CareTeamDirectory() {
         )
       )}
       <footer>
-        <span>careBridge</span>
+        <span>VeriCare</span>
         <span>Fictional demo · Forwarding does not change appointments</span>
       </footer>
     </main>

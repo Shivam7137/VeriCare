@@ -1,0 +1,202 @@
+/* ---- the panel above (or below) the bar ---- */
+.dbar-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 18px;
+  /* Wide enough for the bar, never wider: the bar alone decides the width. */
+  width: 0;
+  min-width: 100%;
+  max-height: min(66vh, 540px);
+  padding: 14px 16px;
+  overflow: auto;
+  border: 1px solid var(--d-line);
+  border-radius: 20px;
+  background: var(--d-bg);
+  box-shadow: 0 14px 44px rgb(2 18 22 / 38%);
+  animation: dbar-in 200ms var(--d-ease);
+}
+.dbar-panel h3 {
+  margin: 0 0 8px;
+  color: var(--d-soft);
+  font: 600 12px/1.2 var(--d-display);
+}
+.dbar-panel ul,
+.dbar-panel ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dbar-people li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 2px;
+  border-radius: 12px;
+}
+.dbar-people li[data-focus] {
+  background: rgb(79 209 183 / 12%);
+  box-shadow: inset 0 0 0 1px rgb(79 209 183 / 45%);
+}
+.dbar .dbar-pick {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 4px 8px;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 500;
+  text-align: left;
+}
+.dbar-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dbar-name em {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--d-accent);
+  color: var(--d-accent-ink);
+  font-size: 11px;
+  font-style: normal;
+}
+.dbar-step {
+  color: var(--d-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dbar .dbar-go {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* Triage colours: red is the most urgent, blue the least. */
+.dbar .dbar-ctas {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #9db3b8;
+  color: #0a2a32;
+  font-size: 13px;
+  font-weight: 700;
+}
+.dbar .dbar-ctas[data-ctas="1"] {
+  background: #ff7a6b;
+}
+.dbar .dbar-ctas[data-ctas="2"] {
+  background: #ffa24d;
+}
+.dbar .dbar-ctas[data-ctas="3"] {
+  background: #f6d55c;
+}
+.dbar .dbar-ctas[data-ctas="4"] {
+  background: #74d68f;
+}
+.dbar .dbar-ctas[data-ctas="5"] {
+  background: #72b4ee;
+}
+@media (hover: hover) {
+  .dbar button.dbar-ctas:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+}
+.dbar-levels {
+  display: flex;
+  gap: 6px;
+}
+.dbar .dbar-levels .dbar-ctas {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.dbar-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.dbar-field > span {
+  color: var(--d-soft);
+  font-size: 12px;
+}
+.dbar-counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.dbar-counts div {
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--d-raise);
+}
+.dbar-counts dt {
+  color: var(--d-soft);
+  font-size: 11.5px;
+}
+.dbar-counts dd {
+  margin: 0;
+  font: 650 18px/1.2 var(--d-display);
+  font-variant-numeric: tabular-nums;
+}
+.dbar-reset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--d-soft);
+  font-size: 12px;
+}
+
+.dbar-feed li {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--d-line);
+}
+.dbar-feed time {
+  margin-right: 6px;
+  color: var(--d-soft);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.dbar-model-note {
+  margin: 10px 0 0;
+  color: var(--d-soft);
+  font-size: 12px;
+}
+@media (max-width: 880px) {
+  .dbar-panel {
+    grid-template-columns: 1fr;
+    max-height: 52vh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dbar-panel {
+    animation: none !important;
+  }
+}
+/* Touch screens: the panel's small buttons grow to a thumb-sized target. This lives here,
+   after the panel's own sizes, so it wins. */
+@media (pointer: coarse) {
+  .dbar .dbar-go,
+  .dbar .dbar-pick {
+    min-height: 44px;
+  }
+  .dbar .dbar-levels .dbar-ctas {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+}

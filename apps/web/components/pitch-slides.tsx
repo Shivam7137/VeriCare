@@ -98,8 +98,8 @@ function TitleSlide() {
       <p className="eyebrow r" style={d(0)}>
         HEALTHCARE · NOVA SCOTIA HEALTH
       </p>
-      <h1 className="wordmark" aria-label="CareBridge">
-        {"CareBridge".split("").map((letter, index) => (
+      <h1 className="wordmark" aria-label="VeriCare">
+        {"VeriCare".split("").map((letter, index) => (
           <span key={index} style={d(index)}>
             {letter}
           </span>
@@ -183,7 +183,7 @@ function HowSlide({ active }: SlideProps) {
   const step = useAutoStep(active, 1, 1000);
   return (
     <Frame
-      eyebrow="HOW CAREBRIDGE WORKS"
+      eyebrow="HOW VERICARE WORKS"
       title="It runs the hospital's own release protocol, so staff don't have to at 3 a.m."
       footer="Two named contacts mirrors Nova Scotia Health's Family Presence Policy. Disclosure limits follow its privacy statement and PHIA."
       page={3}
@@ -239,7 +239,7 @@ function SmsSlide({ active }: SlideProps) {
   return (
     <Frame
       eyebrow="PROACTIVE UPDATES · SMS"
-      title="When something changes, CareBridge texts the family first."
+      title="When something changes, VeriCare texts the family first."
       footer="Illustrative messages for a fictional patient. Texts carry presence, location and general condition only."
       page={4}
       narrow
@@ -266,7 +266,7 @@ function SmsSlide({ active }: SlideProps) {
             <div className="phone-head">
               <b>CB</b>
               <div>
-                <strong>CareBridge</strong>
+                <strong>VeriCare</strong>
                 <span>Halifax Infirmary · Text message</span>
               </div>
             </div>
@@ -278,7 +278,7 @@ function SmsSlide({ active }: SlideProps) {
               >
                 <p className="sms-top">
                   <i />
-                  <strong>CareBridge</strong>
+                  <strong>VeriCare</strong>
                   <time>{item.time}</time>
                 </p>
                 <p>{item.message}</p>
@@ -334,7 +334,7 @@ function NextSlide() {
             </div>
             <i className="drop" />
             <div className="does">
-              <span>CAREBRIDGE</span>
+              <span>VERICARE</span>
               <p>{does}</p>
             </div>
             <p className="result">{result}</p>
@@ -365,7 +365,7 @@ function BigPictureSlide({ active }: SlideProps) {
         <div className="r" style={d(5)}>
           <p className="stat">Up to 2</p>
           <p className="small">
-            trusted contacts named by each patient. They are the people CareBridge answers.
+            trusted contacts named by each patient. They are the people VeriCare answers.
           </p>
         </div>
         <div className="next-test r" style={d(7)}>
@@ -394,7 +394,7 @@ function BigPictureSlide({ active }: SlideProps) {
           </div>
         </div>
         <div className="layer bridge">
-          <strong>CareBridge</strong>
+          <strong>VeriCare</strong>
           <b>Verify · Authorize · Notify · Log</b>
           <p>Answered at any hour, and texted before they have to ask.</p>
         </div>
@@ -489,15 +489,15 @@ function ClosingSlide({ active }: SlideProps) {
           them one more thing to work out.
         </p>
         <p className={`reply st${shown(step, 2)}`}>
-          CareBridge is built the other way round. It comes to them, in plain words, on the phone
-          they already have.
+          VeriCare is built the other way round. It comes to them, in plain words, on the phone they
+          already have.
         </p>
       </div>
       <p className={`promise st${shown(step, 3)}`}>
         <i />
         Empathy is the design, not a feature.
       </p>
-      <p className="foot">CareBridge · Thank you</p>
+      <p className="foot">VeriCare · Thank you</p>
       <p className="page">8/9</p>
     </div>
   );
@@ -515,7 +515,7 @@ function LiveSlide({ step, active, move }: SlideProps) {
           <Words text="Now, a real call." from={2} />
         </h2>
         <p className="live-lede r" style={d(7)}>
-          A fictional patient, a real phone line. Watch what CareBridge hears, what it checks, and
+          A fictional patient, a real phone line. Watch what VeriCare hears, what it checks, and
           what it sends.
         </p>
         <button className="live-open r" style={d(9)} onClick={() => move(1)}>
@@ -533,9 +533,7 @@ export const slides: Slide[] = [
     tone: "paper",
     steps: 0,
     time: "0:00 to 0:08",
-    notes: [
-      "We are CareBridge. No family should learn where a loved one is by waiting in a lobby.",
-    ],
+    notes: ["We are VeriCare. No family should learn where a loved one is by waiting in a lobby."],
     Body: TitleSlide,
   },
   {
@@ -556,7 +554,7 @@ export const slides: Slide[] = [
     steps: 0,
     time: "0:40 to 1:10",
     notes: [
-      "CareBridge runs the hospital's own release protocol. The patient names up to two trusted contacts. When something changes, CareBridge reads it from the hospital's location feed.",
+      "VeriCare runs the hospital's own release protocol. The patient names up to two trusted contacts. When something changes, VeriCare reads it from the hospital's location feed.",
       "It checks who is asking and whether they may know, as two separate checks. Then it releases only what policy allows: presence, location, general condition.",
       "Anything more goes to a clinician, once.",
     ],
@@ -568,7 +566,7 @@ export const slides: Slide[] = [
     steps: 0,
     time: "1:10 to 1:32",
     notes: [
-      "And the family should not have to ask. When something changes, CareBridge texts them first.",
+      "And the family should not have to ask. When something changes, VeriCare texts them first.",
       "Arrived in Emergency. Moved to imaging. Getting ready to leave, and a nurse will call. Plain text messages, no app, each one logged.",
     ],
     Body: SmsSlide,
@@ -591,7 +589,7 @@ export const slides: Slide[] = [
     time: "1:52 to 2:12",
     notes: [
       "Nova Scotia Health saw 561,556 emergency visits in 2024/25. Each one has a family asking the same four questions.",
-      "The hospital already holds the answers. CareBridge is the one layer in between.",
+      "The hospital already holds the answers. VeriCare is the one layer in between.",
     ],
     Body: BigPictureSlide,
   },
@@ -614,7 +612,7 @@ export const slides: Slide[] = [
     notes: [
       "One last thing, and it is the reason we built this. On your worst day, the last thing you need is a system to fight.",
       "A family in distress is already carrying enough. A generic, half-finished system hands them one more thing to work out.",
-      "CareBridge is built the other way round. It comes to them, in plain words, on the phone they already have.",
+      "VeriCare is built the other way round. It comes to them, in plain words, on the phone they already have.",
       "Empathy is not a feature we added. It is the design. Thank you.",
     ],
     Body: ClosingSlide,
@@ -627,7 +625,7 @@ export const slides: Slide[] = [
     notes: [
       "Place the call to the demo line. The panel opens by itself as soon as the call connects, or click to open it first.",
       "The caller's words appear on the left as they are transcribed, with Alex's replies beside them.",
-      "On the right is every step CareBridge takes: matching the patient, texting a verification code to the registered contact, checking the code, and only then releasing the location.",
+      "On the right is every step VeriCare takes: matching the patient, texting a verification code to the registered contact, checking the code, and only then releasing the location.",
       "If the call does not connect, use Show the last recorded call.",
     ],
     Body: LiveSlide,

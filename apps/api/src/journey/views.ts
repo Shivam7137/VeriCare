@@ -204,12 +204,17 @@ export async function deskView(pool: Pool, departmentId: string, site: string, n
         encounter.state.step === "waiting" && encounter.state.triagedAt
           ? Math.max(0, Math.round((feedTime - Date.parse(encounter.state.triagedAt)) / MIN))
           : null,
+      minutesInDepartment: encounter.state.arrivedAt
+        ? Math.max(0, Math.round((feedTime - Date.parse(encounter.state.arrivedAt)) / MIN))
+        : null,
       // A range only means something while the patient is still waiting to be seen.
+      // toldAt lets the Desk see when the time the patient was told has run out.
       range:
         encounter.published && encounter.state.step === "waiting"
           ? {
               lowMinutes: encounter.published.lowMinutes,
               highMinutes: encounter.published.highMinutes,
+              toldAt: encounter.published.at,
             }
           : null,
       // Model estimates for every step still ahead. Staff only: includes the wait for a bed.

@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import { canonicalJson, encounterById, journeyTransaction } from "../journey/records.js";
 import { PlannerError, type Planner } from "./llm.js";
-import { createRetriever, type Retriever } from "./retrieval.js";
+import { createKnowledgeRetriever } from "./knowledge.js";
+import type { Retriever } from "./retrieval.js";
 import { settleWake, type ModelPlan, type Outcome } from "./settle.js";
 import { contextPack, toolsFor, visitAgentInstructions, type Wake } from "./wake.js";
 
@@ -29,7 +30,7 @@ export function createVisitAgent(
   } = {},
 ) {
   const planner = options.planner ?? null;
-  const retriever = options.retriever ?? createRetriever();
+  const retriever = options.retriever ?? createKnowledgeRetriever(pool);
   const now = options.now ?? (() => new Date());
   const claimed = new Set<string>();
   let chain: Promise<void> = Promise.resolve();
@@ -48,7 +49,7 @@ export function createVisitAgent(
       const seen = await encounterById(pool, wake.encounterId);
       if (!seen) return null;
       const knowledge = wake.payload.message
-        ? await retriever.search(wake.payload.message.text)
+        ? await retriever.search(wake.payload.message.text, seen.departmentId)
         : [];
       const context = await contextPack(pool, seen, wake, knowledge);
       const hash = createHash("sha256").update(canonicalJson(context)).digest("hex");

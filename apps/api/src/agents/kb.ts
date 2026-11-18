@@ -1,5 +1,6 @@
-// Curated, non-clinical answers the Visit Agent may give word for word.
-// The agent picks an article; it never writes or edits the answer.
+// The curated starter answers each department's knowledge base begins with (see knowledge.ts).
+// Staff can edit or retire them and add their own. The agent picks an article; it never
+// writes or edits the answer.
 // Facility details are fictional and belong to the demo hospital.
 
 export type KbArticle = { id: string; title: string; body: string };
@@ -56,5 +57,3 @@ export const kbArticles: readonly KbArticle[] = [
     body: "These updates come from the hospital's own record of your visit. You will hear when your step changes or your estimate moves. You can type STATUS at any time, and you can add a family member so they get updates too.",
   },
 ];
-
-export const kbArticle = (id: string) => kbArticles.find((article) => article.id === id) ?? null;
