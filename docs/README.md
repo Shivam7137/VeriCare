@@ -8,6 +8,7 @@ Every document, by what you need it for. Start with [the system design](design/v
 | ------------------------------------------------------------------ | -------------------------------------------------- |
 | [Local development](setup/setup.md)                                | Install, database, environment and the dev servers |
 | [Patient, professional and phone workspaces](setup/phone-setup.md) | Phone line, Twilio routing and the voice agent     |
+| [Hosted demo](setup/hosting.md)                                    | The public Cloud Run copy and how to redeploy it   |
 
 ## Demo it
 

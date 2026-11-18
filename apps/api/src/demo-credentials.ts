@@ -5,6 +5,12 @@ import { migrate } from "./migrations.js";
 import { seedBackend } from "./backend-fixtures.js";
 
 const file = new URL("../../../.env.sessions.json", import.meta.url);
+// A hosted demo restarts rarely, so it may ask for longer sessions (1 to 1000 hours).
+const requestedHours = Number(process.env.DEMO_SESSION_HOURS);
+const hours =
+  Number.isInteger(requestedHours) && requestedHours >= 1 && requestedHours <= 1000
+    ? requestedHours
+    : 24;
 let exists = false;
 try {
   await access(file);
@@ -26,7 +32,11 @@ if (exists) {
       "synthetic-staff-001",
       "synthetic-operator-001",
     ]) {
-      sessions[actorId] = await createSession(pool, actorId, new Date(Date.now() + 86_400_000));
+      sessions[actorId] = await createSession(
+        pool,
+        actorId,
+        new Date(Date.now() + hours * 3_600_000),
+      );
     }
     await writeFile(file, JSON.stringify(sessions, null, 2) + "\n", {
       encoding: "utf8",

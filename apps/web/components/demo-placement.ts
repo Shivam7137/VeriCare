@@ -11,7 +11,13 @@ import {
 // Where the demo bar sits: its default dock, a dragged position remembered per browser, and
 // keyboard moves. The stored position is the top-left corner of the controls ("deck").
 
-export const STORE = { pos: "vc-demo-bar-pos", hidden: "vc-demo-bar-hidden" };
+export const STORE = {
+  pos: "vc-demo-bar-pos",
+  hidden: "vc-demo-bar-hidden",
+  mode: "vc-demo-bar-mode",
+  step: "vc-demo-bar-step",
+  contact: "vc-demo-contact",
+};
 export const read = <T>(key: string): T | null => {
   try {
     const raw = window.localStorage.getItem(key);

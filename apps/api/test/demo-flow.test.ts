@@ -11,6 +11,7 @@ import {
   pickNextToSee,
   planFor,
 } from "../src/journey/demo/flow.js";
+import { maskPhone, normalizePhone } from "../src/journey/demo/contact.js";
 import { parseDemoAction } from "../src/journey/demo/routes.js";
 
 const MIN = 60_000;
@@ -173,6 +174,27 @@ test("the control bar only accepts actions it understands", () => {
     { type: "next", patientId: "not-a-uuid" },
     { type: "arrivals", value: "tsunami" },
     { type: "staffing", value: "everyone" },
+    { type: "contact" },
+    { type: "contact", phone: 9025550134 },
+    { type: "contact", phone: "1".repeat(40) },
+    { type: "contact", phone: "902 555 0134", name: 7 },
+    { type: "ask", contactId: "nope", text: "hi" },
+    { type: "ask", contactId: "11111111-2222-4333-8444-555555555555", text: "  " },
   ])
     assert.throws(() => parseDemoAction(bad), { code: "invalid_input" });
+  assert.deepEqual(parseDemoAction({ type: "contact", phone: "902 555 0134" }), {
+    type: "contact",
+    phone: "902 555 0134",
+    name: "",
+  });
+});
+
+test("a judge's phone number is read the way people type it", () => {
+  assert.equal(normalizePhone("902 555 0134"), "+19025550134");
+  assert.equal(normalizePhone("(902) 555-0134"), "+19025550134");
+  assert.equal(normalizePhone("1-902-555-0134"), "+19025550134");
+  assert.equal(normalizePhone("+44 20 7946 0000"), "+442079460000");
+  for (const bad of ["", "555 0134", "+0 902 555 0134", "hello", "+1234567890123456"])
+    assert.equal(normalizePhone(bad), null, bad);
+  assert.equal(maskPhone("+19025550134"), "••• 0134");
 });

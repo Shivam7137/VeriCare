@@ -53,7 +53,20 @@ export type DemoLive = {
     | null;
   patients: DemoPatient[];
   recent: { at: string; text: string }[];
+  /** The judge's text thread, once they became the emergency contact. */
+  phone?: JudgePhone | null;
 };
+export type JudgePhone = {
+  active: boolean;
+  patientId: string;
+  phone: string;
+  /** The newest text's delivery status, which says whether texts really leave the server. */
+  delivery: string | null;
+  /** Newest first. "in" is what the judge texted. */
+  messages: { at: string; body: string; direction: "in" | "out" }[];
+};
+/** What this browser keeps about the contact it created. */
+export type JudgeContact = { id: string; phone: string };
 export type DemoState = { active: false } | DemoLive;
 
 export type DemoAction =
@@ -68,7 +81,9 @@ export type DemoAction =
   | { type: "staffing"; value: Staffing }
   | { type: "reset" }
   /** Counts as use, so the demo does not start over by itself yet. */
-  | { type: "keep" };
+  | { type: "keep" }
+  | { type: "contact"; name: string; phone: string }
+  | { type: "ask"; contactId: string; text: string };
 
 export class DemoError extends Error {
   constructor(
@@ -87,6 +102,9 @@ const friendly: Record<string, string> = {
   nothing_next: "Nothing is left to do for this patient.",
   not_found: "That patient has already left.",
   invalid_input: "That control isn't available.",
+  invalid_phone: "That doesn't look like a phone number. Try 902 555 0134 or +44 20 7946 0000.",
+  featured_gone: "Maya's visit has ended. Restart the demo to try again.",
+  contact_limit: "Maya has too many contacts already. Restart the demo to clear them.",
 };
 
 async function call<T>(path: string, init?: { body: unknown }): Promise<T> {
@@ -107,11 +125,16 @@ async function call<T>(path: string, init?: { body: unknown }): Promise<T> {
 }
 
 export const demo = {
-  state: (visit?: string) =>
-    call<DemoState>(`state${visit ? `?visit=${encodeURIComponent(visit)}` : ""}`),
-  act: (action: DemoAction, focus?: string) =>
-    call<{ note: string; state: DemoState }>("act", {
-      body: { ...action, ...(focus ? { focus } : {}) },
+  state: (visit?: string, contact?: string) => {
+    const query = new URLSearchParams();
+    if (visit) query.set("visit", visit);
+    if (contact) query.set("contact", contact);
+    const text = query.toString();
+    return call<DemoState>(`state${text ? `?${text}` : ""}`);
+  },
+  act: (action: DemoAction, focus?: string, contact?: string) =>
+    call<{ note: string; state: DemoState; contact?: JudgeContact }>("act", {
+      body: { ...action, ...(focus ? { focus } : {}), ...(contact ? { contact } : {}) },
     }),
 };
 

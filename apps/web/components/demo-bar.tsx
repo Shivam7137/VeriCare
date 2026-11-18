@@ -1,32 +1,38 @@
 "use client";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   DemoError,
-  SPEEDS,
   deltaText,
   demo,
   sparkline,
-  speedHint,
   type DemoAction,
   type DemoLive,
   type DemoState,
+  type JudgeContact,
 } from "../lib/demo";
 import { clock, minutesText } from "../lib/journey";
 import "../app/demo-bar.css";
+import "../app/demo-steps.css";
+import { AdvancedRow } from "./demo-advanced";
 import { Glyph } from "./demo-glyphs";
 import { Brand, ConfirmReset, Panel, Toast } from "./demo-panel";
 import { STORE, read, useBarPlacement, write } from "./demo-placement";
+import { APPS, GuidedDeck, onApp, type StepKey } from "./demo-steps";
 
 // The floating demo bar. Judges cannot wait hours for an emergency department to move, so
 // this lets them speed time up, add patients, skip ahead and push one visit to its next step,
-// and shows what the wait model makes of each change. It only asks the API; the API owns the
-// simulation, and every change flows through the same feed as the hospital's own messages.
+// and shows what the wait model makes of each change. It opens on three guided steps
+// (demo-steps.tsx); "Advanced" shows every control (demo-advanced.tsx). It only asks the API;
+// the API owns the simulation, and every change flows through the hospital's own feed.
+
+type Mode = "guided" | "advanced";
 
 const first = (name: string) => name.split(" ")[0] ?? name;
 
 export default function DemoBar() {
   const path = usePathname();
+  const router = useRouter();
   const portal = path.startsWith("/patient") ? "patient" : "professional";
   const fromPath = /^\/professional\/ed\/patients\/([0-9a-f-]{36})/i.exec(path)?.[1] ?? null;
 
@@ -50,6 +56,11 @@ export default function DemoBar() {
   const skipping = useRef(false);
   const inflight = useRef(false);
   const autoSeen = useRef<string | null | undefined>(undefined);
+  const [mode, setMode] = useState<Mode>("guided");
+  const [step, setStep] = useState<StepKey>(1);
+  const [surged, setSurged] = useState(false);
+  const [contact, setContact] = useState<JudgeContact | null>(null);
+  const contactRef = useRef<string | null>(null);
 
   const live: DemoLive | null = state?.active ? state : null;
   const focusId = picked ?? fromPath;
@@ -59,8 +70,35 @@ export default function DemoBar() {
     skipping.current = (live?.skipping ?? 0) > 0;
   });
 
-  // Whether the bar was tucked away last time.
-  useEffect(() => setHidden(read<boolean>(STORE.hidden) === true), []);
+  // Whether the bar was tucked away last time, which mode and step it was in, and the
+  // emergency contact this browser created (its family link exists nowhere else).
+  useEffect(() => {
+    setHidden(read<boolean>(STORE.hidden) === true);
+    if (read<Mode>(STORE.mode) === "advanced") setMode("advanced");
+    const savedStep = read<number>(STORE.step);
+    if (savedStep === 1 || savedStep === 2 || savedStep === 3) setStep(savedStep);
+    const saved = read<JudgeContact>(STORE.contact);
+    if (saved && typeof saved.id === "string" && typeof saved.phone === "string") {
+      setContact(saved);
+      contactRef.current = saved.id;
+    }
+  }, []);
+  const remember = (next: JudgeContact | null) => {
+    setContact(next);
+    contactRef.current = next?.id ?? null;
+    write(STORE.contact, next);
+  };
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setOpen(false);
+    write(STORE.mode, next);
+  };
+  // Each step is one of the three apps; choosing it opens that app in this tab.
+  const goStep = (next: StepKey) => {
+    setStep(next);
+    write(STORE.step, next);
+    if (!onApp(next, path)) router.push(APPS[next]);
+  };
 
   // One poll for the bar's whole life. Faster while a skip is running, paused when hidden.
   useEffect(() => {
@@ -71,11 +109,20 @@ export default function DemoBar() {
         inflight.current = true;
         const ticket = ++issued.current;
         try {
-          const next = await demo.state(focusRef.current ?? undefined);
+          const next = await demo.state(
+            focusRef.current ?? undefined,
+            contactRef.current ?? undefined,
+          );
           if (!stopped && ticket >= shown.current) {
             shown.current = ticket;
             setState(next);
             setOffline(false);
+            // A reset wiped the contact this browser made: forget it.
+            if (next.active && next.phone === null && contactRef.current) {
+              contactRef.current = null;
+              setContact(null);
+              write(STORE.contact, null);
+            }
             if (next.active) {
               const marker = next.idleReset.lastAutoReset;
               // The demo started over by itself since we last looked: say so once.
@@ -124,28 +171,44 @@ export default function DemoBar() {
 
   const say = (text: string, warn = false) => setToast({ id: Date.now(), text, warn });
 
+  /** One action, or several in order (step 1's start is a reset and a speed). */
   const run = useCallback(
-    async (key: string, action: DemoAction) => {
+    async (key: string, actions: DemoAction | DemoAction[], label?: string) => {
       if (busyRef.current) return;
       busyRef.current = true;
       setBusy(key);
+      const list = Array.isArray(actions) ? actions : [actions];
       const before = state?.active ? state.model.medianMinutes : null;
-      const ticket = ++issued.current;
       try {
-        const reply = await demo.act(action, focusRef.current ?? undefined);
-        if (ticket >= shown.current) {
-          shown.current = ticket;
-          setState(reply.state);
-          setOffline(false);
+        let reply: Awaited<ReturnType<typeof demo.act>> | null = null;
+        for (const action of list) {
+          const ticket = ++issued.current;
+          reply = await demo.act(
+            action,
+            focusRef.current ?? undefined,
+            contactRef.current ?? undefined,
+          );
+          if (ticket >= shown.current) {
+            shown.current = ticket;
+            setState(reply.state);
+            setOffline(false);
+          }
+          if (reply.contact) remember(reply.contact);
         }
+        if (!reply) return;
         const after = reply.state.active ? reply.state.model.medianMinutes : null;
         // Only actions that change the queue get a before/after line; the running clock's
         // own drift would otherwise be credited to a pause or a reset.
-        const changes = ["add", "surge", "next", "arrivals", "staffing"].includes(action.type);
+        const changes = list.some((action) =>
+          ["add", "surge", "next", "arrivals", "staffing"].includes(action.type),
+        );
         const change = changes ? deltaText(before, after) : null;
-        say(change ? `${reply.note} · typical wait ${before} → ${after} min` : reply.note);
+        const note = label ?? reply.note;
+        say(change ? `${note} · typical wait ${before} → ${after} min` : note);
         if (change && after !== null && before !== null)
           setFlash({ text: change, worse: after > before });
+        if (list.some((action) => action.type === "surge")) setSurged(true);
+        if (list.some((action) => action.type === "reset")) setSurged(false);
       } catch (error) {
         say(
           error instanceof DemoError ? error.message : "That didn't go through. Please try again.",
@@ -169,6 +232,8 @@ export default function DemoBar() {
     setOpen(false);
     write(STORE.hidden, value);
   };
+
+  const addContact = (phone: string) => void run("contact", { type: "contact", name: "", phone });
 
   if (gone) return null;
   if (hidden)
@@ -206,6 +271,52 @@ export default function DemoBar() {
     </div>
   );
 
+  const guided = (
+    <GuidedDeck
+      live={live}
+      ready={state !== null}
+      stuck={offline}
+      busy={busy}
+      step={step}
+      surged={surged}
+      contact={contact}
+      grip={place.grip}
+      onStep={goStep}
+      onRun={(key, actions, label) => void run(key, actions, label)}
+      onContact={addContact}
+      onForget={() => remember(null)}
+      onAsk={(text) =>
+        contact && void run("ask", { type: "ask", contactId: contact.id, text }, "Answered.")
+      }
+      path={path}
+      onAskReset={() => setConfirmReset(true)}
+      onAdvanced={() => switchMode("advanced")}
+      onTuck={() => tuck(true)}
+    />
+  );
+  const confirm = confirmReset && (
+    <ConfirmReset
+      busy={offline}
+      onYes={() => {
+        closeConfirm();
+        void run("reset", { type: "reset" });
+      }}
+      onNo={closeConfirm}
+    />
+  );
+
+  // Guided, before the demo is running: step 1 starts it.
+  if (mode === "guided" && !live)
+    return frame(
+      <div className="dbar-deck" ref={place.deckRef} data-mode="guided">
+        {guided}
+      </div>,
+      <>
+        {confirm}
+        {toast && <Toast {...toast} />}
+      </>,
+    );
+
   // Connecting, or the demo has not been started yet.
   if (!state || !state.active) {
     const starting = busy === "reset";
@@ -228,14 +339,15 @@ export default function DemoBar() {
               </button>
             </>
           )}
+          <button type="button" className="dbar-mode" onClick={() => switchMode("guided")}>
+            Simple
+          </button>
         </div>
       </div>,
       toast && <Toast {...toast} />,
     );
   }
 
-  const act = (key: string, action: DemoAction) => () => void run(key, action);
-  const focus = live!.focus;
   const model = live!.model;
   const spark = sparkline(
     model.trend.map((point) => point.median),
@@ -245,169 +357,26 @@ export default function DemoBar() {
   // Buttons stay live while an action runs (a second press is simply ignored), so the bar
   // never flickers grey; only a lost connection disables them.
   const stuck = offline;
+  const focus = live!.focus;
 
   return frame(
-    <div className="dbar-deck" ref={place.deckRef}>
-      <div className="dbar-row">
-        <button
-          type="button"
-          className="dbar-grip"
-          aria-label="Move the demo controls with the arrow keys. Home puts them back."
-          title="Drag or use the arrow keys to move. Double-click or Home to put it back."
-          {...place.grip}
-        >
-          <Glyph name="grip" />
-        </button>
-        <Brand running={live!.running} />
-
-        <div role="group" className="dbar-group" aria-label="Time">
-          <span className="dbar-cap" data-skipping={live!.skipping ? "" : undefined}>
-            {live!.skipping ? `Skipping ahead · ${minutesText(live!.skipping)} to go` : "Time"}
-          </span>
-          <div className="dbar-line">
-            <button
-              type="button"
-              className="dbar-play"
-              aria-label={live!.running ? "Pause time" : "Play time"}
-              title={live!.running ? "Pause" : "Play"}
-              disabled={stuck}
-              onClick={act("play", { type: live!.running ? "pause" : "play" })}
-            >
-              <Glyph name={live!.running ? "pause" : "play"} />
-            </button>
-            <div className="dbar-clock" title="The emergency department's clock (Halifax time)">
-              <b>{clock(live!.clock)}</b>
-              <small>{live!.running ? speedHint(live!.speed) : "Paused"}</small>
-            </div>
-            <div className="dbar-seg" role="group" aria-label="Speed">
-              {SPEEDS.map((speed) => (
-                <button
-                  key={speed}
-                  type="button"
-                  aria-pressed={live!.running && live!.speed === speed}
-                  title={`${speedHint(speed)}`}
-                  disabled={stuck}
-                  onClick={act(`speed-${speed}`, { type: "speed", value: speed })}
-                >
-                  ×{speed}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div role="group" className="dbar-group" aria-label="Patients">
-          <span className="dbar-cap">
-            {live!.counts.inDepartment} in the ER · {live!.counts.waiting} waiting
-          </span>
-          <div className="dbar-line">
-            <button
-              type="button"
-              disabled={stuck}
-              title="One patient walks in"
-              onClick={act("add-1", { type: "add", count: 1 })}
-            >
-              +1
-            </button>
-            <button
-              type="button"
-              disabled={stuck}
-              title="Five patients walk in"
-              onClick={act("add-5", { type: "add", count: 5 })}
-            >
-              +5
-            </button>
-            <button
-              type="button"
-              className="dbar-surge"
-              disabled={stuck}
-              title="Five urgent patients arrive at once, like a bus crash"
-              onClick={act("surge", { type: "surge" })}
-            >
-              <Glyph name="bolt" /> Surge
-            </button>
-          </div>
-        </div>
-
-        <div role="group" className="dbar-group" aria-label="Move things along">
-          <span className="dbar-cap">Move things along</span>
-          <div className="dbar-line">
-            <button
-              type="button"
-              className="dbar-next"
-              disabled={stuck || (focus !== null && focus.next === null)}
-              title={
-                focus?.next
-                  ? `${focus.name}: ${focus.next}`
-                  : "Choose a patient in the list, then move them on"
-              }
-              onClick={() =>
-                focus ? void run("next", { type: "next", patientId: focus.id }) : setOpen(true)
-              }
-            >
-              <span>Next step</span>
-              <small>
-                {focus
-                  ? focus.next
-                    ? `${first(focus.name)} → ${focus.next.toLowerCase()}`
-                    : `${first(focus.name)} follows a script`
-                  : "Pick a patient"}
-              </small>
-            </button>
-            <button
-              type="button"
-              disabled={stuck}
-              title="Skip ahead 15 minutes"
-              onClick={act("skip-15", { type: "skip", minutes: 15 })}
-            >
-              +15m
-            </button>
-            <button
-              type="button"
-              disabled={stuck}
-              title="Skip ahead one hour"
-              onClick={act("skip-60", { type: "skip", minutes: 60 })}
-            >
-              +1h
-            </button>
-          </div>
-        </div>
-
-        <div className="dbar-end">
-          <button
-            type="button"
-            ref={resetRef}
-            className="dbar-resetbtn"
-            aria-label="Reset the demo"
-            title="Start the demo over from the beginning"
-            disabled={stuck}
-            onClick={() => setConfirmReset(true)}
-          >
-            <Glyph name="reset" />
-            <span className="dbar-btn-text">Reset</span>
-          </button>
-          <button
-            type="button"
-            className="dbar-more"
-            aria-label={open ? "Less controls" : "More controls"}
-            aria-expanded={open}
-            aria-controls="dbar-panel"
-            onClick={() => setOpen(!open)}
-          >
-            <Glyph name={open ? "down" : "up"} />
-            <span className="dbar-btn-text">{open ? "Less" : "More"}</span>
-          </button>
-          <button
-            type="button"
-            className="dbar-icon"
-            aria-label="Tuck the demo controls away"
-            title="Tuck away"
-            onClick={() => tuck(true)}
-          >
-            <Glyph name="close" />
-          </button>
-        </div>
-      </div>
+    <div className="dbar-deck" ref={place.deckRef} data-mode={mode}>
+      {mode === "guided" ? (
+        guided
+      ) : (
+        <AdvancedRow
+          live={live!}
+          stuck={stuck}
+          grip={place.grip}
+          open={open}
+          resetRef={resetRef}
+          onRun={(key, action) => void run(key, action)}
+          onOpen={setOpen}
+          onAskReset={() => setConfirmReset(true)}
+          onSimple={() => switchMode("guided")}
+          onTuck={() => tuck(true)}
+        />
+      )}
       <div className="dbar-readout" role="group" aria-label="What the wait model predicts">
         <span className="dbar-readout-label">ML model</span>
         <strong>{model.medianMinutes === null ? "—" : minutesText(model.medianMinutes)}</strong>
@@ -439,7 +408,11 @@ export default function DemoBar() {
               : "Nobody is waiting"}
         </span>
         {live!.idleReset.inMinutes !== null && live!.idleReset.inMinutes <= 5 && (
-          <button type="button" className="dbar-idle" onClick={act("keep", { type: "keep" })}>
+          <button
+            type="button"
+            className="dbar-idle"
+            onClick={() => void run("keep", { type: "keep" })}
+          >
             Starts over in {Math.max(1, live!.idleReset.inMinutes)} min if idle · Keep going
           </button>
         )}
@@ -461,7 +434,7 @@ export default function DemoBar() {
       )}
     </div>,
     <>
-      {open && (
+      {open && mode === "advanced" && (
         <Panel
           live={live!}
           focusId={focus?.id ?? null}
@@ -471,16 +444,7 @@ export default function DemoBar() {
           onRun={(key, action) => void run(key, action)}
         />
       )}
-      {confirmReset && (
-        <ConfirmReset
-          busy={stuck}
-          onYes={() => {
-            closeConfirm();
-            void run("reset", { type: "reset" });
-          }}
-          onNo={closeConfirm}
-        />
-      )}
+      {confirm}
       {toast && <Toast {...toast} />}
     </>,
   );

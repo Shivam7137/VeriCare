@@ -1,0 +1,337 @@
+/* The guided 1-2-3 demo inside the demo bar. Same dark deck and tokens as demo-bar.css. */
+.dbar-deck[data-mode="guided"] {
+  width: min(860px, calc(100vw - 16px));
+}
+
+.dbar-guide-head {
+  align-items: center;
+  gap: 8px 6px;
+}
+.dbar-steps {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 3px;
+  list-style: none;
+  border: 1px solid var(--d-line);
+  border-radius: 14px;
+  background: rgb(0 0 0 / 24%);
+}
+.dbar .dbar-stepbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px 0 6px;
+  border-color: transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--d-soft);
+}
+.dbar .dbar-stepbtn[aria-current="step"] {
+  background: var(--d-ink);
+  color: var(--d-bg);
+}
+@media (hover: hover) {
+  .dbar .dbar-stepbtn[aria-current="step"]:hover:not(:disabled) {
+    background: var(--d-ink);
+  }
+}
+.dbar-stepnum {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--d-raise-hi);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dbar-stepbtn[aria-current="step"] .dbar-stepnum {
+  background: var(--d-bg);
+  color: var(--d-ink);
+}
+.dbar-stepbtn[data-done] .dbar-stepnum {
+  background: var(--d-accent);
+  color: var(--d-accent-ink);
+}
+.dbar-steptext {
+  white-space: nowrap;
+}
+.dbar-miniclock {
+  color: var(--d-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dbar .dbar-mode {
+  min-height: 34px;
+  color: var(--d-soft);
+  font-size: 12.5px;
+}
+
+/* ---- one stage ---- */
+.dbar-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 12px 20px;
+  border-top: 1px solid var(--d-line);
+}
+.dbar-lead h3 {
+  margin: 0 0 3px;
+  font: 650 16px/1.2 var(--d-display);
+}
+.dbar-lead h3 span {
+  margin-right: 4px;
+  color: var(--d-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dbar-lead p {
+  max-width: 64ch;
+  margin: 0;
+  color: var(--d-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.dbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dbar .dbar-start,
+.dbar .dbar-surge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dbar .dbar-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--d-soft);
+}
+.dbar-inline-label {
+  margin-left: 6px;
+  color: var(--d-soft);
+  font-size: 12px;
+}
+.dbar-fact {
+  margin: 0;
+  color: var(--d-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dbar-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+/* Title, then where you are (or the link to that app), then the explanation. */
+.dbar-lead p {
+  flex-basis: 100%;
+  order: 2;
+}
+.dbar-open,
+.dbar-here {
+  order: 1;
+}
+.dbar-lead b {
+  color: var(--d-ink);
+  font-weight: 650;
+}
+.dbar-open {
+  margin-top: 0;
+  color: var(--d-accent);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.dbar-open:hover {
+  text-decoration: underline;
+}
+.dbar-open:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--d-accent);
+  outline-offset: 2px;
+}
+.dbar-here {
+  margin-top: 0;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgb(79 209 183 / 16%);
+  color: var(--d-accent);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+/* ---- the phone number form ---- */
+.dbar-phoneform input,
+.dbar-ask input {
+  width: 250px;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--d-line);
+  border-radius: 11px;
+  background: rgb(0 0 0 / 28%);
+  color: var(--d-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.dbar-phoneform input::placeholder,
+.dbar-ask input::placeholder {
+  color: rgb(169 200 206 / 70%);
+}
+.dbar-phoneform input:focus-visible,
+.dbar-ask input:focus-visible {
+  outline: 2px solid var(--d-accent);
+  outline-offset: 1px;
+}
+.dbar-fine {
+  flex-basis: 100%;
+  color: var(--d-soft);
+  font-size: 11.5px;
+}
+.dbar-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- the judge's texts ---- */
+.dbar-inbox {
+  padding: 10px 12px;
+  border: 1px solid var(--d-line);
+  border-radius: 14px;
+  background: rgb(0 0 0 / 20%);
+}
+.dbar-inbox h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.dbar-inbox h4 small {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--d-raise-hi);
+  color: var(--d-soft);
+}
+.dbar-inbox ol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dbar-inbox li {
+  max-width: 560px;
+  animation: dbar-in 240ms var(--d-ease);
+}
+.dbar-inbox p {
+  display: -webkit-box;
+  margin: 0 0 2px;
+  padding: 7px 11px;
+  overflow: hidden;
+  border-radius: 12px 12px 12px 4px;
+  background: var(--d-raise-hi);
+  font-size: 12.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.dbar-inbox li small {
+  color: var(--d-soft);
+  font-size: 11px;
+}
+/* What the judge texted sits on the right, like on a phone. */
+.dbar-inbox li[data-dir="in"] {
+  align-self: flex-end;
+  text-align: right;
+}
+.dbar-inbox li[data-dir="in"] p {
+  border-radius: 12px 12px 4px 12px;
+  background: rgb(79 209 183 / 22%);
+  text-align: left;
+}
+.dbar-inbox ol {
+  flex-direction: column-reverse;
+}
+.dbar-ask {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.dbar-ask label {
+  flex: 1 1 auto;
+}
+.dbar .dbar-ask input {
+  width: 100%;
+}
+.dbar-inbox .dbar-fine {
+  display: block;
+  margin: 6px 0 0;
+}
+
+.dbar-stage-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+.dbar .dbar-nextstage {
+  border-color: rgb(79 209 183 / 60%);
+  color: var(--d-accent);
+}
+
+@media (max-width: 880px) {
+  .dbar-deck[data-mode="guided"] {
+    width: auto;
+  }
+  .dbar-guide-head .dbar-miniclock {
+    display: none;
+  }
+  .dbar-steps {
+    order: 2;
+    flex: 1 1 100%;
+  }
+  .dbar-steps li {
+    flex: 1 1 0;
+  }
+  .dbar .dbar-stepbtn {
+    justify-content: center;
+    width: 100%;
+    padding: 0 6px;
+  }
+  .dbar-steptext {
+    font-size: 12px;
+  }
+  .dbar-guide-head .dbar-end {
+    order: 1;
+  }
+  .dbar-stage {
+    max-height: 52vh;
+    overflow-y: auto;
+    padding: 10px 12px;
+  }
+  .dbar-phoneform input {
+    flex: 1 1 100%;
+    width: auto;
+  }
+}

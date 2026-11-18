@@ -25,6 +25,7 @@ import {
   type Staffing,
   type Stream,
 } from "./flow.js";
+import { addJudgeContact, askAsContact } from "./contact.js";
 import { writeMove } from "./messages.js";
 import { MAYA_VISIT, isScripted, openingMessages, wipeDepartment } from "./seed.js";
 import { SPEEDS, type DemoAction, type DemoState, type Row, type Speed } from "./types.js";
@@ -521,6 +522,7 @@ export function createDemoDirector(
     return exclusive(async () => {
       await ensure();
       let note = "";
+      let contact: { id: string; phone: string } | undefined;
       if (action.type === "reset") note = await reset();
       else if (!m.active) throw new BackendError("demo_not_started", 409);
       else {
@@ -565,9 +567,17 @@ export function createDemoDirector(
           case "keep":
             note = "Keeping this demo. It will not start over yet.";
             break;
+          case "contact":
+            // Real time, like the apps' own messages: the Guardian compares it with when the
+            // feed last spoke, and the department clock runs ahead of that.
+            ({ note, contact } = await addJudgeContact(pool, action, clock()));
+            break;
+          case "ask":
+            note = await askAsContact(pool, action, clock(), options.agent ?? null);
+            break;
         }
       }
-      return { note, state: await state(focus) };
+      return { note, state: await state(focus), ...(contact ? { contact } : {}) };
     });
   }
 

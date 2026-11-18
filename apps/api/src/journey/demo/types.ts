@@ -31,7 +31,11 @@ export type DemoAction =
   | { type: "staffing"; value: Staffing }
   | { type: "reset" }
   /** Counts as use, so the demo does not start over by itself yet. */
-  | { type: "keep" };
+  | { type: "keep" }
+  /** A judge becomes the featured patient's emergency contact, with their own phone. */
+  | { type: "contact"; name: string; phone: string }
+  /** The judge texts a question as that contact. */
+  | { type: "ask"; contactId: string; text: string };
 
 export type DemoPatient = {
   id: string;

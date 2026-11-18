@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import { buildApp } from "../../src/app.js";
 import { createSession } from "../../src/identity.js";
 import { createDemoDirector, type DemoState } from "../../src/journey/demo/director.js";
+import { judgePhone } from "../../src/journey/demo/contact.js";
 import { registerDemoRoutes } from "../../src/journey/demo/routes.js";
 import { workflowFixture } from "./workflow-fixture.js";
 
@@ -363,4 +364,72 @@ test("pressing Reset twice in a row gives one reset, and a restarted API keeps t
   // Fatima's script says she is seen at +75 min. The adopted director still plays it.
   await second.runTo(second.clock() + 20 * MIN);
   assert.equal(await fatima(), "being_seen");
+});
+
+test("a judge who types their number becomes Maya's emergency contact and gets her texts", async (t) => {
+  const f = await workflowFixture(t);
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const director = createDemoDirector(f.pool, { now: () => new Date(wall), seed: 5 });
+  await assert.rejects(director.act({ type: "contact", name: "", phone: "902 555 0134" }), {
+    code: "demo_not_started",
+  });
+  const started = live((await director.act({ type: "reset" })).state);
+  const maya = started.patients.find((patient) => patient.name === "Maya Chen")!;
+  await assert.rejects(director.act({ type: "contact", name: "", phone: "12" }), {
+    code: "invalid_phone",
+  });
+
+  wall += 1_000;
+  const added = await director.act({ type: "contact", name: "", phone: "902 555 0134" });
+  const contact = added.contact!;
+  assert.equal(contact.phone, "••• 0134");
+  // Typing the number was the opt-in. There is no web page: the text thread is the experience.
+  const row = await f.pool.query(
+    "SELECT phone, sms_opt_in_at IS NOT NULL AS opted, scopes FROM ed_contacts WHERE id = $1",
+    [contact.id],
+  );
+  assert.equal(row.rows[0].phone, "+19025550134");
+  assert.equal(row.rows[0].opted, true);
+  assert.deepEqual(row.rows[0].scopes, ["status", "alerts", "estimates"]);
+  const phone = (await judgePhone(f.pool, contact.id))!;
+  assert.equal(phone.active, true);
+  assert.equal(phone.patientId, maya.id);
+  assert.equal(phone.messages.length, 1);
+  assert.equal(phone.messages[0]!.direction, "out");
+  assert.match(phone.messages[0]!.body, /Maya's emergency contact/);
+  assert.doesNotMatch(phone.messages[0]!.body, /https?:/);
+  // The welcome went to the text queue like any other text to an opted-in contact.
+  const queued = await f.pool.query("SELECT count(*)::int AS n FROM ed_sms WHERE contact_id = $1", [
+    contact.id,
+  ]);
+  assert.equal(queued.rows[0].n, 1);
+
+  // Texting back a question is answered in the same thread, through the Visit Agent's rules.
+  wall += 1_000;
+  await director.act({ type: "ask", contactId: contact.id, text: "How is she doing?" });
+  const thread = (await judgePhone(f.pool, contact.id))!.messages;
+  assert.equal(thread.length, 3);
+  assert.deepEqual(
+    thread.map((message) => message.direction),
+    ["out", "in", "out"],
+  );
+  assert.equal(thread[1]!.body, "How is she doing?");
+  assert.ok(thread[0]!.body.length > 0);
+
+  // At speed the department clock runs well ahead of the wall; the answer must still be
+  // Maya's status, not the stale-feed handoff.
+  await director.runTo(director.clock() + 40 * MIN);
+  wall += 1_000;
+  await director.act({ type: "ask", contactId: contact.id, text: "Any news?" });
+  const answer = (await judgePhone(f.pool, contact.id))!.messages[0]!.body;
+  assert.doesNotMatch(answer, /speak with the ER team/);
+
+  // The same number again replaces the old entry; a reset forgets it entirely.
+  wall += 1_000;
+  const again = await director.act({ type: "contact", name: "Pat", phone: "+1 902 555 0134" });
+  assert.equal((await judgePhone(f.pool, contact.id))!.active, false);
+  assert.equal((await judgePhone(f.pool, again.contact!.id))!.active, true);
+  wall += 10_000;
+  await director.act({ type: "reset" });
+  assert.equal(await judgePhone(f.pool, again.contact!.id), null);
 });

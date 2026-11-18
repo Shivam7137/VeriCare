@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { BackendError } from "../../domain.js";
 import { authenticate, type Principal } from "../../identity.js";
 import type { Agent } from "../intake.js";
+import { judgePhone } from "./contact.js";
 import { createDemoDirector, type DemoDirector } from "./director.js";
 import { SPEEDS, type DemoAction } from "./types.js";
 
@@ -49,6 +50,17 @@ export function parseDemoAction(body: unknown): DemoAction {
       if (input.value !== "low" && input.value !== "normal" && input.value !== "high")
         throw invalid();
       return { type: "staffing", value: input.value };
+    case "contact":
+      if (typeof input.phone !== "string" || input.phone.length > 32) throw invalid();
+      if (input.name !== undefined && (typeof input.name !== "string" || input.name.length > 80))
+        throw invalid();
+      return { type: "contact", phone: input.phone, name: (input.name as string) ?? "" };
+    case "ask": {
+      const text = typeof input.text === "string" ? input.text.trim() : "";
+      if (typeof input.contactId !== "string" || !uuid.test(input.contactId)) throw invalid();
+      if (!text || text.length > 500) throw invalid();
+      return { type: "ask", contactId: input.contactId, text };
+    }
     default:
       throw invalid();
   }
@@ -111,15 +123,23 @@ export function registerDemoRoutes(
       };
     };
 
+    // The judge's own phone: the texts sent to the contact this browser created, if any.
+    const withPhone = async <T extends { active: boolean }>(state: T, contact?: unknown) =>
+      state.active && typeof contact === "string" && uuid.test(contact)
+        ? { ...state, phone: await judgePhone(pool, contact) }
+        : state;
+
     demo.get("/journey/demo/state", async (request) => {
-      const { visit } = request.query as { visit?: string };
-      return director.state(focusOf(request, visit));
+      const { visit, contact } = request.query as { visit?: string; contact?: string };
+      return withPhone(await director.state(focusOf(request, visit)), contact);
     });
     demo.post("/journey/demo/act", async (request) => {
       const body = request.body as Record<string, unknown> | null;
       const action = parseDemoAction(body);
       const asked = typeof body?.focus === "string" ? body.focus : undefined;
-      return director.act(action, focusOf(request, asked));
+      const result = await director.act(action, focusOf(request, asked));
+      const contact = result.contact?.id ?? body?.contact;
+      return { ...result, state: await withPhone(result.state, contact) };
     });
   });
   return director;
