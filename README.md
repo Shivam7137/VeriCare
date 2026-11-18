@@ -372,7 +372,7 @@ The ER has the most uncertainty, the most calls and the least staff time, so it 
 
 ## Run it yourself
 
-You need Node.js 24 and Docker Desktop with its Linux engine running. From the repository root:
+The full step-by-step guide, with troubleshooting and a section for coding agents, is [SETUP.md](SETUP.md). The short version: you need Node.js 24 and Docker Desktop with its Linux engine running. From the repository root:
 
 ```sh
 npm ci

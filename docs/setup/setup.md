@@ -3,8 +3,8 @@
 Use Node.js 24, npm and Docker Desktop with the Linux engine running. The repository uses npm workspaces and a committed lockfile. No OpenAI, Twilio or hospital credentials are needed.
 
 ```sh
-git clone https://github.com/Shivam7137/patient-request-coordination.git
-cd patient-request-coordination
+git clone https://github.com/Shivam7137/VeriCare.git
+cd VeriCare
 npm ci
 npm run setup
 npm run db:up

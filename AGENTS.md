@@ -1,6 +1,6 @@
 # Repository instructions
 
-Read README.md for scope and consult docs/design/architecture.md when relevant. This is a disposable collaboration workspace: direct pushes are allowed, checks are optional, and there are no required reviews or formal handoffs.
+Read README.md for scope and consult docs/design/architecture.md when relevant. To run the stack locally, follow SETUP.md (Part 2 is written for agents). This is a disposable collaboration workspace: direct pushes are allowed, checks are optional, and there are no required reviews or formal handoffs.
 
 - `/plan`: read docs/agent/plan.md.
 - `/exec`: read docs/agent/exec.md.
