@@ -17,6 +17,8 @@ export const STORE = {
   mode: "vc-demo-bar-mode",
   step: "vc-demo-bar-step",
   contact: "vc-demo-contact",
+  // Set by ?clean=1 (cleared by ?clean=0): no bar at all, for screen recordings.
+  clean: "vc-demo-clean",
 };
 export const read = <T>(key: string): T | null => {
   try {
@@ -155,4 +157,41 @@ export function useBarPlacement(shown: boolean) {
       onDoubleClick: goHome,
     },
   };
+}
+
+/**
+ * Keeps the page scrollable past the bar: while it sits over the lower part of the screen,
+ * the page gets that much extra room at the bottom (body padding, via --dbar-reserve), so
+ * nothing the bar covers is ever out of reach.
+ */
+export function useReserveSpace(barRef: { current: HTMLElement | null }, shown: boolean) {
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!shown) {
+      root.style.removeProperty("--dbar-reserve");
+      return;
+    }
+    const measure = () => {
+      const box = barRef.current?.getBoundingClientRect();
+      const lower = box && box.bottom > window.innerHeight * 0.6;
+      if (box && lower)
+        root.style.setProperty(
+          "--dbar-reserve",
+          `${Math.ceil(window.innerHeight - box.top + 12)}px`,
+        );
+      else root.style.removeProperty("--dbar-reserve");
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const watcher = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (barRef.current) watcher?.observe(barRef.current);
+    // A drag moves the bar without resizing it.
+    const timer = window.setInterval(measure, 1000);
+    return () => {
+      window.removeEventListener("resize", measure);
+      watcher?.disconnect();
+      window.clearInterval(timer);
+      root.style.removeProperty("--dbar-reserve");
+    };
+  }, [barRef, shown]);
 }

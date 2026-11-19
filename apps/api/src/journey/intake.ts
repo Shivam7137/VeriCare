@@ -327,8 +327,38 @@ export async function addContact(
   input: { name: string; relationship: string; phone: string; scopes: ConsentScope[] },
   now: Date,
 ) {
+  try {
+    return await insertContact(pool, patientId, input, now);
+  } catch (error) {
+    // Every refusal is on the ledger with its reason, so staff can see why live.
+    if (error instanceof BackendError)
+      await journeyTransaction(pool, async (db) => {
+        const encounter = await latestEncounterForPatient(db, patientId);
+        await audit(db, {
+          at: now,
+          actor: "patient",
+          action: "contact_refused",
+          encounterId: encounter?.id ?? null,
+          detail: { reason: error.code },
+        });
+      }).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function insertContact(
+  pool: Pool,
+  patientId: string,
+  input: { name: string; relationship: string; phone: string; scopes: ConsentScope[] },
+  now: Date,
+) {
   return journeyTransaction(pool, async (db) => {
     const encounter = await ownVisit(db, patientId);
+    const twice = await db.query(
+      "SELECT 1 FROM ed_contacts WHERE encounter_id = $1 AND phone = $2 AND withdrawn_at IS NULL",
+      [encounter.id, input.phone],
+    );
+    if (twice.rowCount) throw new BackendError("duplicate_contact", 409);
     const id = randomUUID();
     // The link is the contact's key to the family page. Only its hash is kept.
     const token = randomBytes(24).toString("base64url");

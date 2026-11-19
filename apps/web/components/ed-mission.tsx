@@ -86,9 +86,15 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
     const timer = window.setInterval(() => {
       if (ready.current && document.visibilityState === "visible") void refresh();
     }, REFRESH_MS);
+    // A tab brought back from the background catches up at once instead of showing old times.
+    const wake = () => {
+      if (ready.current && document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", wake);
     return () => {
       active = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", wake);
     };
   }, []);
 
@@ -151,6 +157,11 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
           <div className="vc-card vc-stat">
             <span>Agent decisions</span>
             <strong>{totals?.runs ?? "–"}</strong>
+            {data?.planner === "rules" && (
+              <span className="vc-chip" data-tone="plain">
+                Rules planner · language model off on this server
+              </span>
+            )}
             <small>
               {totals?.modelRuns ?? 0} planned by the language model,{" "}
               {(totals?.runs ?? 0) - (totals?.modelRuns ?? 0)} by rules
@@ -179,9 +190,12 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
               <Icon name="pulse" />
               <h2>OPOR feed</h2>
             </div>
-            <p className="vc-muted">HL7 v2 messages from the hospital record, newest first.</p>
+            <p className="vc-muted">
+              HL7 v2 messages from the hospital record, newest first. Times: <b>department clock</b>
+              .
+            </p>
             <ul className="vc-feed">
-              {data?.hl7.map((message) => (
+              {feedGroups(data?.hl7 ?? []).map(({ message, count }) => (
                 <li key={message.id}>
                   <button
                     onClick={() => setRaw(raw === message.id ? null : message.id)}
@@ -194,11 +208,23 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
                     <span>
                       {hl7Names[message.type] ?? "Message"}
                       {message.name ? ` · ${message.name}` : ""}
+                      {message.detail ? ` · ${message.detail}` : ""}
+                      {count > 1 && (
+                        <small title="The same message arrived more than once">
+                          {" "}
+                          ×{count} re-sent
+                        </small>
+                      )}
                     </span>
                   </button>
                   {shown?.id === message.id && <pre>{shown.raw}</pre>}
                 </li>
               ))}
+              {!data && !error && (
+                <li className="vc-muted" role="status">
+                  Loading…
+                </li>
+              )}
               {data && data.hl7.length === 0 && (
                 <li className="vc-muted">Start the OPOR Twin to see messages arrive.</li>
               )}
@@ -211,12 +237,18 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
               <h2>Visit Agent</h2>
             </div>
             <p className="vc-muted">
-              What woke the agent, what it chose, and what the Guardian allowed.
+              What woke the agent, what it chose, and what the Guardian allowed. Times:{" "}
+              <b>real time</b>.
             </p>
             <ul className="vc-runs">
               {data?.runs.map((run) => (
                 <Run key={run.id} run={run} />
               ))}
+              {!data && !error && (
+                <li className="vc-muted" role="status">
+                  Loading…
+                </li>
+              )}
               {data && data.runs.length === 0 && <li className="vc-muted">No decisions yet.</li>}
             </ul>
           </section>
@@ -226,7 +258,9 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
               <Icon name="phone" />
               <h2>Patients and families</h2>
             </div>
-            <p className="vc-muted">Every message in and out, on any channel.</p>
+            <p className="vc-muted">
+              Every message in and out, on any channel. Times: <b>real time</b>.
+            </p>
             <ul className="vc-wire">
               {data?.thread.map((message) => (
                 <li key={message.id} data-from={message.direction}>
@@ -240,6 +274,11 @@ export default function EdMission({ embedded = false }: { embedded?: boolean }) 
                   {message.body}
                 </li>
               ))}
+              {!data && !error && (
+                <li className="vc-muted" role="status">
+                  Loading…
+                </li>
+              )}
               {data && data.thread.length === 0 && <li className="vc-muted">Nothing sent yet.</li>}
             </ul>
             {(data?.texts.length ?? 0) > 0 && (
@@ -280,7 +319,7 @@ function Run({ run }: { run: AgentRun }) {
       </div>
       <div className="vc-run-by">
         <span className="vc-chip" data-tone={run.planner === "model" ? "good" : "plain"}>
-          {run.planner === "model" ? `Model · ${run.model}` : "Rules path"}
+          {run.planner === "model" ? `Model · ${run.model}` : "Rules planner"}
         </span>
         {run.latencyMs !== null && (
           <span className="vc-muted">{(run.latencyMs / 1000).toFixed(1)} s</span>
@@ -313,4 +352,21 @@ function Run({ run }: { run: AgentRun }) {
       </ol>
     </li>
   );
+}
+
+/** Consecutive messages that read exactly the same are shown once, with how many arrived. */
+function feedGroups(list: Mission["hl7"]) {
+  const groups: { message: Mission["hl7"][number]; count: number }[] = [];
+  for (const message of list) {
+    const last = groups.at(-1)?.message;
+    const same =
+      last &&
+      last.type === message.type &&
+      last.name === message.name &&
+      last.detail === message.detail &&
+      last.sentAt === message.sentAt;
+    if (same) groups.at(-1)!.count += 1;
+    else groups.push({ message, count: 1 });
+  }
+  return groups;
 }

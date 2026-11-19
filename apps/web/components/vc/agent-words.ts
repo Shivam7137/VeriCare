@@ -29,6 +29,8 @@ export const actionNames: Record<string, string> = {
   status_request_handoff: "Status withheld",
   consent_given: "Consent given",
   consent_withdrawn: "Consent withdrawn",
+  contact_refused: "Contact not added",
+  estimate_withheld: "Estimate withheld (no consent)",
   flag_set: "Flag set",
   flag_cleared: "Flag cleared",
   task_recheck: "Recheck raised",
@@ -46,7 +48,7 @@ export const actionNames: Record<string, string> = {
 
 export function describeRun(run: Pick<AgentRun, "wake" | "plan" | "planner">) {
   const done = run.plan.filter((step) => step.verdict === "done");
-  const said = done.find((step) => step.why && !step.why.startsWith("Floor"))?.why;
+  const said = done.find((step) => step.why && !step.why.startsWith("Safety floor"))?.why;
   return {
     wake: wakeNames[run.wake] ?? run.wake,
     did:

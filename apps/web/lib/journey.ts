@@ -135,6 +135,8 @@ export type AccuracyStage = {
   meanWidthMinutes: number | null;
   awaitingOutcome: number;
   widening: number;
+  /** Below 1 when this department reaches the step sooner than the model and ranges are scaled down. */
+  localScale: number;
 };
 export type AccuracyPoint = {
   stage: StageName;
@@ -173,6 +175,8 @@ export type AgentRun = {
 };
 export type Mission = {
   feed: Desk["feed"];
+  /** "rules" when no language model is configured on this server (the public demo). */
+  planner: "model" | "rules";
   hl7: {
     id: string;
     at: string;
@@ -181,6 +185,8 @@ export type Mission = {
     outcome: string;
     type: string;
     name: string;
+    /** For orders and results: which kind of order (lab, X-ray, consult…). */
+    detail: string | null;
     raw: string;
   }[];
   runs: AgentRun[];

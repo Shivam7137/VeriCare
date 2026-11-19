@@ -17,7 +17,7 @@ import "../app/demo-steps.css";
 import { AdvancedRow } from "./demo-advanced";
 import { Glyph } from "./demo-glyphs";
 import { Brand, ConfirmReset, Panel, Toast } from "./demo-panel";
-import { STORE, read, useBarPlacement, write } from "./demo-placement";
+import { STORE, read, useBarPlacement, useReserveSpace, write } from "./demo-placement";
 import { APPS, GuidedDeck, onApp, type StepKey } from "./demo-steps";
 
 // The floating demo bar. Judges cannot wait hours for an emergency department to move, so
@@ -41,7 +41,9 @@ export default function DemoBar() {
   const [offline, setOffline] = useState(false);
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
-  const place = useBarPlacement(!hidden);
+  const [clean, setClean] = useState(false);
+  const place = useBarPlacement(!hidden && !clean);
+  useReserveSpace(place.barRef, !hidden && !clean && !gone);
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState("");
   const [toast, setToast] = useState<{ id: number; text: string; warn: boolean } | null>(null);
@@ -73,6 +75,10 @@ export default function DemoBar() {
   // Whether the bar was tucked away last time, which mode and step it was in, and the
   // emergency contact this browser created (its family link exists nowhere else).
   useEffect(() => {
+    // ?clean=1 removes the bar entirely (no pill) in this browser until ?clean=0.
+    const cleanParam = new URLSearchParams(window.location.search).get("clean");
+    if (cleanParam === "1" || cleanParam === "0") write(STORE.clean, cleanParam === "1");
+    setClean(read<boolean>(STORE.clean) === true);
     setHidden(read<boolean>(STORE.hidden) === true);
     if (read<Mode>(STORE.mode) === "advanced") setMode("advanced");
     const savedStep = read<number>(STORE.step);
@@ -105,6 +111,8 @@ export default function DemoBar() {
     let stopped = false;
     let timer = 0;
     const tick = async () => {
+      // Clean mode (?clean=1): no bar and no polling, so recordings show only the product.
+      if (read<boolean>(STORE.clean) === true) return;
       if (document.visibilityState === "visible" && !inflight.current) {
         inflight.current = true;
         const ticket = ++issued.current;
@@ -233,9 +241,10 @@ export default function DemoBar() {
     write(STORE.hidden, value);
   };
 
-  const addContact = (phone: string) => void run("contact", { type: "contact", name: "", phone });
+  const addContact = (phone: string, estimates: boolean) =>
+    void run("contact", { type: "contact", name: "", phone, ...(estimates ? {} : { estimates }) });
 
-  if (gone) return null;
+  if (gone || clean) return null;
   if (hidden)
     return (
       <button
@@ -358,6 +367,7 @@ export default function DemoBar() {
   // never flickers grey; only a lost connection disables them.
   const stuck = offline;
   const focus = live!.focus;
+  const drift = driftReason(model.trend);
 
   return frame(
     <div className="dbar-deck" ref={place.deckRef} data-mode={mode}>
@@ -381,10 +391,16 @@ export default function DemoBar() {
         <span className="dbar-readout-label">ML model</span>
         <strong>{model.medianMinutes === null ? "—" : minutesText(model.medianMinutes)}</strong>
         <span className="dbar-readout-text">predicted typical wait to be seen</span>
-        {flash && (
+        {flash ? (
           <em className="dbar-flash" data-worse={flash.worse}>
             {flash.worse ? "▲" : "▼"} {flash.text}
           </em>
+        ) : (
+          drift && (
+            <em className="dbar-flash" data-worse={drift.worse} title="Why the typical wait moved">
+              {drift.worse ? "▲" : "▼"} {drift.text}
+            </em>
+          )
         )}
         {spark && (
           <svg
@@ -401,11 +417,13 @@ export default function DemoBar() {
           </svg>
         )}
         <span className="dbar-readout-focus">
-          {focus?.estimate
-            ? `${first(focus.name)}: ${focus.estimate.low}–${focus.estimate.high} min ${focus.estimate.label}`
-            : model.longestMinutes !== null
-              ? `Longest wait up to ${minutesText(model.longestMinutes)}`
-              : "Nobody is waiting"}
+          {focus?.silenced
+            ? `${first(focus.name)}: estimate withheld (silenced)`
+            : focus?.estimate
+              ? `${first(focus.name)}: ${focus.estimate.low}–${focus.estimate.high} min ${focus.estimate.label}`
+              : model.longestMinutes !== null
+                ? `Longest wait up to ${minutesText(model.longestMinutes)}`
+                : "Nobody is waiting"}
         </span>
         {live!.idleReset.inMinutes !== null && live!.idleReset.inMinutes <= 5 && (
           <button
@@ -448,4 +466,24 @@ export default function DemoBar() {
       {toast && <Toast {...toast} />}
     </>,
   );
+}
+
+/**
+ * Why the typical wait moved on its own between the last two readings, so a change is never
+ * shown without a reason. Null when it barely moved.
+ */
+function driftReason(
+  trend: readonly { median: number; waiting: number }[],
+): { text: string; worse: boolean } | null {
+  const [before, after] = trend.slice(-2);
+  if (!before || !after || Math.abs(after.median - before.median) < 5) return null;
+  const worse = after.median > before.median;
+  const moved = after.waiting - before.waiting;
+  const why =
+    moved > 0
+      ? `${moved} more waiting`
+      : moved < 0
+        ? `${-moved} ${moved === -1 ? "person" : "people"} seen`
+        : "same number waiting, but who is in the queue changed";
+  return { text: `${before.median} → ${after.median} min: ${why}`, worse };
 }

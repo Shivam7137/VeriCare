@@ -127,6 +127,11 @@ function Frame({ children }: { children: ReactNode }) {
                   Stage-time model <b>{desk.model.version}</b>
                   <small>Gradient-boosted quantiles · calibrated to 80%</small>
                 </>
+              ) : !desk ? (
+                <>
+                  Wait model
+                  <small>Loading…</small>
+                </>
               ) : (
                 <>
                   Queue formula
@@ -159,9 +164,9 @@ function Frame({ children }: { children: ReactNode }) {
                 {desk.feed.stale ? "OPOR feed stale" : "OPOR feed live"}
               </span>
             ) : (
-              <span className="vc-live" data-state="stale">
+              <span className="vc-live" data-state="stale" role="status">
                 <i aria-hidden="true" />
-                Waiting for the OPOR feed
+                {desk ? "Waiting for the OPOR feed" : "Connecting…"}
               </span>
             )}
             {desk?.feed && (

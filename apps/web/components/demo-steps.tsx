@@ -77,7 +77,7 @@ export function GuidedDeck({
   grip: HTMLAttributes<HTMLButtonElement>;
   onStep: (step: StepKey) => void;
   onRun: Run;
-  onContact: (phone: string) => void;
+  onContact: (phone: string, estimates: boolean) => void;
   onAsk: (text: string) => void;
   onForget: () => void;
   onAskReset: () => void;
@@ -126,7 +126,7 @@ export function GuidedDeck({
         <div className="dbar-end">
           {live && (
             <span className="dbar-miniclock" title="The emergency department's clock">
-              {clock(live.clock)}
+              ER {clock(live.clock)}
               {live.running ? ` · ×${live.speed}` : " · paused"}
             </span>
           )}
@@ -223,15 +223,15 @@ const LEADS: Record<StepKey, ReactNode> = {
   1: (
     <>
       What the nurses see: a live emergency department fed by the same HL7 messages a hospital
-      sends. <b>Now</b> ranks who needs a person, <b>Board</b> shows every patient. One real minute
-      is an hour of ER.
+      sends. <b>Now</b> ranks who needs a person, <b>Board</b> shows every patient. It starts on
+      Slow: one real minute is ten minutes of ER. Speed up when you&rsquo;re ready.
     </>
   ),
   2: (
     <>
-      Maya Chen&rsquo;s own app shows her step and her wait range. Add your phone number to be her
-      emergency contact: her updates come to you by text, and you can text back a question about
-      her.
+      Maya Chen&rsquo;s own app shows her step and her wait range. She stays in the waiting room
+      until you move her on. Add your phone number to be her emergency contact: her updates come to
+      you by text, and you can text back a question about her.
     </>
   ),
   3: (
@@ -255,9 +255,14 @@ function StepOne({
   onRun: Run;
   onAskReset: () => void;
 }) {
-  const start: DemoAction[] = live
-    ? [{ type: "speed", value: 60 }]
-    : [{ type: "reset" }, { type: "speed", value: 60 }];
+  // Slow on purpose: at Fast, Maya's whole visit would be over before step 2.
+  // After a pause the same button resumes at the speed that was chosen.
+  const resume = Boolean(live?.started);
+  const start: DemoAction[] = resume
+    ? [{ type: "play" }]
+    : live
+      ? [{ type: "speed", value: 10 }]
+      : [{ type: "reset" }, { type: "speed", value: 10 }];
   return (
     <>
       <div className="dbar-actions">
@@ -266,9 +271,18 @@ function StepOne({
             type="button"
             className="dbar-start"
             disabled={stuck || busy === "start"}
-            onClick={() => onRun("start", start, "The ER is running: 1 minute every second.")}
+            onClick={() =>
+              onRun(
+                "start",
+                start,
+                resume
+                  ? `Resumed at ×${live!.speed}.`
+                  : "The ER is running on Slow: 10 ER minutes every real minute.",
+              )
+            }
           >
-            <Glyph name="play" /> {busy === "start" ? "Starting…" : "Start the ER"}
+            <Glyph name="play" />{" "}
+            {busy === "start" ? "Starting…" : resume ? "Resume" : "Start the ER"}
           </button>
         ) : (
           <button type="button" disabled={stuck} onClick={() => onRun("pause", { type: "pause" })}>
@@ -331,72 +345,100 @@ function StepTwo({
   phone: JudgePhone | null;
   onRun: Run;
   onAskReset: () => void;
-  onContact: (phone: string) => void;
+  onContact: (phone: string, estimates: boolean) => void;
   onAsk: (text: string) => void;
   onForget: () => void;
 }) {
   const [number, setNumber] = useState("");
   const [question, setQuestion] = useState("");
-  const maya = phone ? live?.patients.find((patient) => patient.id === phone.patientId) : null;
+  const [estimates, setEstimates] = useState(true);
+  const maya = live?.patients.find((patient) => patient.name === "Maya Chen") ?? null;
+  const reseat = (
+    <button
+      type="button"
+      className={maya ? "dbar-quiet" : "dbar-start"}
+      disabled={stuck || busy === "reseat"}
+      title="Maya arrives again and waits. Nobody else in the ER changes."
+      onClick={() => onRun("reseat", { type: "reseat" }, "Maya is back in the waiting room.")}
+    >
+      <Glyph name="reset" /> {busy === "reseat" ? "Re-seating…" : "Re-seat Maya"}
+    </button>
+  );
+  const moveMaya = (
+    <button
+      type="button"
+      disabled={stuck || !maya?.next}
+      title={maya?.next ?? "Maya has nothing left to do right now"}
+      onClick={() => maya && onRun("maya-next", { type: "next", patientId: maya.id })}
+    >
+      Move Maya to her next step ›
+    </button>
+  );
 
   if (!live) return <p className="dbar-note">Start the ER in step 1 first.</p>;
-  // At speed Maya is seen and sent home within the hour; a fresh demo brings her back.
-  if (!live.patients.some((patient) => patient.name === "Maya Chen"))
+  // She has gone home (a judge moved her through): bring her back without resetting everyone.
+  if (!maya)
     return (
       <div className="dbar-actions">
         <p className="dbar-note">
-          Maya has been sent home. Start over to meet her in the waiting room.
+          Maya has gone home. Re-seat her to meet her in the waiting room.
         </p>
-        <button type="button" className="dbar-start" disabled={stuck} onClick={onAskReset}>
-          <Glyph name="reset" /> Start over
-        </button>
+        {reseat}
       </div>
     );
   if (!phone)
     return (
-      <form
-        className="dbar-actions dbar-phoneform"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (number.trim()) onContact(number);
-        }}
-      >
-        <label>
-          <span className="dbar-sr">Your mobile number</span>
-          <input
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="Your mobile, e.g. 902 555 0134"
-            value={number}
-            maxLength={32}
-            onChange={(event) => setNumber(event.target.value)}
-          />
-        </label>
-        <button
-          type="submit"
-          className="dbar-start"
-          disabled={stuck || busy === "contact" || !number.trim()}
+      <>
+        <div className="dbar-actions">
+          {moveMaya}
+          {maya.step !== "waiting" && maya.step !== "arrived" && reseat}
+        </div>
+        <form
+          className="dbar-actions dbar-phoneform"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (number.trim()) onContact(number, estimates);
+          }}
         >
-          {busy === "contact" ? "Adding…" : "Be her emergency contact"}
-        </button>
-        <small className="dbar-fine">
-          Demo only. Your number is kept in the fictional demo data and wiped on every reset.
-        </small>
-      </form>
+          <label>
+            <span className="dbar-sr">Your mobile number</span>
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="Your mobile, e.g. 902 555 0134"
+              value={number}
+              maxLength={32}
+              onChange={(event) => setNumber(event.target.value)}
+            />
+          </label>
+          <button
+            type="submit"
+            className="dbar-start"
+            disabled={stuck || busy === "contact" || !number.trim()}
+          >
+            {busy === "contact" ? "Adding…" : "Be her emergency contact"}
+          </button>
+          <label className="dbar-fine dbar-check">
+            <input
+              type="checkbox"
+              checked={estimates}
+              onChange={(event) => setEstimates(event.target.checked)}
+            />
+            Maya shares her wait times with me (untick to watch the Guardian hold them back)
+          </label>
+          <small className="dbar-fine">
+            Demo only. Your number is kept in the fictional demo data and wiped on every reset.
+          </small>
+        </form>
+      </>
     );
 
   return (
     <>
       <div className="dbar-actions">
-        <button
-          type="button"
-          disabled={stuck || !maya?.next}
-          title={maya?.next ?? "Maya has nothing left to do right now"}
-          onClick={() => maya && onRun("maya-next", { type: "next", patientId: maya.id })}
-        >
-          Move Maya to her next step ›
-        </button>
+        {moveMaya}
+        {maya.step !== "waiting" && maya.step !== "arrived" && reseat}
         <button
           type="button"
           disabled={stuck}

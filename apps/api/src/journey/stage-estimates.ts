@@ -8,6 +8,7 @@ import {
   type StageEstimate,
   type StageModel,
 } from "./stage-model.js";
+import { recalibrate, recalibrationBySite } from "./recalibration.js";
 import { widen, wideningBySite } from "./widening.js";
 
 // Stage estimates for a whole department, and the log that scores them.
@@ -23,6 +24,8 @@ export type SiteStages = {
   snapshot: DepartmentSnapshot;
   /** Estimates by visit id for every open visit. */
   estimates: Map<string, StageEstimate[]>;
+  /** Local recalibration factor per step (missing = 1), logged with each estimate. */
+  scales?: Map<Stage, number>;
 };
 
 /** Events for every visit that is open or ended in the last day, which the features need. */
@@ -106,6 +109,15 @@ export async function siteStages(
 ): Promise<SiteStages | null> {
   if (!model) return null;
   const stages = stagesFromVisits(model, await loadStageVisits(db, siteId, feedNow), feedNow);
+  // Steps this department keeps reaching sooner than the model expects are scaled down first.
+  const scales = await recalibrationBySite(db, siteId);
+  stages.scales = scales;
+  if ([...scales.values()].some((scale) => scale < 1))
+    for (const [id, list] of stages.estimates)
+      stages.estimates.set(
+        id,
+        list.map((estimate) => recalibrate(estimate, scales.get(estimate.stage) ?? 1)),
+      );
   // Recent visits that kept running past the upper bound stretch the range for that step.
   const factors = await wideningBySite(db, siteId);
   if ([...factors.values()].some((factor) => factor > 1))
@@ -173,8 +185,8 @@ export async function recordStageEstimates(db: Database, stages: SiteStages) {
       await db.query(
         `INSERT INTO ed_stage_estimates
            (encounter_id, stage, computed_at, low_minutes, typical_minutes, high_minutes,
-            model_version, open_orders)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            model_version, open_orders, local_scale)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
         [
           encounterId,
           estimate.stage,
@@ -184,6 +196,7 @@ export async function recordStageEstimates(db: Database, stages: SiteStages) {
           estimate.highMinutes,
           model.version,
           estimate.stage === "results" ? (snapshot.openOrders.get(encounterId) ?? []) : [],
+          stages.scales?.get(estimate.stage) ?? 1,
         ],
       );
     }

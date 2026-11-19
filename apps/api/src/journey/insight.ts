@@ -4,6 +4,8 @@ import { decideDisclosure } from "./guardian.js";
 import { hashLink } from "./intake.js";
 import { HANDOFF_REPLY, duration, rangeSentence, statusSentence, stepLabels } from "./messages.js";
 import { feedStatus, type Contact, type Encounter } from "./records.js";
+import { recalibrationBySite } from "./recalibration.js";
+import type { Stage } from "./stage-model.js";
 import { wideningBySite } from "./widening.js";
 
 // Read-only views beyond the Desk: the family page, the accuracy ledger and mission control.
@@ -152,6 +154,7 @@ export async function accuracyView(pool: Pool, departmentId: string, site: strin
     `SELECT model_version AS version FROM ed_stage_estimates ORDER BY id DESC LIMIT 1`,
   );
   const widening = await wideningBySite(pool, site);
+  const local = await recalibrationBySite(pool, site);
   const waiting = new Map(open.rows.map((row) => [row.stage, row.n]));
   return {
     model: model.rows[0]?.version ?? null,
@@ -167,6 +170,7 @@ export async function accuracyView(pool: Pool, departmentId: string, site: strin
       meanWidthMinutes: round(row.meanWidth),
       awaitingOutcome: waiting.get(row.stage) ?? 0,
       widening: widening.get(row.stage) ?? 1,
+      localScale: local.get(row.stage as Stage) ?? 1,
     })),
     points: points.rows.map((row) => ({
       stage: row.stage as string,
@@ -193,14 +197,44 @@ function feedLine(raw: string) {
     const name = field(segment(message, "PID"), 5).split("^").reverse().join(" ").trim();
     // When it happened in the department (MSH-7), which is what the clock on screen shows.
     const sentAt = hl7Time(field(segment(message, "MSH"), 7), "-0400");
+    // Orders and results: which order, so one patient's lab, scan and consult at the same
+    // minute read as three different messages, not one message three times.
+    const obr = segment(message, "OBR");
+    const orderId = field(obr, 2) || null;
+    const section = field(obr, 24);
     return {
       type,
       name: name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()),
       sentAt,
+      orderId,
+      detail: section ? (SECTIONS[section] ?? section) : null,
     };
   } catch {
-    return { type: "unreadable", name: "", sentAt: null };
+    return { type: "unreadable", name: "", sentAt: null, orderId: null, detail: null };
   }
+}
+
+const SECTIONS: Record<string, string> = {
+  LAB: "lab",
+  XR: "X-ray",
+  CT: "CT",
+  US: "ultrasound",
+  MR: "MRI",
+  RAD: "imaging",
+  CON: "consult",
+};
+
+/** A result names its order's section, found from the order message when the result lacks it. */
+function withSections<T extends { orderId: string | null; detail: string | null }>(
+  lines: T[],
+): T[] {
+  const known = new Map<string, string>();
+  for (const line of lines) if (line.orderId && line.detail) known.set(line.orderId, line.detail);
+  return lines.map((line) =>
+    line.detail || !line.orderId
+      ? line
+      : { ...line, detail: known.get(line.orderId) ?? `order ${line.orderId}` },
+  );
 }
 
 /** Mission control: the hospital feed, the agent's decisions and what people received, side by side. */
@@ -273,13 +307,15 @@ export async function missionView(pool: Pool, departmentId: string, site: string
           stale: now.getTime() - feed.lastMessageAt.getTime() > 15 * 60_000,
         }
       : null,
-    hl7: messages.rows.map((row) => ({
-      id: row.controlId,
-      at: row.receivedAt.toISOString(),
-      outcome: row.outcome,
-      ...feedLine(row.raw),
-      raw: row.raw.replaceAll("\r", "\n"),
-    })),
+    hl7: withSections(
+      messages.rows.map((row) => ({
+        id: row.controlId,
+        at: row.receivedAt.toISOString(),
+        outcome: row.outcome,
+        ...feedLine(row.raw),
+        raw: row.raw.replaceAll("\r", "\n"),
+      })),
+    ),
     runs: runs.rows.map((row) => ({ ...row, at: (row.at as Date).toISOString() })),
     thread: thread.rows.map((row) => ({ ...row, at: (row.at as Date).toISOString() })),
     texts: texts.rows.map((row) => ({

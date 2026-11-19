@@ -561,3 +561,17 @@
     transition: none !important;
   }
 }
+
+/* The page can always scroll past the bar (see useReserveSpace). */
+body {
+  padding-bottom: var(--dbar-reserve, 0px);
+}
+/* On a short screen the step's explanation keeps to two lines, so the bar covers less. */
+@media (max-height: 760px) {
+  .dbar-lead > p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

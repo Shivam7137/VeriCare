@@ -5,6 +5,8 @@ import { buildApp } from "../../src/app.js";
 import { createSession } from "../../src/identity.js";
 import { createDemoDirector, type DemoState } from "../../src/journey/demo/director.js";
 import { judgePhone } from "../../src/journey/demo/contact.js";
+import { missionView } from "../../src/journey/insight.js";
+import { addContact } from "../../src/journey/intake.js";
 import { registerDemoRoutes } from "../../src/journey/demo/routes.js";
 import { workflowFixture } from "./workflow-fixture.js";
 
@@ -250,7 +252,7 @@ test("the demo starts over by itself 30 minutes after it was last used, and only
   assert.equal(again.idleReset.inMinutes, null);
   assert.equal(again.counts.waiting, opening.counts.waiting);
   assert.equal(again.running, false);
-  assert.equal(again.speed, 60);
+  assert.equal(again.speed, 10);
   assert.equal(again.staffing, "normal");
   assert.equal(again.arrivals, "normal");
   // The opening scene is back: Maya freshly checked in, none of the added patients.
@@ -432,4 +434,175 @@ test("a judge who types their number becomes Maya's emergency contact and gets h
   wall += 10_000;
   await director.act({ type: "reset" });
   assert.equal(await judgePhone(f.pool, again.contact!.id), null);
+});
+
+test("Maya waits for a judge, can be re-seated alone, and contact refusals say why", async (t) => {
+  const f = await workflowFixture(t);
+  const patientId = f.patient.patientId!;
+  await f.pool.query("UPDATE patients SET display_name='Maya Chen' WHERE id=$1", [
+    f.patient.patientId,
+  ]);
+  await f.pool.query(
+    `INSERT INTO emergency_patient_records
+    (patient_id,date_of_birth,contact_name,contact_relationship,contact_number,facility,department,area,visitor_instructions)
+    VALUES ($1,'1990-04-12','Jamie Singh','Friend','+15005550006','Fictional Halifax hospital','Emergency department','Assessment area B','Check in at reception.')`,
+    [f.patient.patientId],
+  );
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const now = () => new Date(wall);
+  const director = createDemoDirector(f.pool, { now, seed: 5 });
+  wall += 5_000;
+  const started = live((await director.act({ type: "reset" })).state);
+  // A fresh demo is paused and set to Slow, so step 2 is reachable before Maya goes home.
+  assert.equal(started.running, false);
+  assert.equal(started.speed, 10);
+
+  // Hours pass: Maya is triaged on her own, then waits for a judge while others are seen.
+  await director.runTo(director.clock() + 4 * 60 * MIN);
+  const later = live(await director.state());
+  const maya = later.patients.find((patient) => patient.name === "Maya Chen")!;
+  assert.equal(maya.step, "waiting");
+  assert.equal(maya.next, "Seen by a provider");
+  assert.ok(later.counts.finished > started.counts.finished);
+
+  // The patient adds a family member to the live visit, then the same number again.
+  wall += 1_000;
+  const contact = { name: "Test Contact", relationship: "Family", phone: "+19025550134" };
+  const scopes = ["status", "alerts", "estimates"] as const;
+  await addContact(f.pool, patientId, { ...contact, scopes: [...scopes] }, now());
+  await assert.rejects(addContact(f.pool, patientId, { ...contact, scopes: [...scopes] }, now()), {
+    code: "duplicate_contact",
+  });
+
+  // Re-seat: the old visit ends, a new Maya waits, and nobody else is touched.
+  wall += 1_000;
+  const others = later.patients.filter((patient) => patient.name !== "Maya Chen").length;
+  const reseated = live((await director.act({ type: "reseat" })).state);
+  const fresh = reseated.patients.find((patient) => patient.name === "Maya Chen")!;
+  assert.notEqual(fresh.id, maya.id);
+  assert.equal(fresh.step, "waiting");
+  assert.equal(reseated.patients.filter((patient) => patient.name !== "Maya Chen").length, others);
+  const visits = await f.pool.query<{ visit: string; ended: boolean; linked: boolean }>(
+    `SELECT visit_number AS visit, (state->>'ended')::boolean AS ended, patient_id = $1 AS linked
+     FROM ed_encounters WHERE visit_number LIKE 'FIN5500001%' ORDER BY created_at`,
+    [f.patient.patientId],
+  );
+  assert.deepEqual(
+    visits.rows.map((row) => [row.ended, row.linked]),
+    [
+      [true, true],
+      [false, true],
+    ],
+  );
+  // The contact followed the visit that ended; the new visit starts with none.
+  const left = await f.pool.query(
+    "SELECT count(*)::int AS n FROM ed_contacts WHERE withdrawn_at IS NULL",
+  );
+  assert.equal(left.rows[0].n, 0);
+  // Maya's app follows the new visit, so adding the same person works again.
+  wall += 1_000;
+  await addContact(f.pool, patientId, { ...contact, scopes: [...scopes] }, now());
+
+  // A judge walks the new visit home; adding a contact then fails with its reason, on the ledger.
+  for (let index = 0; index < 6; index += 1) {
+    wall += 1_000;
+    const current = live(await director.state({ encounterId: fresh.id }));
+    if (!current.focus?.next) break;
+    await director.act({ type: "next", patientId: fresh.id });
+  }
+  wall += 1_000;
+  await assert.rejects(
+    addContact(f.pool, patientId, { ...contact, phone: "+19025550199", scopes: ["status"] }, now()),
+    { code: "no_active_visit" },
+  );
+  const refused = await f.pool.query<{ reason: string }>(
+    "SELECT detail->>'reason' AS reason FROM ed_audit WHERE action = 'contact_refused' ORDER BY seq",
+  );
+  assert.deepEqual(
+    refused.rows.map((row) => row.reason),
+    ["duplicate_contact", "no_active_visit"],
+  );
+
+  // Re-seating when she has already gone home brings her back too.
+  wall += 1_000;
+  const back = live((await director.act({ type: "reseat" })).state);
+  assert.equal(back.patients.find((patient) => patient.name === "Maya Chen")?.step, "waiting");
+});
+
+test("a silenced visit's estimate never reaches the demo bar", async (t) => {
+  const f = await workflowFixture(t);
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const director = createDemoDirector(f.pool, { now: () => new Date(wall), seed: 5 });
+  wall += 5_000;
+  const started = live((await director.act({ type: "reset" })).state);
+  const someone = started.patients.find(
+    (patient) => patient.step === "waiting" && !patient.scripted,
+  )!;
+  const shown = live(await director.state({ encounterId: someone.id }));
+  assert.equal(shown.focus?.silenced, false);
+  assert.ok(shown.focus?.estimate);
+
+  await f.pool.query(
+    `UPDATE ed_encounters SET state = jsonb_set(state, '{sensitivity}', '["confidential"]')
+     WHERE id = $1`,
+    [someone.id],
+  );
+  wall += 5_000;
+  const hidden = live(await director.state({ encounterId: someone.id }));
+  assert.equal(hidden.focus?.silenced, true);
+  assert.equal(hidden.focus?.estimate, null);
+});
+
+test("a paused ER says when it resumes, a steps-only contact gets no ranges, and orders are named", async (t) => {
+  const f = await workflowFixture(t);
+  let wall = Date.parse("2030-01-07T12:00:30.000Z");
+  const director = createDemoDirector(f.pool, { now: () => new Date(wall), seed: 5 });
+  wall += 5_000;
+  const fresh = live((await director.act({ type: "reset" })).state);
+  assert.equal(fresh.started, false);
+  // The first press starts; after a pause, choosing a speed says it resumed.
+  const first = await director.act({ type: "speed", value: 10 });
+  assert.equal(first.note, "Time is moving at ×10");
+  assert.equal(live(first.state).started, true);
+  await director.act({ type: "pause" });
+  assert.equal((await director.act({ type: "play" })).note, "Resumed at ×10");
+  assert.equal((await director.act({ type: "speed", value: 60 })).note, "Speed ×60");
+  await director.act({ type: "pause" });
+  assert.equal((await director.act({ type: "speed", value: 10 })).note, "Resumed at ×10");
+  await director.act({ type: "pause" });
+
+  // A judge who unticks "shares her wait times" gets steps only; the Guardian logs each hold-back.
+  wall += 1_000;
+  const added = await director.act({
+    type: "contact",
+    name: "",
+    phone: "902 555 0177",
+    estimates: false,
+  });
+  const scopes = await f.pool.query("SELECT scopes FROM ed_contacts WHERE id = $1", [
+    added.contact!.id,
+  ]);
+  assert.deepEqual(scopes.rows[0].scopes, ["status", "alerts"]);
+  const welcome = (await judgePhone(f.pool, added.contact!.id))!.messages[0]!.body;
+  assert.doesNotMatch(welcome, /wait changes/);
+  wall += 1_000;
+  await director.act({ type: "surge" });
+  await director.runTo(director.clock() + 90 * MIN);
+  const withheld = await f.pool.query(
+    `SELECT count(*)::int AS n FROM ed_audit
+     WHERE action = 'estimate_withheld' AND detail->>'contactId' = $1`,
+    [added.contact!.id],
+  );
+  assert.ok(withheld.rows[0].n > 0);
+  const ranges = await f.pool.query(
+    "SELECT count(*)::int AS n FROM ed_messages WHERE contact_id = $1 AND kind = 'range'",
+    [added.contact!.id],
+  );
+  assert.equal(ranges.rows[0].n, 0);
+
+  // The feed names each order, so one patient's lab and scan are two different lines.
+  const mission = await missionView(f.pool, "demo-department", "qeii-hi", new Date(wall));
+  const orders = mission.hl7.filter((line) => /^OR[MU]/.test(line.type));
+  assert.ok(orders.length > 0);
+  assert.ok(orders.every((line) => line.detail));
 });

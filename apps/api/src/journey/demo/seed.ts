@@ -7,6 +7,8 @@ import { buildDemoScenario } from "../../twin/scenario.js";
 
 const MIN = 60_000;
 export const MAYA_VISIT = "FIN5500001";
+/** Maya's first visit and every re-seated one after it ("FIN55000011", "FIN55000012", ...). */
+export const isMaya = (visit: string) => visit.startsWith(MAYA_VISIT);
 /** Visits that follow their own script (the featured edge cases) are left alone. */
 export const SCRIPTED_PREFIX = "FIN57";
 export const isScripted = (visit: string) => visit.startsWith(SCRIPTED_PREFIX);

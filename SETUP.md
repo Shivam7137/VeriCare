@@ -69,7 +69,7 @@ Wait for both the API and Next to say they are ready, then open:
 | Call monitor             | http://127.0.0.1:3100/professional/monitor    |
 | API health / readiness   | http://127.0.0.1:4100/health, `/ready`        |
 
-Every page signs you in with a fictional demo account. The floating **demo bar** walks you through steps 1, 2 and 3; it can speed up time, add patients, cause a surge and push a visit to its next step. See [the demo bar guide](docs/demo/demo-bar.md) and [the prototype demo](docs/demo/prototype-demo.md).
+Every page signs you in with a fictional demo account. The floating **demo bar** walks you through steps 1, 2 and 3; it can speed up time, add patients, cause a surge and push a visit to its next step. The ER starts on Slow, and Maya waits in the waiting room until you move her on; **Re-seat Maya** in step 2 brings her back without resetting anyone else. See [the demo bar guide](docs/demo/demo-bar.md) and [the prototype demo](docs/demo/prototype-demo.md).
 
 ### 5. Stop and restart
 

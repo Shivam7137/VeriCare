@@ -61,9 +61,15 @@ export default function EdAccuracy({ embedded = false }: { embedded?: boolean })
     const timer = window.setInterval(() => {
       if (ready.current && document.visibilityState === "visible") void refresh();
     }, REFRESH_MS);
+    // A tab brought back from the background catches up at once instead of showing old times.
+    const wake = () => {
+      if (ready.current && document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", wake);
     return () => {
       active = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", wake);
     };
   }, []);
 
@@ -130,202 +136,223 @@ export default function EdAccuracy({ embedded = false }: { embedded?: boolean })
           department in this demo, not from a real hospital.
         </p>
 
-        <section className="vc-stats" aria-label="Summary">
-          <div className="vc-card vc-stat">
-            <span>All steps</span>
-            <strong>
-              {percent(all.inside, all.total) ?? "–"}
-              {all.total ? "%" : ""}
-            </strong>
-            <small>
-              {all.inside} of {all.total} estimates inside their range
-            </small>
+        {!data ? (
+          // Never "0 of 0" before the first answer: that reads as a broken page.
+          <div className="vc-skeleton" role="status" aria-label="Loading the accuracy ledger">
+            <p className="vca-quiet">Loading the accuracy ledger…</p>
           </div>
-          <div className="vc-card vc-stat">
-            <span>Ranges patients were told</span>
-            <strong>{told && told.total ? `${percent(told.inside, told.total)}%` : "–"}</strong>
-            <small>
-              {told?.inside ?? 0} of {told?.total ?? 0} held, {told?.over ?? 0} ran over
-            </small>
-          </div>
-          <div className="vc-card vc-stat">
-            <span>Too busy to estimate</span>
-            <strong>{told?.abstained ?? "–"}</strong>
-            <small>times a range was withdrawn instead of guessed</small>
-          </div>
-          <div className="vc-card vc-stat">
-            <span>Ranges widened</span>
-            <strong>{stages.filter((row) => row.widening > 1).length}</strong>
-            <small>steps stretched after repeated overruns</small>
-          </div>
-        </section>
+        ) : (
+          <>
+            <section className="vc-stats" aria-label="Summary">
+              <div className="vc-card vc-stat">
+                <span>All steps</span>
+                <strong>
+                  {percent(all.inside, all.total) ?? "–"}
+                  {all.total ? "%" : ""}
+                </strong>
+                <small>
+                  {all.inside} of {all.total} estimates inside their range
+                </small>
+              </div>
+              <div className="vc-card vc-stat">
+                <span>Ranges patients were told</span>
+                <strong>{told && told.total ? `${percent(told.inside, told.total)}%` : "–"}</strong>
+                <small>
+                  {told?.inside ?? 0} of {told?.total ?? 0} held, {told?.over ?? 0} ran over
+                </small>
+              </div>
+              <div className="vc-card vc-stat">
+                <span>Too busy to estimate</span>
+                <strong>{told?.abstained ?? "–"}</strong>
+                <small>times a range was withdrawn instead of guessed</small>
+              </div>
+              <div className="vc-card vc-stat">
+                <span>Ranges adjusted here</span>
+                <strong>
+                  {stages.filter((row) => row.widening > 1 || row.localScale < 1).length}
+                </strong>
+                <small>
+                  steps widened after overruns or tightened when visits kept finishing sooner
+                </small>
+              </div>
+            </section>
 
-        <section className="vc-card vc-section" aria-label="Accuracy by step">
-          <div className="vc-section-head">
-            <Icon name="list" />
-            <h2>By step</h2>
-          </div>
-          <div className="vc-table-wrap">
-            <table className="vc-table">
-              <thead>
-                <tr>
-                  <th scope="col">Step</th>
-                  <th scope="col">Held</th>
-                  <th scope="col">Inside</th>
-                  <th scope="col">Ran over</th>
-                  <th scope="col">Sooner</th>
-                  <th scope="col">Typical miss</th>
-                  <th scope="col">Range width</th>
-                  <th scope="col">Still open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stages.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="vc-muted">
-                      Nothing has been scored yet. Play the scenario and estimates appear here as
-                      each step happens.
-                    </td>
-                  </tr>
-                )}
-                {stages.map((row) => {
-                  const held = percent(row.inside, row.total) ?? 0;
-                  return (
-                    <tr key={row.stage}>
-                      <td>
-                        <strong>{stageNames[row.stage]}</strong>
-                        <div className="vc-muted">{describe[row.stage]}</div>
-                      </td>
-                      <td>
-                        <div className="vc-cover">
-                          <span>{held}%</span>
-                          <div
-                            className="vc-meter"
-                            data-target={data?.target ?? 80}
-                            role="img"
-                            aria-label={`${held}% held against a target of ${data?.target ?? 80}%`}
-                          >
-                            <i style={{ width: `${held}%` }} />
-                            <b style={{ left: `${data?.target ?? 80}%` }} />
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        {row.inside} of {row.total}
-                      </td>
-                      <td>{row.over}</td>
-                      <td>{row.under}</td>
-                      <td>
-                        {row.medianErrorMinutes === null
-                          ? "–"
-                          : minutesText(row.medianErrorMinutes)}
-                      </td>
-                      <td>
-                        {row.meanWidthMinutes === null ? "–" : minutesText(row.meanWidthMinutes)}
-                        {row.widening > 1 && (
-                          <div className="vc-muted">widened ×{row.widening.toFixed(2)}</div>
-                        )}
-                      </td>
-                      <td>{row.awaitingOutcome}</td>
+            <section className="vc-card vc-section" aria-label="Accuracy by step">
+              <div className="vc-section-head">
+                <Icon name="list" />
+                <h2>By step</h2>
+              </div>
+              <div className="vc-table-wrap">
+                <table className="vc-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Step</th>
+                      <th scope="col">Held</th>
+                      <th scope="col">Inside</th>
+                      <th scope="col">Ran over</th>
+                      <th scope="col">Sooner</th>
+                      <th scope="col">Typical miss</th>
+                      <th scope="col">Range width</th>
+                      <th scope="col">Still open</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="vc-muted">
-            Typical miss is the middle distance between the model&apos;s central estimate and what
-            happened. The mark on each bar is the {data?.target ?? 80}% target.
-          </p>
-        </section>
+                  </thead>
+                  <tbody>
+                    {stages.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="vc-muted">
+                          Nothing has been scored yet. Play the scenario and estimates appear here
+                          as each step happens.
+                        </td>
+                      </tr>
+                    )}
+                    {stages.map((row) => {
+                      const held = percent(row.inside, row.total) ?? 0;
+                      return (
+                        <tr key={row.stage}>
+                          <td>
+                            <strong>{stageNames[row.stage]}</strong>
+                            <div className="vc-muted">{describe[row.stage]}</div>
+                          </td>
+                          <td>
+                            <div className="vc-cover">
+                              <span>{held}%</span>
+                              <div
+                                className="vc-meter"
+                                data-target={data?.target ?? 80}
+                                role="img"
+                                aria-label={`${held}% held against a target of ${data?.target ?? 80}%`}
+                              >
+                                <i style={{ width: `${held}%` }} />
+                                <b style={{ left: `${data?.target ?? 80}%` }} />
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            {row.inside} of {row.total}
+                          </td>
+                          <td>{row.over}</td>
+                          <td>{row.under}</td>
+                          <td>
+                            {row.medianErrorMinutes === null
+                              ? "–"
+                              : minutesText(row.medianErrorMinutes)}
+                          </td>
+                          <td>
+                            {row.meanWidthMinutes === null
+                              ? "–"
+                              : minutesText(row.meanWidthMinutes)}
+                            {row.localScale < 1 && (
+                              <div className="vc-muted">
+                                tightened ×{row.localScale.toFixed(2)} for this department
+                              </div>
+                            )}
+                            {row.widening > 1 && (
+                              <div className="vc-muted">widened ×{row.widening.toFixed(2)}</div>
+                            )}
+                          </td>
+                          <td>{row.awaitingOutcome}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="vc-muted">
+                Typical miss is the middle distance between the model&apos;s central estimate and
+                what happened. The mark on each bar is the {data?.target ?? 80}% target.
+              </p>
+            </section>
 
-        <section className="vc-card vc-section" aria-label="Predicted against actual">
-          <div className="vc-section-head vc-split">
-            <span>
-              <Icon name="clock" />
-              <h2>Predicted against actual</h2>
-            </span>
-            <div className="vc-toggle" role="group" aria-label="Show as">
-              {(["chart", "table"] as const).map((item) => (
-                <button
-                  key={item}
-                  className="vc-btn"
-                  data-kind={view === item ? undefined : "quiet"}
-                  data-size="sm"
-                  aria-pressed={view === item}
-                  onClick={() => setView(item)}
-                >
-                  {item === "chart" ? "Chart" : "Table"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="vc-muted">
-            One row per visit: the first estimate made for that step, and when the step happened.
-          </p>
-          <ul className="vc-legend" aria-hidden={view === "table"}>
-            <li>
-              <i data-mark="range" /> Estimated range
-            </li>
-            <li>
-              <i data-mark="typical" /> Central estimate
-            </li>
-            <li>
-              <i data-mark="inside" /> Happened inside the range
-            </li>
-            <li>
-              <i data-mark="over" /> Ran over
-            </li>
-            <li>
-              <i data-mark="under" /> Sooner than the range
-            </li>
-          </ul>
-          {view === "chart" ? (
-            <div className="vc-multiples">
-              {stages.map((row) => (
-                <RangeChart
-                  key={row.stage}
-                  stage={row.stage}
-                  points={(data?.points ?? []).filter((point) => point.stage === row.stage)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="vc-table-wrap">
-              <table className="vc-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Step</th>
-                    <th scope="col">Patient</th>
-                    <th scope="col">Estimated at</th>
-                    <th scope="col">Range</th>
-                    <th scope="col">Central</th>
-                    <th scope="col">Actual</th>
-                    <th scope="col">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data?.points ?? []).map((point, index) => (
-                    <tr key={index}>
-                      <td>{stageNames[point.stage]}</td>
-                      <td>{point.patientName}</td>
-                      <td>{clock(point.computedAt)}</td>
-                      <td>
-                        {minutesText(point.low)} to {minutesText(point.high)}
-                      </td>
-                      <td>{minutesText(point.typical)}</td>
-                      <td>
-                        {point.censored ? "more than " : ""}
-                        {minutesText(point.actual)}
-                      </td>
-                      <td>{outcomeWord[outcome(point)]}</td>
-                    </tr>
+            <section className="vc-card vc-section" aria-label="Predicted against actual">
+              <div className="vc-section-head vc-split">
+                <span>
+                  <Icon name="clock" />
+                  <h2>Predicted against actual</h2>
+                </span>
+                <div className="vc-toggle" role="group" aria-label="Show as">
+                  {(["chart", "table"] as const).map((item) => (
+                    <button
+                      key={item}
+                      className="vc-btn"
+                      data-kind={view === item ? undefined : "quiet"}
+                      data-size="sm"
+                      aria-pressed={view === item}
+                      onClick={() => setView(item)}
+                    >
+                      {item === "chart" ? "Chart" : "Table"}
+                    </button>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                </div>
+              </div>
+              <p className="vc-muted">
+                One row per visit: the first estimate made for that step, and when the step
+                happened.
+              </p>
+              <ul className="vc-legend" aria-hidden={view === "table"}>
+                <li>
+                  <i data-mark="range" /> Estimated range
+                </li>
+                <li>
+                  <i data-mark="typical" /> Central estimate
+                </li>
+                <li>
+                  <i data-mark="inside" /> Happened inside the range
+                </li>
+                <li>
+                  <i data-mark="over" /> Ran over
+                </li>
+                <li>
+                  <i data-mark="under" /> Sooner than the range
+                </li>
+              </ul>
+              {view === "chart" ? (
+                <div className="vc-multiples">
+                  {stages.map((row) => (
+                    <RangeChart
+                      key={row.stage}
+                      stage={row.stage}
+                      points={(data?.points ?? []).filter((point) => point.stage === row.stage)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="vc-table-wrap">
+                  <table className="vc-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Step</th>
+                        <th scope="col">Patient</th>
+                        <th scope="col">Estimated at</th>
+                        <th scope="col">Range</th>
+                        <th scope="col">Central</th>
+                        <th scope="col">Actual</th>
+                        <th scope="col">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(data?.points ?? []).map((point, index) => (
+                        <tr key={index}>
+                          <td>{stageNames[point.stage]}</td>
+                          <td>{point.patientName}</td>
+                          <td>{clock(point.computedAt)}</td>
+                          <td>
+                            {minutesText(point.low)} to {minutesText(point.high)}
+                          </td>
+                          <td>{minutesText(point.typical)}</td>
+                          <td>
+                            {point.censored ? "more than " : ""}
+                            {minutesText(point.actual)}
+                          </td>
+                          <td>{outcomeWord[outcome(point)]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </Main>
     </div>
   );

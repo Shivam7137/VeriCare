@@ -17,11 +17,15 @@ export type DemoPatient = {
   next: string | null;
   scripted: boolean;
   mine: boolean;
+  /** Confidential or otherwise silenced: the bar shows no estimate for it. */
+  silenced: boolean;
 };
 
 export type DemoLive = {
   active: true;
   running: boolean;
+  /** The clock has run since the last reset. */
+  started: boolean;
   speed: Speed;
   arrivals: Arrivals;
   staffing: Staffing;
@@ -80,9 +84,11 @@ export type DemoAction =
   | { type: "arrivals"; value: Arrivals }
   | { type: "staffing"; value: Staffing }
   | { type: "reset" }
+  /** Maya leaves and arrives again, waiting; nobody else changes. */
+  | { type: "reseat" }
   /** Counts as use, so the demo does not start over by itself yet. */
   | { type: "keep" }
-  | { type: "contact"; name: string; phone: string }
+  | { type: "contact"; name: string; phone: string; estimates?: boolean }
   | { type: "ask"; contactId: string; text: string };
 
 export class DemoError extends Error {
@@ -103,7 +109,7 @@ const friendly: Record<string, string> = {
   not_found: "That patient has already left.",
   invalid_input: "That control isn't available.",
   invalid_phone: "That doesn't look like a phone number. Try 902 555 0134 or +44 20 7946 0000.",
-  featured_gone: "Maya's visit has ended. Restart the demo to try again.",
+  featured_gone: "Maya's visit has ended. Press Re-seat Maya to bring her back.",
   contact_limit: "Maya has too many contacts already. Restart the demo to clear them.",
 };
 

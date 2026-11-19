@@ -297,14 +297,16 @@ test("a sensitivity flag silences the visit with the same handoff wording", asyn
 test("contacts hear only what their consent covers, and withdrawal is immediate", async (t) => {
   const f = await fixture(t);
   await f.play(5);
-  const add = (name: string, scopes: string[]) =>
+  const add = (name: string, scopes: string[], phone = "+15005550007") =>
     f.call("patient", {
       method: "POST",
       url: "/journey/visit/contacts",
-      payload: { name, relationship: "Daughter", phone: "+15005550007", scopes },
+      payload: { name, relationship: "Daughter", phone, scopes },
     });
   const full = (await add("Lin Chen", ["status", "alerts", "estimates"])).body.id;
-  const statusOnly = (await add("Sam Chen", ["status", "alerts"])).body.id;
+  // The same number twice is refused, so the second person has their own.
+  assert.equal((await add("Lin again", ["status"])).status, 409);
+  const statusOnly = (await add("Sam Chen", ["status", "alerts"], "+15005550008")).body.id;
   assert.equal((await add("Bad", ["everything"])).status, 400);
   await f.play(10, 5);
   const to = async (contactId: string) =>

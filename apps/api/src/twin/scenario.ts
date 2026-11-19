@@ -234,7 +234,7 @@ const background: [string, string, string][] = [
   ["THERIAULT", "LUC", "1983-03-09"],
 ];
 
-const mayaRecord: TwinPatient = {
+export const mayaRecord: TwinPatient = {
   mrn: "7000001",
   visit: "FIN5500001",
   family: "CHEN",

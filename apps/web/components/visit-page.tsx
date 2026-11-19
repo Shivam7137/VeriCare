@@ -147,8 +147,14 @@ export default function VisitPage() {
               {live ? (
                 <>
                   {/* Re-keyed on each change, so the dot pings once when there is news. */}
-                  <i key={updatedAt} className="vcp-ping" aria-hidden="true" />
-                  Live · updated {clock(updatedAt)}
+                  {live.ended ? (
+                    <>Visit ended · last update {clock(updatedAt)}</>
+                  ) : (
+                    <>
+                      <i key={updatedAt} className="vcp-ping" aria-hidden="true" />
+                      Live · updated {clock(updatedAt)}
+                    </>
+                  )}
                 </>
               ) : (
                 "Halifax Infirmary Emergency"

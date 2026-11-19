@@ -314,6 +314,24 @@ Coverage is well below 80%, and almost every miss is a patient seen or finished 
 
 Replayed at 21:52 Halifax time on a Saturday. Maya's first range was "within about 3 hours 30 minutes" (the same script at 08:00 gives about 2 hours 30: the model expects longer waits at night). After the five-patient surge the page showed "within about 5 hours" with "Several very sick patients arrived, so the wait is longer." The outlook showed test results within about 2 hours and the whole visit within about 8 hours 15 minutes. The Desk listed a model estimate for every patient and, part-way through, accuracy by step: decision 37 of 57, seen 23 of 63, triage 15 of 20.
 
+### 11.5 Local recalibration (experiment P5)
+
+Added 2026-11-18 after a mentor's live test of the public demo. Its accuracy page showed 63% of estimates inside their range, against the 80% target: seen 86%, triage 78%, results 63%, decision 55%, bed 49%. Almost every decision miss was _sooner_ than the range (120 under, none over), so the model was systematically pessimistic for this department, not noisy.
+
+The fix is the mirror image of adaptive widening (`widening.ts`), which stretches a step's upper bound after repeated overruns. `apps/api/src/journey/recalibration.ts` looks at the latest scored estimate of the last 24 visits for each later step (results, decision, bed). When at least 8 are scored and a quarter or more finished below the lower bound, every range for that step is multiplied by the median of _actual ÷ the model's own typical value_. The factor is between 0.35 and 1, so it can shorten a range but never lengthen it; each logged estimate records the factor it was made with (`local_scale`, migration 017), so the next factor is always worked out against the unscaled model and does not drift. Once on, it stays on while the evidence holds, so ranges do not flip back and forth. Recalibration runs first, then widening.
+
+Triage and the wait to be seen are deliberately left alone. The wait to be seen is what patients are told and already met the target in the mentor's run; scaling it also broke the surge story (Maya's range shrank just as five urgent patients arrived).
+
+A 12-hour simulated shift of the demo department, comparing estimates made before the factor switched on with those made after:
+
+| Step     | Inside range, model as trained | Inside range, recalibrated | Mean width, trained → recalibrated |
+| -------- | ------------------------------ | -------------------------- | ---------------------------------- |
+| Results  | 53% (17 visits)                | 81% (42)                   | 85 → 49 min                        |
+| Decision | 50% (54)                       | 95% (91)                   | 294 → 107 min                      |
+| Bed      | 74% (19)                       | 88% (17)                   | 330 → 246 min                      |
+
+The accuracy page shows the factor per step ("tightened ×0.35 for this department") and counts tightened and widened steps together under "Ranges adjusted here". The same caveat as everywhere in this document applies: this is a simulated department, and the factor is learnt from it. On a real feed it would be learnt from that hospital's own recent visits, which is the point.
+
 ## 12. What changed in the application
 
 | Area                 | Change                                                                                                                                                                                    |
@@ -328,6 +346,10 @@ Replayed at 21:52 Halifax time on a Saturday. Maya's first range was "within abo
 | Guardian             | `mayShareOutlook`: later-step estimates follow the wait range's rule (never CTAS 1–2, flagged visits, a stale feed or an ended visit) and never include the bed wait                      |
 | Patient page         | "Test results" and "Whole visit" / "Next steps decided" under the wait range, with fixed wording                                                                                          |
 | Desk                 | A model-estimate column for every patient, including bed waits, and accuracy by step                                                                                                      |
+| `widening.ts`        | Adaptive widening: a step's upper bound stretches (up to ×2) after three or more overruns in a row                                                                                        |
+| `recalibration.ts`   | Local recalibration (section 11.5): results, decision and bed ranges scale down when this department keeps finishing sooner                                                               |
+| Migration 017        | `ed_stage_estimates.local_scale`: the recalibration factor each estimate was made with                                                                                                    |
+| Accuracy page        | `/professional/ed/accuracy`: coverage, misses each way, typical error and width per step, and each step's widening or tightening                                                          |
 | Twin script          | Surge of five instead of three (section 11.2)                                                                                                                                             |
 
 Tests: 8 new unit tests in `stage-model.test.ts`, one mapper test, one new end-to-end test in `journey.test.ts`. Full suite at the time of writing: 181 unit tests and 220 database tests, all passing.
@@ -347,6 +369,7 @@ Tests: 8 new unit tests in `stage-model.test.ts`, one mapper test, one new end-t
 | Keep the publishing rules for the wait range untouched        | They were designed and tested before this work; only the source of the range changed                                       |
 | Keep boosted trees over a neural network                      | Section 9                                                                                                                  |
 | Do not retrain larger now                                     | 6% on a simulator is not worth a tenfold larger file and a re-test four days before the deadline                           |
+| Recalibrate later steps locally, never the wait to be seen    | Section 11.5: the misses were one-sided and local; the patient-facing wait already met its target                          |
 
 ## 14. Limits and threats to validity
 
@@ -363,10 +386,10 @@ Tests: 8 new unit tests in `stage-model.test.ts`, one mapper test, one new end-t
 
 ## 15. Not built
 
-- Automatic widening of ranges after repeated misses (adaptive conformal inference), described in the design document.
 - Admission-likelihood and leave-risk models (M3 and M4).
-- An accuracy page for staff beyond the Desk tile.
 - Any validation on real feed data.
+
+(Adaptive widening and the staff accuracy page, listed here when this was first written, have since been built; see section 12.)
 
 ## 16. Path to a real number
 

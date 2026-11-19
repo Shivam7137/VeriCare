@@ -30,10 +30,12 @@ export type DemoAction =
   | { type: "arrivals"; value: Arrivals }
   | { type: "staffing"; value: Staffing }
   | { type: "reset" }
+  /** Maya leaves (if she is still in) and arrives again, waiting; nobody else changes. */
+  | { type: "reseat" }
   /** Counts as use, so the demo does not start over by itself yet. */
   | { type: "keep" }
   /** A judge becomes the featured patient's emergency contact, with their own phone. */
-  | { type: "contact"; name: string; phone: string }
+  | { type: "contact"; name: string; phone: string; estimates?: boolean }
   /** The judge texts a question as that contact. */
   | { type: "ask"; contactId: string; text: string };
 
@@ -48,11 +50,15 @@ export type DemoPatient = {
   scripted: boolean;
   /** The visit that belongs to the signed-in patient, when there is one. */
   mine: boolean;
+  /** Confidential or otherwise silenced: no estimate for it appears anywhere, the bar included. */
+  silenced: boolean;
 };
 
 export type DemoLive = {
   active: true;
   running: boolean;
+  /** The clock has run since the last reset (so the play button says "Resume"). */
+  started: boolean;
   speed: Speed;
   arrivals: Arrivals;
   staffing: Staffing;

@@ -41,7 +41,7 @@ It never contains the patient's name, birth date, phone number, triage level, re
 | `schedule_wake(minutes)`                   | Puts a check-in off                          | 10 to 60 minutes; never past twice the interval                                                             |
 | `do_nothing()`                             | Logged restraint                             | Not offered for a message: someone who wrote always gets a reply                                            |
 
-Each call carries a `why` sentence for the staff log. It is never shown to patients.
+Each call carries a `why` sentence for the staff log. It is never shown to patients. The rules planner writes one too, in plain words, so its decisions read as clearly as the model's: "Rules planner: the Guardian checked consent and feed freshness for this new wait range to a family contact, so it was sent." Mission control labels each decision **Model** or **Rules planner**, and says "Rules planner · language model off on this server" when no model is configured.
 
 ### Floors the model cannot lower
 
@@ -49,6 +49,10 @@ Each call carries a `why` sentence for the staff log. It is never shown to patie
 - A contact always hears an overrun if they have the estimates scope.
 - A check-in that is twice overdue is asked.
 - No more than one changed-estimate text per person per 30 minutes, six per visit.
+
+### Consent the model never sees past
+
+A contact without the estimates scope is never offered a range at all: code drops it before the wake is stored. So that this check is visible rather than silent, each one is recorded on the hash-chained ledger as `estimate_withheld` ("Estimate withheld (no consent)" under Agent & audit). The demo bar's step 2 lets a judge add themselves as a steps-only contact to see it happen.
 
 ## The knowledge base and its retrieval (RAG)
 
@@ -88,6 +92,7 @@ A silenced visit returns the standard handoff from both, so a transfer never rev
 ## Channels
 
 - **Text messages.** The number recorded at registration gets one invitation. Updates are texted only after a reply of YES, and stop at STOP. Inbound texts go through the same floors and agent. Texts are queued in `ed_sms` and sent by a background sender; without `JOURNEY_SMS_ENABLED=true` and a live phone line they are marked `simulated` and shown in mission control.
+- **Adding a contact.** A patient adds people under People in the visit app. Adding refuses, with the reason shown next to the field, a visit that has ended (`no_active_visit`: the form is replaced by "This visit has ended" once the app knows) and a number that already gets updates (`duplicate_contact`). Every refusal is on the ledger as `contact_refused` with its reason.
 - **Family page.** Adding a contact creates a private link (`/family/<token>`), texted to that contact. Only a hash of the token is stored. A wrong link, a withdrawn contact and a silenced visit all show the same page.
 
 ## Turning it on

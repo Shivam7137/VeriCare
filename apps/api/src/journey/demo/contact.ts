@@ -17,6 +17,8 @@ import { MAYA_VISIT } from "./seed.js";
 const MAX_JUDGES = 25;
 const E164 = /^\+[1-9]\d{7,14}$/;
 const SCOPES = ["status", "alerts", "estimates"];
+/** Without "estimates": steps only. The Guardian then holds every wait range back. */
+const STEPS_ONLY = ["status", "alerts"];
 
 /** Accepts what people type ("902 555-0134", "1 (902) 555 0134", "+44 20…") as E.164. */
 export function normalizePhone(input: string): string | null {
@@ -35,18 +37,19 @@ export const maskPhone = (phone: string) => `••• ${phone.slice(-4)}`;
 
 export async function addJudgeContact(
   pool: Pool,
-  input: { name: string; phone: string },
+  input: { name: string; phone: string; estimates?: boolean },
   now: Date,
 ): Promise<{ note: string; contact: { id: string; phone: string } }> {
+  const scopes = input.estimates === false ? STEPS_ONLY : SCOPES;
   const phone = normalizePhone(input.phone);
   if (!phone) throw new BackendError("invalid_phone", 400);
   const name = input.name.trim().slice(0, 80) || "Demo judge";
   return journeyTransaction(pool, async (db) => {
     const visit = await db.query<{ id: string; name: string }>(
       `SELECT id, display_name AS name FROM ed_encounters
-       WHERE visit_number = $1 AND NOT (state->>'ended')::boolean
+       WHERE visit_number LIKE $1 AND NOT (state->>'ended')::boolean
        ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
-      [MAYA_VISIT],
+      [`${MAYA_VISIT}%`],
     );
     const encounter = visit.rows[0];
     if (!encounter) throw new BackendError("featured_gone", 409);
@@ -67,14 +70,14 @@ export async function addJudgeContact(
       `INSERT INTO ed_contacts (id, encounter_id, name, relationship, phone, scopes, created_at,
                                 sms_opt_in_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$7)`,
-      [id, encounter.id, name, "Emergency contact (demo)", phone, SCOPES, now],
+      [id, encounter.id, name, "Emergency contact (demo)", phone, scopes, now],
     );
     await audit(db, {
       at: now,
       actor: "patient",
       action: "consent_given",
       encounterId: encounter.id,
-      detail: { contactId: id, scopes: SCOPES, demo: true },
+      detail: { contactId: id, scopes, demo: true },
     });
     const first = encounter.name.split(" ")[0] ?? "The patient";
     // Recorded and texted like every other message to a contact, so mission control shows it.
@@ -83,7 +86,7 @@ export async function addJudgeContact(
       audience: "contact",
       contactId: id,
       kind: "welcome",
-      body: `VeriCare demo: you are now ${first}'s emergency contact. We'll text you when her visit moves on or her wait changes. Text back any question about her. Reply STOP to end.`,
+      body: `VeriCare demo: you are now ${first}'s emergency contact. We'll text you when her visit moves on${scopes.includes("estimates") ? " or her wait changes" : ""}. Text back any question about her. Reply STOP to end.`,
       at: now,
       channel: "sms",
     });

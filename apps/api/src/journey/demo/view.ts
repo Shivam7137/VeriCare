@@ -33,6 +33,8 @@ export type ViewMemory = {
 };
 export const freshView = (): ViewMemory => ({ trend: [], watch: null });
 
+const isSilenced = (state: VisitState) => state.sensitivity.length > 0 || state.unmapped;
+
 const stageFor = (state: VisitState): { stage: string; label: string } | null => {
   switch (state.step) {
     case "arrived":
@@ -68,6 +70,8 @@ async function watchModel(
   const typical: number[] = [];
   const longest: number[] = [];
   for (const row of open) {
+    // A silenced visit's estimate never leaves the server, demo tooling included.
+    if (isSilenced(row.state)) continue;
     const want = stageFor(row.state);
     const estimate = want
       ? stages?.estimates.get(row.id)?.find((item) => item.stage === want.stage)
@@ -131,6 +135,7 @@ export async function buildState(input: {
   simNow: number;
   settings: {
     running: boolean;
+    started: boolean;
     speed: Speed;
     arrivals: Arrivals;
     staffing: Staffing;
@@ -171,7 +176,7 @@ export async function buildState(input: {
     const scripted = input.isScripted(row.visit);
     const move = scripted ? null : nextMove(row.state, input.planOf(row), simNow);
     const mine = asPatient && row.patientId === focus.patientId;
-    const quiet = row.state.sensitivity.length > 0 || row.state.unmapped;
+    const quiet = isSilenced(row.state);
     return {
       id: row.id,
       name: asPatient && !mine && quiet ? "Private visit" : row.name,
@@ -184,6 +189,7 @@ export async function buildState(input: {
       next: move ? MOVE_LABEL[move.act] : null,
       scripted,
       mine,
+      silenced: quiet,
     };
   };
   const patients = open.map(view);
@@ -192,12 +198,13 @@ export async function buildState(input: {
   // Staff start on the visit linked to the demo patient, so "Next step" always has a target.
   const linked = open.find((row) => row.patientId !== null && !input.isScripted(row.visit));
   const chosen = asked ?? mine ?? patients.find((item) => item.id === linked?.id) ?? null;
-  const found = chosen ? watch.byVisit.get(chosen.id) : undefined;
+  const found = chosen && !chosen.silenced ? watch.byVisit.get(chosen.id) : undefined;
   const count = (...steps: string[]) => open.filter((row) => steps.includes(row.state.step)).length;
 
   return {
     active: true,
     running: settings.running,
+    started: settings.started,
     speed: settings.speed,
     arrivals: settings.arrivals,
     staffing: settings.staffing,

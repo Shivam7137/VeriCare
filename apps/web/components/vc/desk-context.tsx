@@ -59,9 +59,15 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     const timer = window.setInterval(() => {
       if (started.current && document.visibilityState === "visible") void refresh();
     }, REFRESH_MS);
+    // A tab brought back from the background catches up at once instead of showing old times.
+    const wake = () => {
+      if (started.current && document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", wake);
     return () => {
       active = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", wake);
     };
   }, [refresh]);
 

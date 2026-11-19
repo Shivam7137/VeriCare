@@ -133,26 +133,34 @@ export function HelpTab({ visit, busy, act }: { visit: LiveVisit; busy: boolean;
         <button
           className="vc-btn"
           data-kind="danger"
-          disabled={busy}
+          disabled={busy || visit.ended}
           onClick={() => act(() => journey.checkIn("worse"))}
         >
           <Icon name="alert" size={22} />
           <span>
             I feel worse
-            <small>A nurse will recheck you</small>
+            <small>
+              {visit.ended
+                ? "Your visit has ended. Tell staff nearby, or call 911 in an emergency"
+                : "A nurse will recheck you"}
+            </small>
           </span>
         </button>
         <button
           className="vc-btn"
           data-kind="quiet"
-          disabled={busy || !visit.canLeave}
+          disabled={busy || visit.ended || !visit.canLeave}
           onClick={() => act(() => journey.say("I'm thinking of leaving"), "updates")}
         >
           <Icon name="door" size={22} />
           <span>
             I&apos;m thinking of leaving
             <small>
-              {visit.canLeave ? "Talk to us before you go" : "Only while you are waiting"}
+              {visit.ended
+                ? "Your visit has ended"
+                : visit.canLeave
+                  ? "Talk to us before you go"
+                  : "Only while you are waiting"}
             </small>
           </span>
         </button>
@@ -169,7 +177,7 @@ export function HelpTab({ visit, busy, act }: { visit: LiveVisit; busy: boolean;
           {answers.map((item) => (
             <li key={item.text}>
               <button
-                disabled={busy}
+                disabled={busy || visit.ended}
                 onClick={() => act(() => journey.say(item.text), "updates", false)}
               >
                 {item.label}

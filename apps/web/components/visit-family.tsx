@@ -17,6 +17,8 @@ export default function VisitFamily({
   const [phone, setPhone] = useState("");
   const [estimates, setEstimates] = useState(true);
   const [error, setError] = useState("");
+  /** Which field the error is about, so it shows next to that field. */
+  const [errorAt, setErrorAt] = useState<"phone" | "form">("form");
   const [saving, setSaving] = useState(false);
   const [link, setLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -25,10 +27,13 @@ export default function VisitFamily({
     event.preventDefault();
     const digits = phone.replace(/[^\d+]/g, "");
     const number = digits.startsWith("+") ? digits : `+1${digits}`;
+    setErrorAt("form");
     if (name.trim().length < 2 || relationship.trim().length < 2)
       return setError("Enter their name and how they know you.");
-    if (!/^\+[1-9]\d{9,14}$/.test(number))
+    if (!/^\+[1-9]\d{9,14}$/.test(number)) {
+      setErrorAt("phone");
       return setError("Enter a phone number with area code, like 902 555 0123.");
+    }
     setSaving(true);
     setError("");
     try {
@@ -45,8 +50,12 @@ export default function VisitFamily({
       setLink(`${window.location.origin}${added.link}`);
       setCopied(false);
       await refresh();
-    } catch {
-      setError("We couldn't save that. Please try again.");
+    } catch (failure) {
+      // The server says why (visit ended, already added, ...); show that, never a bare "try again".
+      const reason = failure instanceof Error ? failure.message : "";
+      setErrorAt(/number|already/i.test(reason) ? "phone" : "form");
+      setError(reason || "We couldn't save that. Please try again.");
+      await refresh().catch(() => undefined);
     } finally {
       setSaving(false);
     }
@@ -120,7 +129,11 @@ export default function VisitFamily({
           </div>
         </div>
       )}
-      {open ? (
+      {visit.ended ? (
+        <p className="vc-muted" role="status">
+          This visit has ended, so contacts can no longer be added.
+        </p>
+      ) : open ? (
         <form className="vc-form" onSubmit={add} noValidate>
           <label className="vc-field">
             Their name
@@ -150,6 +163,11 @@ export default function VisitFamily({
               onChange={(event) => setPhone(event.target.value)}
             />
             <small>We text a code to this number before sharing anything by phone.</small>
+            {error && errorAt === "phone" && (
+              <span className="vc-error" role="alert">
+                {error}
+              </span>
+            )}
           </label>
           <label className="vc-check">
             <input
@@ -159,7 +177,7 @@ export default function VisitFamily({
             />
             Also share my wait estimates
           </label>
-          {error && (
+          {error && errorAt === "form" && (
             <p className="vc-error" role="alert">
               {error}
             </p>

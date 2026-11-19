@@ -1,7 +1,7 @@
 import type { Ctas, VisitState } from "@prc/contracts";
 import type { Pool } from "pg";
 import { BackendError } from "../../domain.js";
-import { createTwin, type TwinPatient } from "../../twin/scenario.js";
+import { createTwin, mayaRecord, type TwinPatient } from "../../twin/scenario.js";
 import { ingestHl7, refreshEstimates } from "../ingest.js";
 import type { Agent } from "../intake.js";
 import { feedStatus, journeyTransaction } from "../records.js";
@@ -27,7 +27,7 @@ import {
 } from "./flow.js";
 import { addJudgeContact, askAsContact } from "./contact.js";
 import { writeMove } from "./messages.js";
-import { MAYA_VISIT, isScripted, openingMessages, wipeDepartment } from "./seed.js";
+import { MAYA_VISIT, isMaya, isScripted, openingMessages, wipeDepartment } from "./seed.js";
 import { SPEEDS, type DemoAction, type DemoState, type Row, type Speed } from "./types.js";
 import { buildState, freshView, type ViewMemory } from "./view.js";
 
@@ -43,16 +43,14 @@ const MIN = 60_000;
 const SEC = 1000;
 const MAX_OPEN = 70;
 const MAX_SKIP_MIN = 480;
-const OVERRIDES: Record<string, Partial<Plan>> = {
-  [MAYA_VISIT]: {
-    ctas: 4,
-    raz: false,
-    triageMin: 8,
-    labs: true,
-    imaging: "XR",
-    consult: false,
-    admit: false,
-  },
+const MAYA_PLAN: Partial<Plan> = {
+  ctas: 4,
+  raz: false,
+  triageMin: 8,
+  labs: true,
+  imaging: "XR",
+  consult: false,
+  admit: false,
 };
 
 type Twin = ReturnType<typeof createTwin>;
@@ -88,6 +86,8 @@ export function createDemoDirector(
     active: boolean;
     checked: boolean;
     running: boolean;
+    /** Whether the clock has run since the last reset, so the bar can say "Resume". */
+    started: boolean;
     speed: Speed;
     arrivals: Arrivals;
     staffing: Staffing;
@@ -116,7 +116,9 @@ export function createDemoDirector(
       active: false,
       checked: false,
       running: false,
-      speed: 60,
+      started: false,
+      // Slow by default: a judge must still find Maya waiting when they reach step 2.
+      speed: 10,
       arrivals: "normal",
       staffing: "normal",
       simNow,
@@ -150,7 +152,7 @@ export function createDemoDirector(
   const floorSecond = (at: number) => Math.floor(at / SEC) * SEC;
   const planOf = (row: Row) =>
     planFor(row.visit, {
-      ...OVERRIDES[row.visit],
+      ...(isMaya(row.visit) ? MAYA_PLAN : {}),
       ...(row.state.ctas ? { ctas: row.state.ctas } : {}),
     });
 
@@ -298,10 +300,13 @@ export function createDemoDirector(
     let due = 0;
     while (m.scheduled[due] && m.scheduled[due]!.at <= end) batch.push(m.scheduled[due++]!);
 
-    const open = (await openRows()).filter((row) => !isScripted(row.visit));
+    const all = (await openRows()).filter((row) => !isScripted(row.visit));
+    // Maya is the guided demo's patient: she is triaged on her own, then waits until a judge
+    // moves her on, so she is never sent home before anyone has met her.
+    const open = all.filter((row) => !isMaya(row.visit) || row.state.step === "arrived");
     // Walk-ins.
     const walkIns = arrivalsIn(m.rng, ARRIVALS_PER_HOUR[m.arrivals], end - from);
-    for (let index = 0; index < walkIns && open.length + index < MAX_OPEN; index += 1)
+    for (let index = 0; index < walkIns && all.length + index < MAX_OPEN; index += 1)
       batch.push(arrivalMessages(floorSecond(from + m.rng() * (end - from))).out);
 
     // Timed moves: triage, tests, results, decisions, beds.
@@ -441,6 +446,50 @@ export function createDemoDirector(
     return `${row.name.split(" ")[0]}: ${MOVE_LABEL[move.act].toLowerCase()}`;
   }
 
+  /**
+   * Brings Maya back to the waiting room without touching anyone else: her current visit (if
+   * any) ends, her contacts stop following it, and a new visit for the same person arrives and
+   * is triaged. Her app follows, because the new visit links to the same patient.
+   */
+  async function reseatMaya() {
+    const current = (await openRows()).filter((row) => isMaya(row.visit));
+    const at = floorSecond(m.simNow);
+    const batch: Out[] = current.map((row) => ({
+      at,
+      raw: build(row, "discharge", at, planOf(row)),
+    }));
+    const past = await pool.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM ed_encounters WHERE site = $1 AND visit_number LIKE $2",
+      [site, `${MAYA_VISIT}%`],
+    );
+    const person: TwinPatient = { ...mayaRecord, visit: `${MAYA_VISIT}${past.rows[0]?.n ?? 1}` };
+    const plan = planFor(person.visit, MAYA_PLAN);
+    const arriveAt = floorSecond(m.simNow - 3 * MIN);
+    const triageAt = floorSecond(m.simNow - 1.5 * MIN);
+    batch.push(
+      {
+        at: arriveAt,
+        raw: emit(arriveAt, (twin, minute) => twin.arrive(minute, person, "WAITROOM")),
+      },
+      {
+        at: triageAt,
+        raw: emit(triageAt, (twin, minute) => twin.triage(minute, person, plan.ctas, "WAITROOM")),
+      },
+    );
+    // Contacts belonged to the visit that ended; a judge adds themselves again to the new one.
+    await pool.query(
+      `UPDATE ed_contacts SET withdrawn_at = $3 WHERE withdrawn_at IS NULL AND encounter_id IN
+       (SELECT id FROM ed_encounters WHERE site = $1 AND visit_number LIKE $2)`,
+      [site, `${MAYA_VISIT}%`, clock()],
+    );
+    // The discharge goes first (send() orders by time, and the arrival is backdated), so the
+    // old visit has ended before the new one arrives.
+    await send(batch.slice(0, current.length));
+    await send(batch.slice(current.length));
+    await settle();
+    return "Maya is back in the waiting room.";
+  }
+
   // ---- state for the bar --------------------------------------------------------------------
 
   async function state(focus: { patientId?: string | null; encounterId?: string | null } = {}) {
@@ -452,6 +501,7 @@ export function createDemoDirector(
       simNow: m.simNow,
       settings: {
         running: m.running,
+        started: m.started,
         speed: m.speed,
         arrivals: m.arrivals,
         staffing: m.staffing,
@@ -529,19 +579,26 @@ export function createDemoDirector(
         m.lastUse = clock().getTime();
         switch (action.type) {
           case "play":
+            note = m.started ? `Resumed at ×${m.speed}` : `Time is moving at ×${m.speed}`;
             m.running = true;
+            m.started = true;
             m.lastTick = Date.now();
-            note = "Time is moving";
             break;
           case "pause":
             m.running = false;
             note = "Paused";
             break;
           case "speed":
+            // Choosing a speed also plays; say so, so a paused ER never starts silently.
+            note = m.running
+              ? `Speed ×${action.value}`
+              : m.started
+                ? `Resumed at ×${action.value}`
+                : `Time is moving at ×${action.value}`;
             m.speed = action.value;
             m.running = true;
+            m.started = true;
             m.lastTick = Date.now();
-            note = `Speed ×${action.value}`;
             break;
           case "skip":
             m.skipLeft = Math.min(m.skipLeft + action.minutes * MIN, MAX_SKIP_MIN * MIN);
@@ -555,6 +612,9 @@ export function createDemoDirector(
             break;
           case "next":
             note = await advancePatient(action.patientId);
+            break;
+          case "reseat":
+            note = await reseatMaya();
             break;
           case "arrivals":
             m.arrivals = action.value;

@@ -24,6 +24,7 @@ export function parseDemoAction(body: unknown): DemoAction {
     case "surge":
     case "reset":
     case "keep":
+    case "reseat":
       return { type: input.type };
     case "speed":
       if (!SPEEDS.some((speed) => speed === input.value)) throw invalid();
@@ -54,7 +55,13 @@ export function parseDemoAction(body: unknown): DemoAction {
       if (typeof input.phone !== "string" || input.phone.length > 32) throw invalid();
       if (input.name !== undefined && (typeof input.name !== "string" || input.name.length > 80))
         throw invalid();
-      return { type: "contact", phone: input.phone, name: (input.name as string) ?? "" };
+      if (input.estimates !== undefined && typeof input.estimates !== "boolean") throw invalid();
+      return {
+        type: "contact",
+        phone: input.phone,
+        name: (input.name as string) ?? "",
+        ...(input.estimates === false ? { estimates: false } : {}),
+      };
     case "ask": {
       const text = typeof input.text === "string" ? input.text.trim() : "";
       if (typeof input.contactId !== "string" || !uuid.test(input.contactId)) throw invalid();

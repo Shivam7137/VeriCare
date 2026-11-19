@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { minutesPastTold, nextStage } from "../../lib/forecast";
-import { journey, minutesText, stepNames, type DeskPatient } from "../../lib/journey";
+import { clock, journey, minutesText, stepNames, type DeskPatient } from "../../lib/journey";
 import { Icon } from "../journey-icons";
 import { useDesk } from "./desk-context";
 import { RangeAxis, RangeBar } from "./forecast-marks";
@@ -95,6 +95,12 @@ export default function BoardView() {
         </div>
       </div>
 
+      {desk?.feed && (
+        <p className="vca-hint">
+          {desk.patients.length} in the department as of {clock(desk.feed.feedTime)} on the
+          department clock.
+        </p>
+      )}
       <section className="vca-panel vca-panel-flush" aria-label="Patients">
         {!desk && <div className="vc-skeleton" aria-label="Loading the board" />}
         {desk && rows.length === 0 && (

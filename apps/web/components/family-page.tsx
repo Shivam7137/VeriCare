@@ -112,7 +112,7 @@ export default function FamilyPage({ token }: { token: string }) {
                   <strong key={live.range.headline} className="vc-fade">
                     {live.range.headline}
                   </strong>
-                  <p>Possibly sooner. Sicker patients are seen first, so this can change.</p>
+                  <p>It could be sooner. Sicker patients are seen first, so this can change.</p>
                 </div>
               )}
               <ol className="vc-steps" aria-label="Steps in the visit">

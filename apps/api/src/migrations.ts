@@ -24,6 +24,7 @@ export async function migrate(pool: Pool) {
       "014_visit_agent.sql",
       "015_task_event_order.sql",
       "016_knowledge_base.sql",
+      "017_local_recalibration.sql",
     ]) {
       const existing = await client.query("SELECT name FROM schema_migrations WHERE name = $1", [
         name,

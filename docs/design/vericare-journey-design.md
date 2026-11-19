@@ -180,7 +180,9 @@ sequenceDiagram
 - Any sensitivity flag silences the visit: queued messages are cancelled, every contact gets the standard handoff.
 - No more than one proactive range text per 30 minutes, six per visit.
 
-**Fallback.** If the model is unavailable or its plan fails validation, a rules path sends the template for the step change. The agent is an upgrade, not a dependency.
+**Fallback.** If the model is unavailable or its plan fails validation, the rules planner sends every update the Guardian allows, using the same templates. The agent is an upgrade, not a dependency. Each rules decision is logged with a one-line reason a reviewer can follow (for example "Safety floor: a step update for the patient always goes out; no planner can hold it back"), and Mission control says "Rules planner · language model off on this server" when no model is configured, as on the public demo.
+
+**Consent is visible, not silent.** When a contact was not given wait estimates, the Guardian holds every range back from them and records `estimate_withheld` ("Estimate withheld (no consent)") on the audit ledger each time.
 
 ### Alex: tool unlock order
 
@@ -282,7 +284,7 @@ Why generate training data through the real ingest path: the model trains on exa
 
 **Calibration of the twin:** tune a handful of capacity parameters until its outputs match the published targets. Then **randomise** arrival intensity, capacity and acuity mix across training runs so the model learns the relationship between queue and wait, not one department's habits. Test on a held-out configuration (a Dartmouth-General-sized site) and on a surge.
 
-**Calibrated ranges:** conformalized quantile regression gives an 80% interval per stratum (triage band × time of day), measured against each patient's _actual remaining wait_. Adaptive conformal inference widens the range automatically after consecutive misses.
+**Calibrated ranges:** conformalized quantile regression gives an 80% interval per stratum (triage band × time of day), measured against each patient's _actual remaining wait_. Adaptive conformal inference widens the range automatically after consecutive misses. In the other direction, local recalibration scales the results, decision and bed ranges down when a department keeps reaching those steps sooner than the model expects ([build record, section 11.5](stage-time-model.md#115-local-recalibration-experiment-p5)).
 
 **Evaluation and targets:**
 
@@ -300,6 +302,7 @@ Why generate training data through the real ingest path: the model trains on exa
 ### How an estimate is shown
 
 - An 80% range, upper bound first, rounded to 15 minutes: "You'll likely be seen within about 3 hours, possibly sooner."
+- Never a lower bound of "0 min". In the app, a lower bound under 15 minutes reads "It could be sooner"; otherwise "Probably not before about 45 min".
 - **Reason codes** from feature changes, turned into plain words by code: `more_urgent_arrivals`, `pace_slower`, `pace_faster`.
 - No queue position (it jumps when sicker patients arrive and reads as unfair).
 - Withheld for triage levels 1–2, flagged visits, a stale feed, or a range wider than 6 hours ("It's very busy and I can't give a reliable estimate").
@@ -398,30 +401,32 @@ The demo ignores real-world constraints on purpose. A product would need, in ord
 
 Implemented and tested. Everything else in this document is still a proposal.
 
-| Piece                                                        | Where                                                                           | State                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Event model and visit state                                  | `packages/contracts/src/ed-journey.ts`, `apps/api/src/journey/visit-state.ts`   | Built, unit tested                                            |
-| Guardian (consent, flags, tiers, stale feed)                 | `apps/api/src/journey/guardian.ts`                                              | Built, unit tested                                            |
-| Approved wording                                             | `apps/api/src/journey/messages.ts`                                              | Built                                                         |
-| Wait estimate: queue formula, range, hold-back rules         | `apps/api/src/journey/estimate.ts`                                              | Built; now the fallback when no trained model is bundled      |
-| Stage-time models for every step (M1 and M2, plus bed wait)  | `ml/`, `apps/api/models/stage-model.json.gz`, `apps/api/src/journey/stage-*.ts` | Built and tested; see [the build record](stage-time-model.md) |
-| Simulated department calibrated to NS figures                | `ml/vericare_ml/sim.py`, `calibrate.py`                                         | Built; trains the models, not connected to the twin           |
-| Estimate log for every step, scored against what happened    | `apps/api/migrations/013_stage_estimates.sql`, `stage-estimates.ts`             | Built, integration tested                                     |
-| HL7 v2 reader, OPOR mapper, MLLP listener                    | `apps/api/src/opor/`                                                            | Built, tested with sample messages                            |
-| Ingest, rules-path Visit Agent, estimate log, ledger         | `apps/api/src/journey/ingest.ts`, `records.ts`, migration 012                   | Built, integration tested                                     |
-| Patient messages, check-ins, contacts, staff flags and tasks | `apps/api/src/journey/intake.ts`, `routes.ts`, `views.ts`                       | Built, integration tested                                     |
-| OPOR Twin (scripted scenario over MLLP)                      | `apps/api/src/twin/`                                                            | Built; scripted, not a full simulation                        |
-| Patient visit page                                           | `/patient/visit`                                                                | Built, checked in the browser at phone width                  |
-| Emergency Desk                                               | `/professional/ed`                                                              | Built, checked in the browser                                 |
-| Language-model Visit Agent with tools and rules fallback     | `apps/api/src/agents/`, migration 014; see [the agent record](visit-agent.md)   | Built, integration tested, run live against the model         |
-| Knowledge-base retrieval (BM25, optional embeddings)         | `apps/api/src/agents/retrieval.ts`, `kb.ts`                                     | Built, unit tested                                            |
-| Timer-driven check-ins and overrun alerts                    | `apps/api/src/journey/ingest.ts` (`checkIns`, `tickFeed`)                       | Built, integration tested                                     |
-| Journey texts (opt-in, inbound, STOP) and SMS webhooks       | `apps/api/src/journey/sms.ts`, `outbox.ts`                                      | Built; simulated on screen unless `JOURNEY_SMS_ENABLED=true`  |
-| Family page from a private link                              | `/family/<token>`                                                               | Built, checked in the browser at phone width                  |
-| Alex journey tools: status and relay after the code          | `apps/api/src/journey/voice.ts`                                                 | Built, integration tested; not yet tried on a live call       |
-| Adaptive widening after repeated overruns                    | `apps/api/src/journey/widening.ts`                                              | Built, unit tested                                            |
-| Accuracy ledger                                              | `/professional/ed/accuracy`                                                     | Built, checked in the browser                                 |
-| Mission control                                              | `/professional/ed/mission`                                                      | Built, checked in the browser                                 |
+| Piece                                                        | Where                                                                           | State                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Event model and visit state                                  | `packages/contracts/src/ed-journey.ts`, `apps/api/src/journey/visit-state.ts`   | Built, unit tested                                                 |
+| Guardian (consent, flags, tiers, stale feed)                 | `apps/api/src/journey/guardian.ts`                                              | Built, unit tested                                                 |
+| Approved wording                                             | `apps/api/src/journey/messages.ts`                                              | Built                                                              |
+| Wait estimate: queue formula, range, hold-back rules         | `apps/api/src/journey/estimate.ts`                                              | Built; now the fallback when no trained model is bundled           |
+| Stage-time models for every step (M1 and M2, plus bed wait)  | `ml/`, `apps/api/models/stage-model.json.gz`, `apps/api/src/journey/stage-*.ts` | Built and tested; see [the build record](stage-time-model.md)      |
+| Simulated department calibrated to NS figures                | `ml/vericare_ml/sim.py`, `calibrate.py`                                         | Built; trains the models, not connected to the twin                |
+| Estimate log for every step, scored against what happened    | `apps/api/migrations/013_stage_estimates.sql`, `stage-estimates.ts`             | Built, integration tested                                          |
+| HL7 v2 reader, OPOR mapper, MLLP listener                    | `apps/api/src/opor/`                                                            | Built, tested with sample messages                                 |
+| Ingest, rules-path Visit Agent, estimate log, ledger         | `apps/api/src/journey/ingest.ts`, `records.ts`, migration 012                   | Built, integration tested                                          |
+| Patient messages, check-ins, contacts, staff flags and tasks | `apps/api/src/journey/intake.ts`, `routes.ts`, `views.ts`                       | Built, integration tested                                          |
+| OPOR Twin (scripted scenario over MLLP)                      | `apps/api/src/twin/`                                                            | Built; scripted, not a full simulation                             |
+| Patient visit page                                           | `/patient/visit`                                                                | Built, checked in the browser at phone width                       |
+| Emergency Desk                                               | `/professional/ed`                                                              | Built, checked in the browser                                      |
+| Language-model Visit Agent with tools and rules fallback     | `apps/api/src/agents/`, migration 014; see [the agent record](visit-agent.md)   | Built, integration tested, run live against the model              |
+| Knowledge-base retrieval (BM25, optional embeddings)         | `apps/api/src/agents/retrieval.ts`, `kb.ts`                                     | Built, unit tested                                                 |
+| Timer-driven check-ins and overrun alerts                    | `apps/api/src/journey/ingest.ts` (`checkIns`, `tickFeed`)                       | Built, integration tested                                          |
+| Journey texts (opt-in, inbound, STOP) and SMS webhooks       | `apps/api/src/journey/sms.ts`, `outbox.ts`                                      | Built; simulated on screen unless `JOURNEY_SMS_ENABLED=true`       |
+| Family page from a private link                              | `/family/<token>`                                                               | Built, checked in the browser at phone width                       |
+| Alex journey tools: status and relay after the code          | `apps/api/src/journey/voice.ts`                                                 | Built, integration tested; not yet tried on a live call            |
+| Adaptive widening after repeated overruns                    | `apps/api/src/journey/widening.ts`                                              | Built, unit tested                                                 |
+| Local recalibration of results, decision and bed ranges      | `apps/api/src/journey/recalibration.ts`, migration 017                          | Built, unit tested, checked on a 12-hour simulated shift           |
+| Demo control bar (guided steps, Maya held, Re-seat Maya)     | `apps/api/src/journey/demo/`, `apps/web/components/demo-*.tsx`                  | Built, integration tested; see [the demo bar](../demo/demo-bar.md) |
+| Accuracy ledger                                              | `/professional/ed/accuracy`                                                     | Built, checked in the browser                                      |
+| Mission control                                              | `/professional/ed/mission`                                                      | Built, checked in the browser                                      |
 
 Not built yet: the admission-likelihood and leave-risk models (M3, M4), FHIR serving in the twin, and a second language for written messages. Alex already follows the caller's language on the phone.
 

@@ -318,27 +318,40 @@ export async function settleWake(
   const rules = async () => {
     for (const candidate of candidates)
       if (!candidate.asReply && !sent.has(candidate.id))
-        await send(
-          candidate,
-          candidate.floor ? "Floor: always sent." : "Rules: every allowed update is sent.",
-          { action_id: candidate.id },
-        );
+        await send(candidate, rulesWhy(candidate), { action_id: candidate.id });
     if (!message || reply) return;
     const quoted = `"${message.text}".`;
     if (interpreterWords.test(message.text))
-      await raise("interpreter", 2, quoted, "Rules: language words.", {});
+      await raise(
+        "interpreter",
+        2,
+        quoted,
+        "Rules planner: the message asks for an interpreter, so a nurse is asked to arrange one.",
+        {},
+      );
     else if (statusWords.test(message.text)) {
       const status = candidates.find((candidate) => candidate.asReply);
-      if (status) await send(status, "Rules: asked for status.", { action_id: status.id });
-    } else await raise("question", 3, quoted, "Rules: anything unrecognised goes to staff.", {});
+      if (status)
+        await send(
+          status,
+          "Rules planner: they asked how things are going, so they get the status their consent allows.",
+          { action_id: status.id },
+        );
+    } else
+      await raise(
+        "question",
+        3,
+        quoted,
+        "Rules planner: no rule recognises this question, so it goes to a person on the Desk.",
+        {},
+      );
   };
 
   let planner: Outcome["planner"] = "rules";
   let fallback: string | null = null;
   if (plan && "calls" in plan) {
     for (const candidate of candidates)
-      if (candidate.floor)
-        await send(candidate, "Floor: always sent.", { action_id: candidate.id });
+      if (candidate.floor) await send(candidate, rulesWhy(candidate), { action_id: candidate.id });
     const from = steps.length;
     for (const call of plan.calls.slice(0, MAX_CALLS)) await applyCall(call);
     if (steps.slice(from).some((step) => step.verdict === "done")) planner = "model";
@@ -396,4 +409,20 @@ export async function settleWake(
     },
   });
   return { kind, reply, planner, steps };
+}
+
+const UPDATE_NAMES: Record<string, string> = {
+  step: "step update",
+  range: "new wait range",
+  check_in_ask: "check-in question",
+  status: "status reply",
+};
+
+/** One line a judge can follow: what was sent, to whom, and why code allowed it. */
+function rulesWhy(candidate: Candidate): string {
+  const what = UPDATE_NAMES[candidate.kind] ?? "update";
+  const who = candidate.audience === "patient" ? "the patient" : "a family contact";
+  return candidate.floor
+    ? `Safety floor: a ${what} for ${who} always goes out; no planner can hold it back.`
+    : `Rules planner: the Guardian checked consent and feed freshness for this ${what} to ${who}, so it was sent.`;
 }

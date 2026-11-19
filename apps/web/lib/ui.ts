@@ -115,6 +115,8 @@ const errors: Record<string, string> = {
   callback_window_unavailable:
     "The callback window is unavailable. Update it before proposing a time.",
   invalid_input: "Check the dates and required fields, then try again.",
+  no_active_visit: "This visit has ended, so this can no longer be done.",
+  duplicate_contact: "This number is already getting your updates.",
   storage_unavailable: "The backend is temporarily unavailable. Your saved requests are preserved.",
   service_unavailable:
     "The service is temporarily unavailable. Your saved work is preserved. Please retry.",

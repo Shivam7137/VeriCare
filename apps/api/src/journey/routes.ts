@@ -214,9 +214,11 @@ export function registerJourneyRoutes(
     journey.get("/journey/desk/accuracy", async (request) =>
       accuracyView(pool, staff(request).departmentId, siteId),
     );
-    journey.get("/journey/desk/mission", async (request) =>
-      missionView(pool, staff(request).departmentId, siteId, now()),
-    );
+    journey.get("/journey/desk/mission", async (request) => ({
+      ...(await missionView(pool, staff(request).departmentId, siteId, now())),
+      // Whether a language model plans on this server, or only the rules planner runs.
+      planner: agent?.defer ? ("model" as const) : ("rules" as const),
+    }));
     journey.get<IdRoute>("/journey/desk/encounters/:id", async (request) =>
       encounterDetail(pool, staff(request).departmentId, request.params.id, now()),
     );

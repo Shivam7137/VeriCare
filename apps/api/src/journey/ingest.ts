@@ -515,6 +515,18 @@ async function tellRange(
       now,
       request: "estimate",
     });
+    // The patient did not agree to share wait times with this person: the Guardian holds the
+    // range back, and says so on the ledger, so its consent check is visible, not silent.
+    if (decision.outcome === "allow" && !decision.estimate && contact.scopes.includes("alerts")) {
+      await audit(db, {
+        at: now,
+        actor: "guardian",
+        action: "estimate_withheld",
+        encounterId: encounter.id,
+        detail: { contactId: contact.id, reason: "no_estimates_consent" },
+      });
+      continue;
+    }
     if (decision.outcome !== "allow" || !decision.estimate || !contact.scopes.includes("alerts"))
       continue;
     candidates.push({

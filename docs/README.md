@@ -35,11 +35,12 @@ Every document, by what you need it for. Start with [the system design](design/v
 
 ## Reports and research
 
-| Document                                                                         | What it covers                        |
-| -------------------------------------------------------------------------------- | ------------------------------------- |
-| [Security, scalability and performance](reports/security-scalability-summary.md) | Summary for judges                    |
-| [Alex: conversational voice design](reports/voice-research.md)                   | Voice agent research                  |
-| [VeriCare Journey research](research/README.md)                                  | Nine research notes behind the design |
+| Document                                                                         | What it covers                                              |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [Security, scalability and performance](reports/security-scalability-summary.md) | Summary for judges                                          |
+| [Alex: conversational voice design](reports/voice-research.md)                   | Voice agent research                                        |
+| [Mentor review: plan and fixes](reports/mentor-review-plan.md)                   | What the 18 Nov live-demo review found and what was changed |
+| [VeriCare Journey research](research/README.md)                                  | Nine research notes behind the design                       |
 
 ## Other folders
 

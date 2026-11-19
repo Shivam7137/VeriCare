@@ -8,9 +8,9 @@ It needs the local synthetic demo (`ENABLE_SYNTHETIC_DEMO=true`) and the local A
 
 The bar opens on three numbered steps, one per app. Choosing a step (or **Next**) opens that app in the same tab, so a judge never leaves the product or opens a separate site. Each step says what to look for there and holds only the controls that belong to it; **Advanced** opens the full bar described below, and **Simple** comes back. The bar remembers the mode and step per browser.
 
-1. **Nursing app** (`/professional/ed`): one press starts (or resumes) the department at ×60. Pause, Slow / Fast / Faster, +5 walk-ins and Start over.
-2. **Patient side** (`/patient/visit`, Maya Chen's app): the judge types their own mobile number and becomes Maya's emergency contact, as if Maya had added them in her app (all three consent scopes). Typing the number and pressing **Be her emergency contact** is the opt-in, so no YES reply is needed. Their texts appear as a thread in the bar: a welcome, then every update a real contact gets. They can **text back** a question about Maya; it takes the same path as a real inbound text (the Visit Agent, held to Maya's consent) and the answer lands in the thread. **Move Maya to her next step** and **Skip 1 hour** make the next update arrive. If Maya has already gone home, the step offers Start over.
-3. **Mission control** (`/professional/ed/mission`, "Live feed" in the nav): the feed, the model's predictions and the agent's decisions. Five urgent patients, one critical patient, and Staff on shift; the ML readout shows the typical wait before and after.
+1. **Nursing app** (`/professional/ed`): **Start the ER** starts the department at Slow (×10), so a judge still finds Maya waiting at step 2. After a pause the same button reads **Resume** and carries on at the chosen speed. Pause, Slow / Fast / Faster, +5 walk-ins and Start over. Choosing a speed while paused also resumes, and the bar says so ("Resumed at ×10").
+2. **Patient side** (`/patient/visit`, Maya Chen's app): the judge types their own mobile number and becomes Maya's emergency contact, as if Maya had added them in her app. By default she shares everything (status, alerts and wait estimates); unticking **Maya shares her wait times with me** gives steps only, and the Guardian then holds every wait range back and records "Estimate withheld (no consent)" on the audit ledger each time. Typing the number and pressing **Be her emergency contact** is the opt-in, so no YES reply is needed. Their texts appear as a thread in the bar: a welcome, then every update a real contact gets. They can **text back** a question about Maya; it takes the same path as a real inbound text (the Visit Agent, held to Maya's consent) and the answer lands in the thread. **Move Maya to her next step** (shown before and after adding a number) moves her on; **Skip 1 hour** moves everyone else. Maya is triaged on her own and then waits until a judge moves her on, so she is never sent home before anyone meets her. **Re-seat Maya** (shown once she is past the waiting room, or gone) ends her visit if it is still open and admits a fresh Maya to the waiting room; nobody else changes, and her old contacts stop following the ended visit.
+3. **Mission control** (`/professional/ed/mission`, "Live feed" in the nav): the feed, the model's predictions and the agent's decisions. Five urgent patients, one critical patient, and Staff on shift; the ML readout shows the typical wait before and after, and when it moves on its own it says why ("23 → 28 min: 3 more waiting").
 
 The contact experience is the text thread only; the demo does not create a family page link.
 
@@ -20,8 +20,8 @@ Whether a text really leaves the server is decided by the existing journey sende
 
 ## A 60-second tour (Advanced)
 
-1. Press **Start the ER demo** (first run only). The department opens paused, with a queue, Maya Chen at the front desk and eight edge-case visits scheduled.
-2. Press **×60**. One minute of real time is one hour in the department. Patients are triaged, seen, tested and sent home on their own.
+1. Press **Start the ER demo** (first run only). The department opens paused at Slow (×10), with a queue, Maya Chen at the front desk and eight edge-case visits scheduled.
+2. Press **×60**. One minute of real time is one hour in the department. Patients are triaged, seen, tested and sent home on their own. Maya is the exception: after triage she waits until someone moves her on.
 3. Press **+5** or **Surge**. The **ML model** line under the bar shows the predicted typical wait to be seen before and after (for example 48 → 87 min), and the sparkline steps up.
 4. Open **More**, set **Staff on shift** to Many. The typical wait falls. Set **Walk-ins** to Busy and Staff to Few and it climbs.
 5. **Reset** (top right of the bar) starts the demo over at any time. **Next step** moves the highlighted patient one step (triage, seen by a provider, tests ordered, results back, then sent home or admitted, bed requested and moved to a ward). On the patient app it moves your own visit and the page updates within two seconds.
@@ -30,19 +30,23 @@ Whether a text really leaves the server is decided by the existing journey sende
 
 | Control                       | What it does                                                                                                                                              |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Play / pause, ×1 ×10 ×60 ×300 | The department clock. ×60 is one minute per second. Choosing a speed also plays.                                                                          |
+| Play / pause, ×1 ×10 ×60 ×300 | The department clock, Slow (×10) after every reset. ×60 is one minute per second. Choosing a speed also plays, and a resume is always announced.          |
 | **+1**, **+5**, **Surge**     | Patients arrive, already triaged and waiting. A surge is five urgent arrivals at once.                                                                    |
 | **Next step**                 | Moves the focused patient to their next step. Pick a different patient under **More** (staff app only; the patient app always follows your own visit).    |
+| **Re-seat Maya** (step 2)     | Ends Maya's visit if it is open and admits a new Maya, triaged and waiting. Nobody else changes; her contacts stop following the old visit.               |
 | **+15m**, **+1h**             | Skips ahead and plays everything in between, in a few real seconds; presses add up, to at most 8 hours queued.                                            |
 | **Reset**                     | Starts the demo over from the beginning. It asks first (**Reset the demo** / **Keep going**). Speed, walk-ins and staffing go back to their defaults too. |
 | **More**                      | Every patient with their own **Next ▸**, walk-ins, staffing, add one patient at a chosen triage level, counts, what just happened.                        |
 | Grip                          | Drag it, or focus it and use the arrow keys (Shift for bigger steps), to move the bar. Double-click or Home puts it back. The **×** tucks it into a pill. |
 
+While the bar sits over the lower part of the screen, the page gets the same amount of extra room at the bottom, so anything it covers (the Board's last rows, the patient app's buttons) can always be scrolled into view. On screens shorter than 760 px each step's explanation keeps to two lines. The bar's readout never shows an estimate for a silenced (confidential) visit: it says "estimate withheld (silenced)", like the Board.
+
 ## How it works
 
 The API's demo director plays the department forward on its own clock and sends each change through the same HL7 ingest path as the scripted OPOR Twin. The wait model, the Visit Agent, texts and both apps react exactly as they would to a hospital feed. The only simulated part is who walks in and how fast people are seen: one provider start about every seven minutes (ten in the rapid assessment stream, each give or take a quarter), the sickest first, scaled by the staffing lever. Every visit's tests, decision and bed wait come from its visit number, so a restart never changes a story.
 
-- Code: `apps/api/src/journey/demo/` (`flow.ts` rules, `director.ts` clock and actions, `view.ts` what the bar shows, `messages.ts` HL7 for each move, `seed.ts` the opening scene, `routes.ts` API) and `apps/web/components/demo-bar.tsx` with `demo-panel.tsx` and `demo-placement.ts`.
+- Code: `apps/api/src/journey/demo/` (`flow.ts` rules, `director.ts` clock and actions, `view.ts` what the bar shows, `messages.ts` HL7 for each move, `seed.ts` the opening scene, `contact.ts` the judge's contact and text thread, `routes.ts` API) and `apps/web/components/demo-bar.tsx` with `demo-steps.tsx`, `demo-advanced.tsx`, `demo-panel.tsx` and `demo-placement.ts`.
+- Maya is held: the director triages her like anyone else but never picks her from the queue or moves her on by itself. Re-seated visits are numbered `FIN5500001` followed by a count (`FIN55000011`, …); every Maya visit links to the same demo patient by name and birth date, so her app follows the newest one.
 - Routes: `GET /journey/demo/state`, `POST /journey/demo/act`. Staff and patient sessions only, demo mode only. A patient session sees its own visit as the focus and other private visits only as "Private visit".
 - Eight featured visits (confidential, security alert, left without being seen, and so on) follow their own scripts and cannot be nudged.
 
@@ -54,4 +58,5 @@ The API's demo director plays the department forward on its own clock and sends 
 - Do not run `npm run twin` at the same time. Two clocks would fight over the same department.
 - The bar adopts a department that already exists, so a restarted API picks up where it was: paused, with default speed, walk-ins and staffing, and the featured visits' scripts rebuilt. The idle countdown starts again at the next control press.
 - Limits: 70 open visits (walk-ins stop and **+5** adds only what fits), and 8 hours of skipping queued at once.
+- The accuracy page includes this department's local recalibration (see [stage-time-model.md, section 11.5](../design/stage-time-model.md#115-local-recalibration-experiment-p5)): after a reset it starts again from the model as trained.
 - Accuracy still means what [stage-time-model.md](../design/stage-time-model.md) says: the ranges are calibrated on simulated departments, not on a Nova Scotia hospital.

@@ -335,3 +335,16 @@
     width: auto;
   }
 }
+
+.dbar-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-basis: 100%;
+}
+.dbar-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: currentColor;
+}

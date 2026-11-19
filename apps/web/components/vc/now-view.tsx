@@ -72,6 +72,12 @@ export default function NowView() {
           silenced
         </Stat>
       </section>
+      {feedTime && (
+        <p className="vca-hint">
+          As of {clock(feedTime)} on the department clock. Every screen reads the same feed and
+          refreshes every 2 seconds.
+        </p>
+      )}
 
       <div className="vca-split">
         <section className="vca-panel" aria-labelledby="vca-queue-title">
@@ -172,7 +178,11 @@ export default function NowView() {
               Waiting patients whose told range has run out. A good moment for a Waiting Room Care
               Provider to check in. The agent also asks them how they feel.
             </p>
-            {overdue.length === 0 ? (
+            {!desk ? (
+              <p className="vca-quiet" role="status">
+                Loading…
+              </p>
+            ) : overdue.length === 0 ? (
               <p className="vca-quiet">
                 Everyone waiting is still inside the range they were told.
               </p>
@@ -204,7 +214,11 @@ export default function NowView() {
             <p className="vca-hint">
               Wait to be seen, 10th to 90th percentile; the tick is the median.
             </p>
-            {nextSeen.length === 0 ? (
+            {!desk ? (
+              <p className="vca-quiet" role="status">
+                Loading…
+              </p>
+            ) : nextSeen.length === 0 ? (
               <p className="vca-quiet">Nobody is waiting to be seen.</p>
             ) : (
               <div className="vcf-column">

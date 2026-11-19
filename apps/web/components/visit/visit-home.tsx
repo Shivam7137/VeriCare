@@ -209,18 +209,17 @@ function Estimate({ visit }: { visit: LiveVisit }) {
         <strong key={first!.high} className="vc-fade" aria-label={first!.headline}>
           <small>about</small> {minutesText(first!.high)}
         </strong>
-        <span className="vcp-muted">
-          Possibly sooner, from about {minutesText(first!.low)}. This can change.
-        </span>
+        <span className="vcp-muted">{soonerLine(first!.low)}</span>
       </div>
 
       <div
         className="vcp-line"
         role="img"
         aria-label={rows
-          .map(
-            (row) =>
-              `${row.label}: between ${minutesText(row.low)} and ${minutesText(row.high)} from now`,
+          .map((row) =>
+            row.low < SOONEST
+              ? `${row.label}: any time in the next ${minutesText(row.high)}`
+              : `${row.label}: between ${minutesText(row.low)} and ${minutesText(row.high)} from now`,
           )
           .join(". ")}
       >
@@ -283,4 +282,14 @@ function Estimate({ visit }: { visit: LiveVisit }) {
       </details>
     </section>
   );
+}
+
+/** Below this a lower bound means "it could be soon", not a time worth naming. */
+const SOONEST = 15;
+
+/** The line under the headline. Never "from about 0 min": a bound that low tells nobody anything. */
+function soonerLine(low: number): string {
+  return low < SOONEST
+    ? "It could be sooner. Sicker patients are seen first, so this can change."
+    : `Probably not before about ${minutesText(low)}. This can change.`;
 }
