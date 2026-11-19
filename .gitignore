@@ -29,3 +29,6 @@ __pycache__/
 *.mp3
 *.m4a
 pitch-film/
+
+# The one exception: the designated pitch video the README links to.
+!pitch/VeriCare-pitch.mp4

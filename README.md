@@ -8,7 +8,7 @@ Our entry to the **Cognizant BrAInstorm Challenge 2026** ("Agentic AI for Good",
 
 |                 |                                                                                                                                                                    |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Pitch video** | [pitch/VeriCare-pitch.mp4](pitch/VeriCare-pitch.mp4) in this repository                                                                                            |
+| **Pitch video** | [pitch/VeriCare-pitch.mp4](pitch/VeriCare-pitch.mp4): the designated 3-minute pitch video, in this repository                                                      |
 | **Live demo**   | https://vericare-731923006486.us-central1.run.app (no install, no login)                                                                                           |
 | **Code**        | https://github.com/Shivam7137/VeriCare                                                                                                                             |
 | **Team**        | **VeriCare**: Shivam Shah ([Shivam7137@gmail.com](mailto:Shivam7137@gmail.com)) and Tenisha Bajagain ([tenibajagain17@gmail.com](mailto:tenibajagain17@gmail.com)) |
