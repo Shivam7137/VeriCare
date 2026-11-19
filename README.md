@@ -9,7 +9,7 @@ Our entry to the **Cognizant BrAInstorm Challenge 2026** ("Agentic AI for Good",
 |                 |                                                                                                                                                                    |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Pitch video** | [pitch/VeriCare-pitch.mp4](pitch/VeriCare-pitch.mp4): the designated 3-minute pitch video, in this repository                                                      |
-| **Live demo**   | https://vericare-731923006486.us-central1.run.app (no install, no login)                                                                                           |
+| **Live demo**   | https://vericare-731923006486.us-central1.run.app/professional/ed (no install, no login; start here, not on the home page)                                         |
 | **Code**        | https://github.com/Shivam7137/VeriCare                                                                                                                             |
 | **Team**        | **VeriCare**: Shivam Shah ([Shivam7137@gmail.com](mailto:Shivam7137@gmail.com)) and Tenisha Bajagain ([tenibajagain17@gmail.com](mailto:tenibajagain17@gmail.com)) |
 
@@ -52,6 +52,7 @@ Also try these:
 
 Notes on the live demo:
 
+- **Start at [/professional/ed](https://vericare-731923006486.us-central1.run.app/professional/ed).** The home page opens on an outpatient appointments workspace; the emergency demo ("VeriCare Journey") is a separate set of pages: the nursing app at `/professional/ed`, the patient side at `/patient/visit` and mission control at `/professional/ed/mission`.
 - It sleeps when nobody uses it, so the first load after a quiet spell takes about a minute, and it wakes to a fresh department.
 - Everyone shares one department, and **Start over** resets it for everyone (you never need it for the guided steps: use **Re-seat Maya**). It also starts over on its own 30 minutes after the last use.
 - Texts and calls are simulated. The agent plans with its **rules planner** there, because no model key is configured on the public copy. The language-model planner, the voice agent Alex and live texts run in our local setup and appear in the video. [Run it yourself](#run-it-yourself) to try them with your own keys.
