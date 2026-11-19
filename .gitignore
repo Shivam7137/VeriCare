@@ -19,3 +19,13 @@ apps/web/next-env.d.ts
 __pycache__/
 *.pyc
 .impeccable/
+
+# Keep pitch films, clips, recordings and other media out of the repository.
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.wav
+*.mp3
+*.m4a
+pitch-film/
